@@ -8,5 +8,5 @@ import lombok.Setter;
 public class EmployeeValidationResult {
     private String message;
     private String flag;
-    private String empType;
+    private String userType;
 }

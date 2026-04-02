@@ -63,7 +63,7 @@
     </dependencies>
 
     <build>
-        <finalName>breederAppWs</finalName>
+        <finalName>breederAppNewWs</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

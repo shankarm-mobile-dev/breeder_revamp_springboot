@@ -1,51 +1,50 @@
 package com.suguna.breeder_revamp.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.persistence.Column;
+import com.suguna.breeder_revamp.utils.Column;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-
 public class ManagerLoginDto {
 
-    @JsonProperty("STATUS")
+    @JsonProperty("status")
     String status;
-    @JsonProperty("STATUSCODE")
-    String statuscode;
-    @JsonProperty("MESSAGE")
+    @JsonProperty("statusCode")
+    int statusCode;
+    @JsonProperty("message")
     String message;
 
-    @JsonProperty("USER_DETAILS")
+    @JsonProperty("data")
     UserDetailsSetResultDto user_details;
 
     @Getter
     @Setter
     public static class UserDetailsSetResultDto {
-        @Column(name = "branch_ID" )
-        @JsonProperty("branch_ID")
+        @Column(name = "branch_ID" , type = long.class)
+        @JsonProperty("branchId")
         long branchID;
 
-        @Column(name = "branch_CODE")
-        @JsonProperty("branch_CODE")
+        @Column(name = "branch_CODE", type = String.class)
+        @JsonProperty("branchCode")
         String branchCode;
 
-        @Column(name = "branch_NAME")
-        @JsonProperty("branch_NAME")
+        @Column(name = "branch_NAME", type = String.class)
+        @JsonProperty("branchName")
         String branchName;
 
-        @Column(name = "EMP_CODE" )
-        @JsonProperty("EMP_CODE")
+        @Column(name = "EMP_CODE" , type = String.class)
+        @JsonProperty("empCode")
         String EmpCode;
 
-        @Column(name = "user_TYPE")
-        @JsonProperty("user_TYPE")
+        @Column(name = "user_TYPE", type = String.class)
+        @JsonProperty("userType")
         String UserType;
 
-        @Column(name = "MPIN" )
-        @JsonProperty("MPIN")
-        String mPIN;
+        @Column(name = "MPIN" , type = Integer.class)
+        @JsonProperty("mPin")
+        Integer mPIN;
 
     }
 }

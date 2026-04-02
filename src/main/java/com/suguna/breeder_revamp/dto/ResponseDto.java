@@ -4,18 +4,16 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.List;
-
 @Getter
 @Setter
-public class ResponseDto<T> {
-    @JsonProperty("STATUS")
+public class ResponseDto <T> {
+    @JsonProperty("status")
     String status;
-    @JsonProperty("STATUSCODE")
-    String statusCode;
-    @JsonProperty("MESSAGE")
+    @JsonProperty("statusCode")
+    int statusCode;
+    @JsonProperty("message")
     String message;
-    @JsonProperty("RESULT")
-    List<T> result;
+    @JsonProperty("data")
+    T result;
 
 }
