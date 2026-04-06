@@ -1,8 +1,10 @@
 package com.suguna.breeder_revamp.service;
 
+import com.suguna.breeder_revamp.dto.IssueReturnDto;
 import com.suguna.breeder_revamp.dto.SaveSugMaterialConsumptionDto;
 import com.suguna.breeder_revamp.model.SaveSugNaterialConsumptionModel;
 import com.suguna.breeder_revamp.repositories.SaveSugMaterialConsumptionRepository;
+import com.suguna.breeder_revamp.utils.ResultSetMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.StoredProcedureQuery;
@@ -12,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -105,5 +109,29 @@ public class InventoryServiceImpl implements  InventoryService{
 
         }
         return date;
+    }
+
+    public ArrayList<IssueReturnDto> GetIssueReturn(String branch_ID ) throws SQLException {
+        IssueReturnDto appinfo = new IssueReturnDto();
+        ArrayList<IssueReturnDto> Result = new ArrayList<IssueReturnDto>();
+        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gpps_mob_pkg.getwipconsumptionreturn");
+        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+        storedProcedureQuery.setParameter(1, branch_ID);
+
+        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+        storedProcedureQuery.execute();
+        System.out.println(branch_ID);
+
+        while (resultSet.next()) {
+            try {
+                appinfo = ResultSetMapper.mapResultSetToObject(resultSet, IssueReturnDto.class);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+            Result.add(appinfo);
+        }
+
+        return Result;
     }
 }
