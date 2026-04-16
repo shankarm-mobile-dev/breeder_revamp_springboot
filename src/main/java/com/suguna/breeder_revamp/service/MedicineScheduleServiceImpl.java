@@ -97,7 +97,7 @@ public class MedicineScheduleServiceImpl implements MedicineScheduleService {
 
     @Transactional
     public String saveMedicineSchedule(ArrayList<SaveMedicineScheduleDto>entry){
-        String fromdateFormat = "yyyy/MM/dd hh:mm:ss";
+        String fromdateFormat = "dd-MMM-yyyy";
         String fromdateFormat1 = "yyyy/MM/dd";
         try{
             for(SaveMedicineScheduleDto farmdto:entry){
@@ -109,8 +109,8 @@ public class MedicineScheduleServiceImpl implements MedicineScheduleService {
                 masterModels.setQty(farmdto.getQty());
                 masterModels.setCreationDate(new Date());
                 masterModels.setCreatedBy(farmdto.getCreatedBy());
-                masterModels.setDateFrom(getTxnDateString(farmdto.getDateFrom(),fromdateFormat1));
-                masterModels.setDateTo(getTxnDateString(farmdto.getDateFrom(),fromdateFormat1));
+                masterModels.setDateFrom(getTxnDateString(farmdto.getDateFrom(),fromdateFormat));
+                masterModels.setDateTo(getTxnDateString(farmdto.getDateFrom(),fromdateFormat));
                 masterModels.setUom(farmdto.getUom());
                 masterModels.setFlockId(farmdto.getFlockId());
                 masterModels.setFarmCode(farmdto.getFarmCode());

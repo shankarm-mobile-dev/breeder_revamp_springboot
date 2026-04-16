@@ -38,7 +38,7 @@ public class MedicineController {
         return medicineScheduleService.getFlock( branch_ID);
     }
 
-    @PostMapping("/medicineschedule")
+    @PostMapping("/save")
     public String saveMedicineSchedule(@RequestBody ArrayList<SaveMedicineScheduleDto>entry) throws Exception{
         return medicineScheduleService.saveMedicineSchedule(entry);
     }
