@@ -102,8 +102,6 @@ public class MedicineScheduleServiceImpl implements MedicineScheduleService {
         try{
             for(SaveMedicineScheduleDto farmdto:entry){
                 SaveMedicineScheduleModel masterModels =new SaveMedicineScheduleModel();
-
-
                 masterModels.setAge(farmdto.getAge());
                 masterModels.setGrade(farmdto.getGrade());
                 masterModels.setQty(farmdto.getQty());

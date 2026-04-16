@@ -31,8 +31,8 @@ public class InventoryServiceImpl implements  InventoryService{
     SaveSugMaterialConsumptionRepository saveSugMaterialConsumptionRepository;
     @Transactional
     public String SaveSugMaterialConsumption(ArrayList<SaveSugMaterialConsumptionDto> entry) {
-        String fromdateFormat  = "dd-MM-yyyy HH:mm:ss";
-        String fromdateFormat1 = "dd-MM-yyyy";
+        String fromdateFormat  = "dd-MMM-yyyy HH:mm:ss";
+        String fromdateFormat1 = "dd-MMM-yyyy";
         try {
             for (SaveSugMaterialConsumptionDto Farmdto : entry) {
 
