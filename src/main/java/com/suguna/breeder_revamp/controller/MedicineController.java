@@ -2,15 +2,13 @@ package com.suguna.breeder_revamp.controller;
 
 import com.suguna.breeder_revamp.dto.FlockDto;
 import com.suguna.breeder_revamp.dto.MedicineScheduleDto;
+import com.suguna.breeder_revamp.dto.SaveMedicineScheduleDto;
 import com.suguna.breeder_revamp.service.MedicineScheduleService;
 import com.suguna.breeder_revamp.service.MedicineScheduleServiceImpl;
 import com.suguna.breeder_revamp.service.ShedReadyServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 @RestController
@@ -38,5 +36,10 @@ public class MedicineController {
     @GetMapping("/flock/{branch_ID}")
     public ArrayList<FlockDto> getFlock(@PathVariable String branch_ID) throws Exception {
         return medicineScheduleService.getFlock( branch_ID);
+    }
+
+    @PostMapping("/medicineschedule")
+    public String saveMedicineSchedule(@RequestBody ArrayList<SaveMedicineScheduleDto>entry) throws Exception{
+        return medicineScheduleService.saveMedicineSchedule(entry);
     }
 }

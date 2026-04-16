@@ -24,7 +24,7 @@ public class ShedReadyController {
     }
 
     @GetMapping("/question/{farmCode}/{feedbackRef}/{language}")
-    public ResponseEntity<ApiResponseList<ShedReadyDto>> getFeedbackMaster(@PathVariable String farmCode, @PathVariable String feedbackRef, @PathVariable String language){
+    public ResponseEntity<ApiResponseList<ShedReadyDto>> getShedReadyQuestion(@PathVariable String farmCode, @PathVariable String feedbackRef, @PathVariable String language){
         return shedReadyServices.getShedReadyQuestion(farmCode,feedbackRef,language);
     }
 
