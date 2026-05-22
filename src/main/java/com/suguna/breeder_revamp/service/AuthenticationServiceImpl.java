@@ -476,9 +476,20 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             Output = (String) storedProcedureQuery.getOutputParameterValue(9);
         }
             if(Output.equals("1")) {
-                result.setFlag("Y");
-                result.setMessage("User ID Created");
-                result.setUserType(UserCode.getUserType());
+                if(UserCode.getMode().equals("NEW")) {
+                    result.setFlag("Y");
+                    result.setMessage("User ID Created");
+                    result.setUserType(UserCode.getUserType());
+                }else if(UserCode.getMode().equals("EDIT")){
+                    result.setFlag("Y");
+                    result.setMessage("User Details are Updated");
+                    result.setUserType(UserCode.getUserType());
+                }
+                else if(UserCode.getMode().equals("INACTIVE")) {
+                    result.setFlag("Y");
+                    result.setMessage("User ID InActivated");
+                    result.setUserType(UserCode.getUserType());
+                }
             }
             else
             {

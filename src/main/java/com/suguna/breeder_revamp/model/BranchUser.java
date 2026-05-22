@@ -111,5 +111,258 @@ public class BranchUser {
         @Column(name = "BATCH_STATUS" , type = String.class)
         @JsonProperty("batchStatus")
         String batchStatus;
+        @Column(name = "BATCH_ID" , type = String.class)
+        @JsonProperty("batchId")
+        String batchId;
+    }
+
+   /* @Getter
+    @Setter
+    public static class ShedDetails {
+        @Column(name = "FLOCK_ID", type = String.class)
+        @JsonProperty("flockID")
+        String flockID;
+        @Column(name = "AGE", type = long.class)
+        @JsonProperty("age")
+        long age;
+    }*/
+        @Getter
+        @Setter
+        public static class DailyFlockEntryDetails {
+            @Column(name = "ACTIVITY_NAME", type = String.class)
+            @JsonProperty("activityName")
+            String activityName;
+            @Column(name = "PERIOD_TYPE", type = String.class)
+            @JsonProperty("periodType")
+            String periodType;
+            @Column(name = "OPRN_ID", type = String.class)
+            @JsonProperty("activityId")
+            String activityId;
+            @Column(name = "COMPLETED_STATUS", type = String.class)
+            @JsonProperty("completedStatus")
+            String completedStatus;
+        }
+
+    @Getter
+    @Setter
+    public static class ObservationCategory {
+        @Column(name = "CATEGORY", type = String.class)
+        @JsonProperty("category")
+        String category;
+        @Column(name = "CATEGORY_ID", type = String.class)
+        @JsonProperty("categoryId")
+        String categoryId;
+
+        @JsonProperty("question")
+        ArrayList<ObservationCategoryDetails> question;
+    }
+    @Getter
+    @Setter
+    public static class ObservationCategoryDetails {
+        @Column(name = "OBSERVATION_DESCRIPTION", type = String.class)
+        @JsonProperty("observationDescription")
+        String category;
+        @Column(name = "OBSERVATION_ID", type = String.class)
+        @JsonProperty("observationId")
+        String categoryId;
+    }
+    @Getter
+    @Setter
+    public static class ShedWiseFeedBirdsDetails {
+        @JsonProperty("birdType")
+        String birdType;
+        @JsonProperty("feedDetails")
+        ArrayList<ShedWiseFeedDetails> feedDetails;
+    }
+    @Getter
+    @Setter
+    public static class ShedWiseFeedDetails {
+        @Column(name = "BIRD_TYPE", type = String.class)
+        @JsonProperty("birdType")
+        String birdType;
+        @Column(name = "PER_BIRD_FEED", type = String.class)
+        @JsonProperty("perBirdFeed")
+        String perBirdFeed;
+        @Column(name = "BIRDS_NO", type = String.class)
+        @JsonProperty("birdsNo")
+        String birdsNo;
+        @Column(name = "GRADE", type = String.class)
+        @JsonProperty("grade")
+        String grade;
+        @Column(name = "TOTAL_FEED_ALLOCATED", type = String.class)
+        @JsonProperty("totalFeedAllocated")
+        String totalFeedAllocated;
+
+    }
+
+
+
+    @Getter
+    @Setter
+    public static class ShedWiseBirdsDetails {
+        @Column(name = "BIRD_TYPE", type = String.class)
+        @JsonProperty("birdType")
+        String birdType;
+
+        @Column(name = "BIRDS_NO", type = String.class)
+        @JsonProperty("birdsNo")
+        String birdsNo;
+
+    }
+
+    @Getter
+    @Setter
+    public static class EggDetails {
+        @JsonProperty("EggItemDetails")
+        ArrayList<EggItemDetails> EggItemDetails;
+        @JsonProperty("EggCollectedDetails")
+        ArrayList<EggCollectionDetails> EggCollectedDetails;
+    }
+    @Getter
+    @Setter
+    public static class EggItemDetails {
+        @Column(name = "inventory_ITEM_ID", type = String.class)
+        @JsonProperty("inventoryItemID")
+        String inventoryItemID;
+
+        @Column(name = "item_CODE", type = String.class)
+        @JsonProperty("itemCode")
+        String itemCode;
+
+        @Column(name = "item_DESCRIPTION", type = String.class)
+        @JsonProperty("itemDescription")
+        String itemDescription;
+
+        @Column(name = "primary_UOM", type = String.class)
+        @JsonProperty("primaryUom")
+        String primaryUom;
+
+        @Column(name = "seq_NO", type = String.class)
+        @JsonProperty("seqNO")
+        String seqNO;
+
+        @Column(name = "collected_Eggs", type = String.class)
+        @JsonProperty("collectedEggs")
+        String collectedEggs;
+
+    }
+
+    @Getter
+    @Setter
+    public static class EggCollectionDetails {
+        @Column(name = "ROWNUM", type = String.class)
+        @JsonProperty("seqNo")
+        String seqNo;
+        @Column(name = "QTY", type = String.class)
+        @JsonProperty("quantity")
+        String quantity;
+        @Column(name = "COLLETED_TIME", type = String.class)
+        @JsonProperty("collectedTime")
+        String collectedTime;
+        @Column(name = "STATUS", type = String.class)
+        @JsonProperty("status")
+        String status;
+        @Column(name = "ROWID", type = String.class)
+        @JsonProperty("rowID")
+        String rowID;
+    }
+
+    @Getter
+    @Setter
+    public static class FeedAllocationDetails {
+        @JsonProperty("FarmFlockDetails")
+        ArrayList<FarmFlockDetails> FarmFlockDetails;
+        @JsonProperty("GardeMstDetails")
+        ArrayList<GardeMstDetails> GardeMstDetails;
+    }
+
+    @Getter
+    @Setter
+    public static class FarmFlockDetails {
+        @Column(name = "batch_ID", type = String.class)
+        @JsonProperty("batchID")
+        String batchID;
+        @Column(name = "batch_NO", type = String.class)
+        @JsonProperty("batchNO")
+        String batchNO;
+        @Column(name = "flock", type = String.class)
+        @JsonProperty("flock")
+        String flock;
+        @Column(name = "age", type = String.class)
+        @JsonProperty("age")
+        String age;
+        @Column(name = "start_DATE", type = String.class)
+        @JsonProperty("startDate")
+        String startDate;
+        @Column(name = "end_DATE", type = String.class)
+        @JsonProperty("endDate")
+        String endDate;
+        @Column(name = "op_MALE", type = String.class)
+        @JsonProperty("opMale")
+        String opMale;
+        @Column(name = "op_FEMALE", type = String.class)
+        @JsonProperty("opFemale")
+        String opFemale;
+    }
+
+    @Getter
+    @Setter
+    public static class GardeMstDetails {
+        @Column(name = "CODE", type = String.class)
+        @JsonProperty("gradeNo")
+        String gradeNo;
+        @Column(name = "NAME", type = String.class)
+        @JsonProperty("gradeName")
+        String gradeName;
+    }
+
+    @Getter
+    @Setter
+    public static class CullDetails {
+        @JsonProperty("FarmFlockDetails")
+        ArrayList<FarmFlockDetails> FarmFlockDetails;
+        @JsonProperty("CullsReasonDetails")
+        ArrayList<CullsReasonDetails> CullsReasonDetails;
+    }
+
+    @Getter
+    @Setter
+    public static class CullsReasonDetails {
+        @Column(name = "type", type = String.class)
+        @JsonProperty("type")
+        String type;
+        @Column(name = "lookup_CODE", type = String.class)
+        @JsonProperty("lookupCode")
+        String lookupCode;
+        @Column(name = "meaning", type = String.class)
+        @JsonProperty("meaning")
+        String meaning;
+    }
+
+    @Getter
+    @Setter
+    public static class DestroyDetails {
+        @JsonProperty("FarmFlockDetails")
+        ArrayList<FarmFlockDetails> FarmFlockDetails;
+        @JsonProperty("CullsReasonDetails")
+        ArrayList<CullsReasonDetails> CullsReasonDetails;
+    }
+
+    @Getter
+    @Setter
+    public static class MortalityPmlDetails {
+        @JsonProperty("FarmFlockDetails")
+        ArrayList<FarmFlockDetails> FarmFlockDetails;
+        @JsonProperty("MortalityPmlDetails")
+        ArrayList<CullsReasonDetails> CullsReasonDetails;
+    }
+
+    @Getter
+    @Setter
+    public static class ExcessShortageDetails {
+        @JsonProperty("FarmFlockDetails")
+        ArrayList<FarmFlockDetails> FarmFlockDetails;
+        @JsonProperty("ExcessShortageDetails")
+        ArrayList<CullsReasonDetails> CullsReasonDetails;
     }
 }

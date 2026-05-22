@@ -100,7 +100,7 @@ public class authentication {
                 else {
                     loginDto.setStatusCode(201);
                     loginDto.setStatus("Not Success");
-                    loginDto.setMessage("Login Failed: Username or Password is wrong");
+                    loginDto.setMessage("Login Failed: Password is wrong");
 
                 }
                 return loginDto;
