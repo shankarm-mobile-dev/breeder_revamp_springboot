@@ -49,4 +49,8 @@ public interface FarmService {
     String saveMortalityPmlDetails(BranchRequest branchRequest);
 
     String saveExcessShortageDetails(BranchRequest branchRequest);
+
+    BranchUser.PlacementInfoDetails getPlacementInfo(String branchID);
+
+    ArrayList<BranchUser.DashboardDetails> getDashboardInfo(String branchID);
 }

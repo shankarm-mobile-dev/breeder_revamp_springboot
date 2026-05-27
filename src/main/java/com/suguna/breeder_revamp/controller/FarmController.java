@@ -227,4 +227,25 @@ public class FarmController {
         //}
         return responseDto;
     }
+
+    @PostMapping("/getPlacementInfo")
+    public ResponseDto getPlacementInfo(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getPlacementInfo(branchRequest.getBranchID()));
+        return responseDto;
+    }
+    @PostMapping("/getDashboardInfo")
+    public ResponseDto getDashboardInfo(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getDashboardInfo(branchRequest.getBranchID()));
+        return responseDto;
+    }
 }
