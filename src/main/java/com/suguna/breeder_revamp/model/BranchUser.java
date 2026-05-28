@@ -384,6 +384,12 @@ public class BranchUser {
         @Column(name = "REMAINING_BIRDS", type = String.class)
         @JsonProperty("REMAINING_BIRDS")
         String remainingBirds;
+        @Column(name = "FLOCK_NUMBER", type = String.class)
+        @JsonProperty("FLOCK_NUMBER")
+        String flockNumber;
+        @Column(name = "BATCH_ID", type = String.class)
+        @JsonProperty("BATCH_ID")
+        String batchId;
         @JsonProperty("PlacementInfoShedDetails")
         ArrayList<PlacementInfoShedDetails> PlacementInfoShedDetails;
     }

@@ -1,6 +1,7 @@
 package com.suguna.breeder_revamp.service;
 
 import com.suguna.breeder_revamp.dto.BranchRequest;
+import com.suguna.breeder_revamp.dto.PlacementRequest;
 import com.suguna.breeder_revamp.model.BranchUser;
 
 import java.util.ArrayList;
@@ -53,4 +54,6 @@ public interface FarmService {
     BranchUser.PlacementInfoDetails getPlacementInfo(String branchID);
 
     ArrayList<BranchUser.DashboardDetails> getDashboardInfo(String branchID);
+
+    String savePlacementInfoDetails(PlacementRequest placementRequest);
 }

@@ -2,13 +2,11 @@ package com.suguna.breeder_revamp.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.suguna.breeder_revamp.dto.BranchRequest;
+import com.suguna.breeder_revamp.dto.PlacementRequest;
 import com.suguna.breeder_revamp.dto.SugGppsObservationBatchDTO;
 import com.suguna.breeder_revamp.dto.SugGppsObservationDTO;
 import com.suguna.breeder_revamp.model.*;
-import com.suguna.breeder_revamp.repositories.SugGppsObservationDetailsRepositories;
-import com.suguna.breeder_revamp.repositories.SugGppsObservationHeaderRepositories;
-import com.suguna.breeder_revamp.repositories.SugMaiGppsConsumptionsRepositories;
-import com.suguna.breeder_revamp.repositories.SugMaiGppsItemAllocationRepositories;
+import com.suguna.breeder_revamp.repositories.*;
 import com.suguna.breeder_revamp.utils.ResultSetMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
@@ -41,6 +39,12 @@ public class FarmServiceImpl implements FarmService {
 
     @Autowired
     SugMaiGppsItemAllocationRepositories sugMaiGppsItemAllocationRepositories;
+
+    @Autowired
+    SugMaiGppsHousingShedRepositories sugMaiGppsHousingShedRepositories;
+
+    @Autowired
+    SugMaiGppsHousingLineRepositories sugMaiGppsHousingLineRepositories;
 
     @Autowired
     private ObjectMapper mapper;
@@ -1101,6 +1105,8 @@ public class FarmServiceImpl implements FarmService {
                 details.setMaleNos(shedDetails.getMaleNos());
                 details.setFemaleNos(shedDetails.getFemaleNos());
                 details.setAllocatePer(shedDetails.getAllocatePer());
+                details.setFlockNumber(shedDetails.getFlockNumber());
+                details.setBatchId(shedDetails.getBatchId());
                // shedDetailsArrayList.add(shedDetails);
             }
         } catch (Exception e) {
@@ -1185,6 +1191,89 @@ public class FarmServiceImpl implements FarmService {
         //details.setCullsReasonDetails(getexcessshortagereason(branchID));
         return shedDetailsArrayList;
     }
+
+    @Override
+    public String savePlacementInfoDetails(PlacementRequest placementRequest) {
+        Object rawData = placementRequest.getData();
+        List<PlacementRequest.SugLineDetails> data = new ArrayList<>();
+        //List<SugGppsObservationBatchDTO> batchDTOS = getBatchDetails(placementRequest.getBatchID());
+        if (rawData instanceof List<?>) {
+            for (Object item : (List<?>) rawData) {
+                // Convert each LinkedHashMap into SugFeedDetails
+                PlacementRequest.SugLineDetails details =
+                        mapper.convertValue(item, PlacementRequest.SugLineDetails.class);
+                data.add(details);
+            }
+        }
+        //SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
+        if (!data.isEmpty()) {
+            if(!placementRequest.getTotalFemaleQty().isEmpty()) {
+                SugMaiGppsHousingShed sugMaiGppsHousingShed = new SugMaiGppsHousingShed();
+                sugMaiGppsHousingShed.setFLOCK_ID(placementRequest.getFlockID());
+                sugMaiGppsHousingShed.setTXN_DATE(new Date());
+                sugMaiGppsHousingShed.setFARM_CODE("BGI");
+                sugMaiGppsHousingShed.setSHED_NO(placementRequest.getShedNo());
+                sugMaiGppsHousingShed.setSEX("F");
+                sugMaiGppsHousingShed.setOP_QTY(Long.valueOf(placementRequest.getTotalFemaleQty()));
+                sugMaiGppsHousingShed.setCREATED_BY(placementRequest.getUserCode());
+                sugMaiGppsHousingShed.setCREATION_DATE(new Date());
+                sugMaiGppsHousingShed.setBATCH_ID(Long.valueOf(placementRequest.getBatchID()));
+                sugMaiGppsHousingShed.setBRANCH_ID(Long.valueOf(placementRequest.getBranchID()));
+                sugMaiGppsHousingShedRepositories.save(sugMaiGppsHousingShed);
+            }
+            if(!placementRequest.getTotalMaleQty().isEmpty()) {
+                SugMaiGppsHousingShed sugMaiGppsHousingShed = new SugMaiGppsHousingShed();
+                sugMaiGppsHousingShed.setFLOCK_ID(placementRequest.getFlockID());
+                sugMaiGppsHousingShed.setTXN_DATE(new Date());
+                sugMaiGppsHousingShed.setFARM_CODE("BGI");
+                sugMaiGppsHousingShed.setSHED_NO(placementRequest.getShedNo());
+                sugMaiGppsHousingShed.setSEX("M");
+                sugMaiGppsHousingShed.setOP_QTY(Long.valueOf(placementRequest.getTotalMaleQty()));
+                sugMaiGppsHousingShed.setCREATED_BY(placementRequest.getUserCode());
+                sugMaiGppsHousingShed.setCREATION_DATE(new Date());
+                sugMaiGppsHousingShed.setBATCH_ID(Long.valueOf(placementRequest.getBatchID()));
+                sugMaiGppsHousingShed.setBRANCH_ID(Long.valueOf(placementRequest.getBranchID()));
+                sugMaiGppsHousingShedRepositories.save(sugMaiGppsHousingShed);
+            }
+            for (PlacementRequest.SugLineDetails sugLineDetails : data) {
+                if(!sugLineDetails.getFemaleBirdsCount().isEmpty()) {
+                    SugMaiGppsHousingLine maiGppsHousingLine = new SugMaiGppsHousingLine();
+                    maiGppsHousingLine.setFLOCK_ID(placementRequest.getFlockID());
+                    maiGppsHousingLine.setTXN_DATE(new Date());
+                    maiGppsHousingLine.setFARM_CODE("BGI");
+                    maiGppsHousingLine.setSHED_NO(placementRequest.getShedNo());
+                    maiGppsHousingLine.setSEX("F");
+                    maiGppsHousingLine.setGRADE("3");
+                    maiGppsHousingLine.setOP_QTY(Long.valueOf(sugLineDetails.getFemaleBirdsCount()));
+                    maiGppsHousingLine.setLINE_NO(sugLineDetails.getLineNo());
+                    maiGppsHousingLine.setCREATED_BY(placementRequest.getUserCode());
+                    maiGppsHousingLine.setCREATION_DATE(new Date());
+                    maiGppsHousingLine.setBATCH_ID(Long.valueOf(placementRequest.getBatchID()));
+                    maiGppsHousingLine.setBRANCH_ID(Long.valueOf(placementRequest.getBranchID()));
+                    sugMaiGppsHousingLineRepositories.save(maiGppsHousingLine);
+                }
+                if(!sugLineDetails.getMaleBirdsCount().isEmpty()) {
+                    SugMaiGppsHousingLine maiGppsHousingLine = new SugMaiGppsHousingLine();
+                    maiGppsHousingLine.setFLOCK_ID(placementRequest.getFlockID());
+                    maiGppsHousingLine.setTXN_DATE(new Date());
+                    maiGppsHousingLine.setFARM_CODE("BGI");
+                    maiGppsHousingLine.setSHED_NO(placementRequest.getShedNo());
+                    maiGppsHousingLine.setSEX("M");
+                    maiGppsHousingLine.setGRADE("3");
+                    maiGppsHousingLine.setOP_QTY(Long.valueOf(sugLineDetails.getMaleBirdsCount()));
+                    maiGppsHousingLine.setLINE_NO(sugLineDetails.getLineNo());
+                    maiGppsHousingLine.setCREATED_BY(placementRequest.getUserCode());
+                    maiGppsHousingLine.setCREATION_DATE(new Date());
+                    maiGppsHousingLine.setBATCH_ID(Long.valueOf(placementRequest.getBatchID()));
+                    maiGppsHousingLine.setBRANCH_ID(Long.valueOf(placementRequest.getBranchID()));
+                    sugMaiGppsHousingLineRepositories.save(maiGppsHousingLine);
+                }
+            }
+
+        }
+        return "200";
+    }
+
     public ArrayList<BranchUser.HenWeekDetails> getHenweekinfo(String branchID,String shedNo) {
         ArrayList<BranchUser.HenWeekDetails> shedDetailsArrayList = new ArrayList<BranchUser.HenWeekDetails>();
         try {
