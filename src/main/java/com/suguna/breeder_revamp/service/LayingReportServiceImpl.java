@@ -1,6 +1,5 @@
 package com.suguna.breeder_revamp.service;
 
-import com.suguna.breeder_revamp.dto.LayingReportRequestDto;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.StoredProcedureQuery;
@@ -20,14 +19,9 @@ public class LayingReportServiceImpl implements LayingReportService {
 
     @Override
     @Transactional
-    public String getLayingReport(LayingReportRequestDto req) {
 
         try {
-            // CLEAR OLD TEMP DATA
-            jdbcTemplate.execute("TRUNCATE TABLE sug_clob_gtt");
-
             // Step 1: Call procedure
-            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sug_rpt_gpps_pkg.sug_flk_lyreg_rpt");
 
             query.registerStoredProcedureParameter("errbuf", String.class, ParameterMode.OUT);
             query.registerStoredProcedureParameter("retcode", Integer.class, ParameterMode.OUT);
