@@ -4,5 +4,8 @@ import lombok.Data;
 
 @Data
 public class BreederBsgRequestDto {
+    private Integer ledger;
+    private Integer regionId;
+    private String plantCode;
     private String flockNo;
 }

@@ -23,6 +23,7 @@ public class BreederBsgReportServiceImpl implements BreederBsgReportService {
 
         try {
             // Step 1: Call procedure
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sug_tst_d7_pkg.breeder_bsg_rpt");
 
             // Input parameter
             query.registerStoredProcedureParameter("ps_flock_no", String.class, ParameterMode.IN);
