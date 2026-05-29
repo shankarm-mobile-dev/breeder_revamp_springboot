@@ -1,5 +1,6 @@
 package com.suguna.breeder_revamp.service;
 
+import com.suguna.breeder_revamp.dto.LayingReportRequest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.StoredProcedureQuery;
@@ -7,6 +8,8 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+
+import java.util.*;
 
 @Service
 public class LayingReportServiceImpl implements LayingReportService {
@@ -19,9 +22,11 @@ public class LayingReportServiceImpl implements LayingReportService {
 
     @Override
     @Transactional
+    public String getLayingReport(LayingReportRequest req) {
 
         try {
             // Step 1: Call procedure
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sug_tst_d7_pkg.sug_flk_lyreg_rpt");
 
             query.registerStoredProcedureParameter("errbuf", String.class, ParameterMode.OUT);
             query.registerStoredProcedureParameter("retcode", Integer.class, ParameterMode.OUT);
