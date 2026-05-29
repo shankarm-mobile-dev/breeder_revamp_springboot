@@ -1,6 +1,6 @@
 package com.suguna.breeder_revamp.service;
 
-import com.suguna.breeder_revamp.dto.LayingReportRequestDto;
+import com.suguna.breeder_revamp.dto.GrdReportRequestDto;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.StoredProcedureQuery;
@@ -10,7 +10,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
-public class LayingReportServiceImpl implements LayingReportService {
+public class GrdReportServiceImpl implements GrdReportService {
 
     @Autowired
     private EntityManager entityManager;
@@ -20,11 +20,11 @@ public class LayingReportServiceImpl implements LayingReportService {
 
     @Override
     @Transactional
-    public String getLayingReport(LayingReportRequestDto req) {
+    public String getGrdReport(GrdReportRequestDto req) {
 
         try {
             // Step 1: Call procedure
-            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sug_rpt_gpps_pkg.sug_flk_lyreg_rpt");
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sug_rpt_gpps_pkg.sug_100_grd_det");
 
             query.registerStoredProcedureParameter("errbuf", String.class, ParameterMode.OUT);
             query.registerStoredProcedureParameter("retcode", Integer.class, ParameterMode.OUT);
@@ -33,15 +33,11 @@ public class LayingReportServiceImpl implements LayingReportService {
             query.registerStoredProcedureParameter("p_region_id", Integer.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_plant_code", String.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_flock", String.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter("p_fm_age", Integer.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter("p_to_age", Integer.class, ParameterMode.IN);
 
             query.setParameter("p_ledger", req.getLedger());
             query.setParameter("p_region_id", req.getRegionId());
             query.setParameter("p_plant_code", req.getPlantCode());
             query.setParameter("p_flock", req.getFlock());
-            query.setParameter("p_fm_age", req.getFromAge());
-            query.setParameter("p_to_age", req.getToAge());
 
             query.execute();
 
@@ -65,5 +61,4 @@ public class LayingReportServiceImpl implements LayingReportService {
             throw new RuntimeException("Error executing report: " + e.getMessage());
         }
     }
-
 }
