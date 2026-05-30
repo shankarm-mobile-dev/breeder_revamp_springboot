@@ -1,5 +1,6 @@
 package com.suguna.breeder_revamp.controller;
 
+import com.suguna.breeder_revamp.response.ApiResponse;
 import com.suguna.breeder_revamp.service.BodyWeightReportServiceImpl;
 import com.suguna.breeder_revamp.service.GrdReportServiceImpl;
 import com.suguna.breeder_revamp.service.LayingReportServiceImpl;
@@ -23,118 +24,95 @@ public class ReportController {
     LayingReportServiceImpl layingReportService;
 
     @Autowired
-    BreederBsgReportServiceImpl BreederBsgReportService;
+    BreederBsgReportServiceImpl breederBsgReportService;
 
     @Autowired
-    BodyWeightReportServiceImpl BodyWeightReportService;
+    BodyWeightReportServiceImpl bodyWeightReportService;
 
     @Autowired
-    GrdReportServiceImpl GrdReportService;
+    GrdReportServiceImpl grdReportService;
 
-    @PostMapping(value = "/laying", produces = MediaType.TEXT_HTML_VALUE)
-    public ResponseEntity<String> getLayingReport(@RequestBody LayingReportRequestDto request) {
+    private ResponseEntity<ApiResponse<String>> buildResponse(String html, String message) {
+
+        if (html == null || html.isBlank()) {
+            html = "<h3>No Data Found</h3>";
+        }
+
+        ApiResponse<String> response = ApiResponse.<String>builder()
+                .status("SUCCESS")
+                .statusCode(HttpStatus.OK.value())
+                .message(message)
+                .data(html)
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
+
+    private ResponseEntity<ApiResponse<String>> buildError(Exception e) {
+        ApiResponse<String> response = ApiResponse.<String>builder()
+                .status("FAILED")
+                .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                .message(e.getMessage())
+                .data(null)
+                .build();
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(response);
+    }
+
+    // 1. LAYING REPORT
+    @PostMapping(value = "/laying", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<String>> getLayingReport(
+            @RequestBody LayingReportRequestDto request) {
 
         try {
             String html = layingReportService.getLayingReport(request);
-
-            if (html == null || html.isBlank()) {
-                return ResponseEntity.ok()
-                        .contentType(MediaType.TEXT_HTML)
-                        .body("<h3>No Data Found</h3>");
-            }
-
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType("text/html;charset=UTF-8"))
-                    .body(html);
+            return buildResponse(html, "Laying report generated");
 
         } catch (Exception e) {
-
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .contentType(MediaType.TEXT_HTML)
-                    .body("<h3>Error: " + e.getMessage() + "</h3>");
+            return buildError(e);
         }
     }
 
-    /**
-     *  Digital Flock recorder - breeder Birds shifting Brooding and Growing Report
-     * */
-    @PostMapping(value = "/bsg", produces = MediaType.TEXT_HTML_VALUE)
-    public ResponseEntity<String> getBreederBsgReport(@RequestBody BreederBsgRequestDto request) {
+    // 2. BSG REPORT
+    @PostMapping(value = "/bsg", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<String>> getBreederBsgReport(
+            @RequestBody BreederBsgRequestDto request) {
 
         try {
-            String html = BreederBsgReportService.getBreederBsgReport(request);
-
-            if (html == null || html.isBlank()) {
-                return ResponseEntity.ok()
-                        .contentType(MediaType.TEXT_HTML)
-                        .body("<h3>No Data Found</h3>");
-            }
-
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType("text/html;charset=UTF-8"))
-                    .body(html);
+            String html = breederBsgReportService.getBreederBsgReport(request);
+            return buildResponse(html, "BSG report generated");
 
         } catch (Exception e) {
-
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .contentType(MediaType.TEXT_HTML)
-                    .body("<h3>Error: " + e.getMessage() + "</h3>");
+            return buildError(e);
         }
     }
 
-    /**
-     *   Body-weight Report
-     * */
-    @PostMapping(value = "/body-weight", produces = MediaType.TEXT_HTML_VALUE)
-    public ResponseEntity<String> getBodyWeight(@RequestBody BodyWeightReportRequestDto request) {
+    // 3. BODY WEIGHT REPORT
+    @PostMapping(value = "/bodyWeight", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<String>> getBodyWeight(
+            @RequestBody BodyWeightReportRequestDto request) {
 
         try {
-            String html = BodyWeightReportService.getBodyWeight(request);
-
-            if (html == null || html.isBlank()) {
-                return ResponseEntity.ok()
-                        .contentType(MediaType.TEXT_HTML)
-                        .body("<h3>No Data Found</h3>");
-            }
-
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType("text/html;charset=UTF-8"))
-                    .body(html);
+            String html = bodyWeightReportService.getBodyWeight(request);
+            return buildResponse(html, "Body Weight report generated");
 
         } catch (Exception e) {
-
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .contentType(MediaType.TEXT_HTML)
-                    .body("<h3>Error: " + e.getMessage() + "</h3>");
+            return buildError(e);
         }
     }
 
-    /**
-     *   100 GRD Details Report
-     * */
-    @PostMapping(value = "/grd", produces = MediaType.TEXT_HTML_VALUE)
-    public ResponseEntity<String> getGrdReport(@RequestBody GrdReportRequestDto request) {
+    // 4. GRD REPORT
+    @PostMapping(value = "/grd", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<String>> getGrdReport(
+            @RequestBody GrdReportRequestDto request) {
 
         try {
-            String html = GrdReportService.getGrdReport(request);
-
-            if (html == null || html.isBlank()) {
-                return ResponseEntity.ok()
-                        .contentType(MediaType.TEXT_HTML)
-                        .body("<h3>No Data Found</h3>");
-            }
-
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType("text/html;charset=UTF-8"))
-                    .body(html);
+            String html = grdReportService.getGrdReport(request);
+            return buildResponse(html, "GRD report generated");
 
         } catch (Exception e) {
-
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .contentType(MediaType.TEXT_HTML)
-                    .body("<h3>Error: " + e.getMessage() + "</h3>");
+            return buildError(e);
         }
     }
-
-
 }
