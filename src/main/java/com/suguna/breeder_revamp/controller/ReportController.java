@@ -1,20 +1,13 @@
 package com.suguna.breeder_revamp.controller;
 
+import com.suguna.breeder_revamp.dto.*;
 import com.suguna.breeder_revamp.response.ApiResponse;
-import com.suguna.breeder_revamp.service.BodyWeightReportServiceImpl;
-import com.suguna.breeder_revamp.service.GrdReportServiceImpl;
-import com.suguna.breeder_revamp.service.LayingReportServiceImpl;
-import com.suguna.breeder_revamp.service.BreederBsgReportServiceImpl;
+import com.suguna.breeder_revamp.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import com.suguna.breeder_revamp.dto.LayingReportRequestDto;
-import com.suguna.breeder_revamp.dto.BreederBsgRequestDto;
-import com.suguna.breeder_revamp.dto.BodyWeightReportRequestDto;
-import com.suguna.breeder_revamp.dto.GrdReportRequestDto;
 
 @RestController
 @RequestMapping("/api/reports")
@@ -31,6 +24,12 @@ public class ReportController {
 
     @Autowired
     GrdReportServiceImpl grdReportService;
+
+    @Autowired
+    DailyFarmSummaryServiceImpl dailyFarmSummaryService;
+
+    @Autowired
+    BroodGrowRegisterServiceImpl broodGrowRegisterService;
 
     private ResponseEntity<ApiResponse<String>> buildResponse(String html, String message) {
 
@@ -115,4 +114,33 @@ public class ReportController {
             return buildError(e);
         }
     }
+
+    // 5. DAILY SUMMARY REPORT (Brooding Growing and Laying)
+    @PostMapping(value = "/dailySummary", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<String>> getDailySummary(
+            @RequestBody DailyFarmSummaryRequestDto request) {
+
+        try {
+            String html = dailyFarmSummaryService.getDailyFarmSummary(request);
+            return buildResponse(html, "Daily Farm Summary report generated");
+
+        } catch (Exception e) {
+            return buildError(e);
+        }
+    }
+
+    // 6. Brooding & Growing Register Report
+    @PostMapping(value = "/broodGrowRegister", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<String>> getBroodGrowRegister(
+            @RequestBody BroodGrowRegisterRequestDto request) {
+
+        try {
+            String html = broodGrowRegisterService.getReport(request);
+            return buildResponse(html, "Brooding & Growing Register report generated");
+
+        } catch (Exception e) {
+            return buildError(e);
+        }
+    }
+
 }
