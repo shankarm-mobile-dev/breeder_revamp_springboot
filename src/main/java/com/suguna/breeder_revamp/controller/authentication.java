@@ -68,7 +68,55 @@ public class authentication {
 
         }
 
+        //get usertype
         ManagerLoginDto loginDto=new ManagerLoginDto();
+        ResponseDto login1Dto=new ResponseDto();
+        var response=  authService.validateEmployee(userRequest.getUserCode());
+        if(Objects.equals(response.getUserType(), null))
+        {
+            login1Dto.setMessage(response.getMessage());
+            login1Dto.setStatusCode(201);
+            login1Dto.setStatus("Failed");
+            // List<EmployeeValidationResult> resultList = new ArrayList<>();
+            //login1Dto.setResult(response);
+            loginDto.setStatusCode(201);
+            loginDto.setStatus("Not Success");
+            loginDto.setMessage(response.getMessage());
+            return loginDto;
+        }
+        else if(Objects.equals(response.getUserType(), "No"))
+        {
+            login1Dto.setMessage(response.getMessage());
+            login1Dto.setStatusCode(201);
+            login1Dto.setStatus("Failed");
+            // List<EmployeeValidationResult> resultList = new ArrayList<>();
+            //login1Dto.setResult(response);
+            loginDto.setStatusCode(201);
+            loginDto.setStatus("Not Success");
+            loginDto.setMessage(response.getMessage());
+            return loginDto;
+        }
+        else
+        {
+            login1Dto.setMessage(response.getMessage());
+            login1Dto.setStatusCode(200);
+            login1Dto.setStatus("Success");
+            List<EmployeeValidationResult> resultList = new ArrayList<>();
+            resultList.add(response);
+            userRequest.setUserType(response.getUserType());
+            //login1Dto.setResult(response);
+
+        }
+
+
+
+
+
+
+
+
+
+
         if(userRequest.getUserType().equalsIgnoreCase("MANAGER")) {
             if (authService.authenticateManager(userRequest.getUserCode(), userRequest.getPassword())) {
                 loginDto.setStatusCode(200);

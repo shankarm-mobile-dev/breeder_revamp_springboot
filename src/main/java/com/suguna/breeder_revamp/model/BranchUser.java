@@ -365,4 +365,195 @@ public class BranchUser {
         @JsonProperty("ExcessShortageDetails")
         ArrayList<CullsReasonDetails> CullsReasonDetails;
     }
+
+    @Getter
+    @Setter
+    public static class PlacementInfoDetails {
+        @Column(name = "TOTAL_BIRDS_ALLOCATE", type = String.class)
+        @JsonProperty("TOTAL_BIRDS_ALLOCATE")
+        String totalBirdsAllocate;
+        @Column(name = "FEMALE_NOS", type = String.class)
+        @JsonProperty("FEMALE_NOS")
+        String femaleNos;
+        @Column(name = "MALE_NOS", type = String.class)
+        @JsonProperty("MALE_NOS")
+        String maleNos;
+        @Column(name = "ALLOCATE_PER", type = String.class)
+        @JsonProperty("ALLOCATE_PER")
+        String allocatePer;
+        @Column(name = "REMAINING_BIRDS", type = String.class)
+        @JsonProperty("REMAINING_BIRDS")
+        String remainingBirds;
+        @Column(name = "FLOCK_NUMBER", type = String.class)
+        @JsonProperty("FLOCK_NUMBER")
+        String flockNumber;
+        @Column(name = "BATCH_ID", type = String.class)
+        @JsonProperty("BATCH_ID")
+        String batchId;
+        @JsonProperty("PlacementInfoShedDetails")
+        ArrayList<PlacementInfoShedDetails> PlacementInfoShedDetails;
+    }
+
+    @Getter
+    @Setter
+    public static class PlacementInfoShedDetails {
+        @Column(name = "TOTAL_BIRDS_CAPACITY", type = String.class)
+        @JsonProperty("TOTAL_BIRDS_CAPACITY")
+        String totalBirdsCapacity;
+        @Column(name = "FEMALE_NOS", type = String.class)
+        @JsonProperty("FEMALE_NOS")
+        String femaleNos;
+        @Column(name = "MALE_NOS", type = String.class)
+        @JsonProperty("MALE_NOS")
+        String maleNos;
+        @Column(name = "ALLOCATE_PER", type = String.class)
+        @JsonProperty("ALLOCATE_PER")
+        String allocatePer;
+        @Column(name = "REMAINING_BIRDS", type = String.class)
+        @JsonProperty("REMAINING_BIRDS")
+        String remainingBirds;
+        @Column(name = "SHED_NAME", type = String.class)
+        @JsonProperty("SHED_NAME")
+        String shedName;
+        @JsonProperty("PlacementInfoLineDetails")
+        ArrayList<PlacementInfoLineDetails> PlacementInfoLineDetails;
+    }
+    @Getter
+    @Setter
+    public static class PlacementInfoLineDetails {
+        @Column(name = "TOTAL_BIRDS_CAPACITY", type = String.class)
+        @JsonProperty("TOTAL_BIRDS_CAPACITY")
+        String totalBirdsCapacity;
+        @Column(name = "FEMALE_NOS", type = String.class)
+        @JsonProperty("FEMALE_NOS")
+        String femaleNos;
+        @Column(name = "MALE_NOS", type = String.class)
+        @JsonProperty("MALE_NOS")
+        String maleNos;
+        @Column(name = "ALLOCATE_PER", type = String.class)
+        @JsonProperty("ALLOCATE_PER")
+        String allocatePer;
+        @Column(name = "REMAINING_BIRDS", type = String.class)
+        @JsonProperty("REMAINING_BIRDS")
+        String remainingBirds;
+        @Column(name = "LINE_NAME", type = String.class)
+        @JsonProperty("LINE_NAME")
+        String lineName;
+    }
+
+    @Getter
+    @Setter
+    public static class DashboardDetails {
+        @Column(name = "FLOCK_NUMBER", type = String.class)
+        @JsonProperty("FLOCK_NUMBER")
+        String flockNumber;
+        @Column(name = "TOTAL_BIRDS_ALLOCATE", type = String.class)
+        @JsonProperty("TOTAL_BIRDS_ALLOCATE")
+        String totalBirdsAllocate;
+        @Column(name = "FEMALE_NOS", type = String.class)
+        @JsonProperty("FEMALE_NOS")
+        String femaleNos;
+        @Column(name = "MALE_NOS", type = String.class)
+        @JsonProperty("MALE_NOS")
+        String maleNos;
+        @Column(name = "HEN_WEEK_PER", type = String.class)
+        @JsonProperty("HEN_WEEK_PER")
+        String henWeekPer;
+        @Column(name = "HEN_WEEK_EGGS", type = String.class)
+        @JsonProperty("HEN_WEEK_EGGS")
+        String henWeekEggs;
+        @Column(name = "FERTILE_PER", type = String.class)
+        @JsonProperty("FERTILE_PER")
+        String fertilePer;
+        @Column(name = "FERTILE_QTY", type = String.class)
+        @JsonProperty("FERTILE_QTY")
+        String fertileQty;
+        @Column(name = "HATCHABILITY_PER", type = String.class)
+        @JsonProperty("HATCHABILITY_PER")
+        String hatchabilityPer;
+        @Column(name = "HATCHABILITY_CHICKS", type = String.class)
+        @JsonProperty("HATCHABILITY_CHICKS")
+        String hatchabilityChicks;
+        @Column(name = "MORTALITY_PER", type = String.class)
+        @JsonProperty("MORTALITY_PER")
+        String mortalityPer;
+        @Column(name = "MORTALITY_BIRDS", type = String.class)
+        @JsonProperty("MORTALITY_BIRDS")
+        String mortalityBirds;
+        @JsonProperty("HenWeekDetails")
+        ArrayList<HenWeekDetails> HenWeekDetails;
+        @JsonProperty("FertilityDetails")
+        ArrayList<FertilityDetails> FertilityDetails;
+        @JsonProperty("HatchabilityDetails")
+        ArrayList<HatchabilityDetails> HatchabilityDetails;
+        @JsonProperty("MortalityDetails")
+        ArrayList<MortalityDetails> MortalityDetails;
+    }
+
+    @Getter
+    @Setter
+    public static class HenWeekDetails {
+        @Column(name = "WEEK_NUMBER", type = String.class)
+        @JsonProperty("WEEK_NUMBER")
+        String weekNumber;
+        @Column(name = "WEEK_START_DATE", type = String.class)
+        @JsonProperty("WEEK_START_DATE")
+        String weekStartDate;
+        @Column(name = "WEEK_END_DATE", type = String.class)
+        @JsonProperty("WEEK_END_DATE")
+        String weekEndDate;
+        @Column(name = "HEN_WEEK", type = String.class)
+        @JsonProperty("HEN_WEEK")
+        String henWeek;
+    }
+
+    @Getter
+    @Setter
+    public static class FertilityDetails {
+        @Column(name = "WEEK_NUMBER", type = String.class)
+        @JsonProperty("WEEK_NUMBER")
+        String weekNumber;
+        @Column(name = "WEEK_START_DATE", type = String.class)
+        @JsonProperty("WEEK_START_DATE")
+        String weekStartDate;
+        @Column(name = "WEEK_END_DATE", type = String.class)
+        @JsonProperty("WEEK_END_DATE")
+        String weekEndDate;
+        @Column(name = "FERTILITY_WEEK", type = String.class)
+        @JsonProperty("FERTILITY_WEEK")
+        String fertilityWeek;
+    }
+    @Getter
+    @Setter
+    public static class HatchabilityDetails {
+        @Column(name = "WEEK_NUMBER", type = String.class)
+        @JsonProperty("WEEK_NUMBER")
+        String weekNumber;
+        @Column(name = "WEEK_START_DATE", type = String.class)
+        @JsonProperty("WEEK_START_DATE")
+        String weekStartDate;
+        @Column(name = "WEEK_END_DATE", type = String.class)
+        @JsonProperty("WEEK_END_DATE")
+        String weekEndDate;
+        @Column(name = "HATCHABILITY", type = String.class)
+        @JsonProperty("HATCHABILITY")
+        String hatchability;
+    }
+
+    @Getter
+    @Setter
+    public static class MortalityDetails {
+        @Column(name = "DAY_NAME", type = String.class)
+        @JsonProperty("DAY_NAME")
+        String dayName;
+        @Column(name = "DAY_OF_MONTH", type = String.class)
+        @JsonProperty("DAY_OF_MONTH")
+        String dayOfMonth;
+        @Column(name = "FULL_DATE", type = String.class)
+        @JsonProperty("FULL_DATE")
+        String fullDate;
+        @Column(name = "MORTALITY", type = String.class)
+        @JsonProperty("MORTALITY")
+        String mortality;
+    }
 }

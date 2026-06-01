@@ -1,6 +1,7 @@
 package com.suguna.breeder_revamp.controller;
 
 import com.suguna.breeder_revamp.dto.BranchRequest;
+import com.suguna.breeder_revamp.dto.PlacementRequest;
 import com.suguna.breeder_revamp.dto.ResponseDto;
 import com.suguna.breeder_revamp.service.FarmService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -224,6 +225,39 @@ public class FarmController {
         String response = "";
         // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
         responseDto.setResult(farmService.saveExcessShortageDetails(branchRequest));
+        //}
+        return responseDto;
+    }
+
+    @PostMapping("/getPlacementInfo")
+    public ResponseDto getPlacementInfo(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getPlacementInfo(branchRequest.getBranchID()));
+        return responseDto;
+    }
+    @PostMapping("/getDashboardInfo")
+    public ResponseDto getDashboardInfo(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getDashboardInfo(branchRequest.getBranchID()));
+        return responseDto;
+    }
+    @PostMapping("/savePlacementInfoDetails")
+    public ResponseDto savePlacementInfoDetails(@RequestBody PlacementRequest placementRequest) {
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        String response = "";
+        // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
+        responseDto.setResult(farmService.savePlacementInfoDetails(placementRequest));
         //}
         return responseDto;
     }
