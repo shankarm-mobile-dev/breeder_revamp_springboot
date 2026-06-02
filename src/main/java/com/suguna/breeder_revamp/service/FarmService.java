@@ -56,4 +56,10 @@ public interface FarmService {
     ArrayList<BranchUser.DashboardDetails> getDashboardInfo(String branchID);
 
     String savePlacementInfoDetails(PlacementRequest placementRequest);
+
+    String saveMedicineScheduleDetails(BranchRequest branchRequest);
+
+    ArrayList<BranchUser.MedicineScheduleDetails> getMedicineScheduleDetails(String branchID,String flock);
+
+    String saveFarmLogDetails(BranchRequest branchRequest);
 }

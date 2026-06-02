@@ -47,6 +47,9 @@ public class FarmServiceImpl implements FarmService {
     SugMaiGppsHousingLineRepositories sugMaiGppsHousingLineRepositories;
 
     @Autowired
+    SugMaiGppsFarmLogRepositories sugMaiGppsFarmLogRepositories;
+
+    @Autowired
     private ObjectMapper mapper;
 
     @Override
@@ -506,7 +509,16 @@ public class FarmServiceImpl implements FarmService {
 
             while (resultSet.next()) {
                 BranchUser.FarmFlockDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.FarmFlockDetails.class);
-
+                String Standard=getFeedStandard(branchID,shedDetails.getAge());
+                System.out.println("age : "+shedDetails.getAge());
+                try {
+                    String[] parts = Standard.split("~");
+                    shedDetails.setOpFemaleFeedStandard(parts[0]);
+                    shedDetails.setOpMaleFeedStandard(parts[1]);
+                } catch (Exception e) {
+                    // throw new RuntimeException(e);
+                }
+                shedDetails.setFarmFlockDetails(getFeedAllocationPreviousDetails(branchID,shedDetails.getFlock()));
                 shedDetailsArrayList.add(shedDetails);
             }
         } catch (Exception e) {
@@ -648,6 +660,7 @@ public class FarmServiceImpl implements FarmService {
                 sugMaiGppsItemAllocation.setCREATION_DATE(new Date());
                 sugMaiGppsItemAllocation.setDATE_FROM(convertToDate(branchRequest.getStartDate()));
                 sugMaiGppsItemAllocation.setDATE_TO(convertToDate(branchRequest.getEndDate()));
+                sugMaiGppsItemAllocation.setBRANCH_ID(Long.valueOf(branchRequest.getBranchID()));
                 sugMaiGppsItemAllocationRepositories.save(sugMaiGppsItemAllocation);
             }
 
@@ -667,6 +680,7 @@ public class FarmServiceImpl implements FarmService {
                 sugMaiGppsItemAllocation.setCREATION_DATE(new Date());
                 sugMaiGppsItemAllocation.setDATE_FROM(convertToDate(branchRequest.getStartDate()));
                 sugMaiGppsItemAllocation.setDATE_TO(convertToDate(branchRequest.getEndDate()));
+                sugMaiGppsItemAllocation.setBRANCH_ID(Long.valueOf(branchRequest.getBranchID()));
                 sugMaiGppsItemAllocationRepositories.save(sugMaiGppsItemAllocation);
             }
 
@@ -689,7 +703,15 @@ public class FarmServiceImpl implements FarmService {
 
             while (resultSet.next()) {
                 BranchUser.FarmFlockDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.FarmFlockDetails.class);
-
+                String Standard=getFeedStandard(branchID,shedDetails.getAge());
+                System.out.println("age : "+shedDetails.getAge());
+                try {
+                    String[] parts = Standard.split("~");
+                    shedDetails.setOpFemaleFeedStandard(parts[0]);
+                    shedDetails.setOpMaleFeedStandard(parts[1]);
+                } catch (Exception e) {
+                    // throw new RuntimeException(e);
+                }
                 shedDetailsArrayList.add(shedDetails);
             }
         } catch (Exception e) {
@@ -803,7 +825,15 @@ public class FarmServiceImpl implements FarmService {
 
             while (resultSet.next()) {
                 BranchUser.FarmFlockDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.FarmFlockDetails.class);
-
+                String Standard=getFeedStandard(branchID,shedDetails.getAge());
+                System.out.println("age : "+shedDetails.getAge());
+                try {
+                    String[] parts = Standard.split("~");
+                    shedDetails.setOpFemaleFeedStandard(parts[0]);
+                    shedDetails.setOpMaleFeedStandard(parts[1]);
+                } catch (Exception e) {
+                    // throw new RuntimeException(e);
+                }
                 shedDetailsArrayList.add(shedDetails);
             }
         } catch (Exception e) {
@@ -892,7 +922,15 @@ public class FarmServiceImpl implements FarmService {
 
             while (resultSet.next()) {
                 BranchUser.FarmFlockDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.FarmFlockDetails.class);
-
+                String Standard=getFeedStandard(branchID,shedDetails.getAge());
+                System.out.println("age : "+shedDetails.getAge());
+                try {
+                    String[] parts = Standard.split("~");
+                    shedDetails.setOpFemaleFeedStandard(parts[0]);
+                    shedDetails.setOpMaleFeedStandard(parts[1]);
+                } catch (Exception e) {
+                    // throw new RuntimeException(e);
+                }
                 shedDetailsArrayList.add(shedDetails);
             }
         } catch (Exception e) {
@@ -941,7 +979,15 @@ public class FarmServiceImpl implements FarmService {
 
             while (resultSet.next()) {
                 BranchUser.FarmFlockDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.FarmFlockDetails.class);
-
+                String Standard=getFeedStandard(branchID,shedDetails.getAge());
+                System.out.println("age : "+shedDetails.getAge());
+                try {
+                    String[] parts = Standard.split("~");
+                    shedDetails.setOpFemaleFeedStandard(parts[0]);
+                    shedDetails.setOpMaleFeedStandard(parts[1]);
+                } catch (Exception e) {
+                   // throw new RuntimeException(e);
+                }
                 shedDetailsArrayList.add(shedDetails);
             }
         } catch (Exception e) {
@@ -1367,5 +1413,214 @@ public class FarmServiceImpl implements FarmService {
 
         }
         return shedDetailsArrayList;
+    }
+    public String getFeedStandard(String branchID,String age) {
+        ArrayList<BranchUser.StandardDetails> standardDetailsArrayList = new ArrayList<BranchUser.StandardDetails>();
+        String Standard="";
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getfeedstandard");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchID);
+            storedProcedureQuery.setParameter(2, age);
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(3);
+
+            while (resultSet.next()) {
+                BranchUser.StandardDetails standardDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.StandardDetails.class);
+                standardDetailsArrayList.add(standardDetails);
+                Standard=standardDetails.getFemaleWeight()+"~"+standardDetails.getMaleWeight();
+            }
+        } catch (Exception e) {
+
+        }
+        return Standard;
+    }
+
+    public ArrayList<BranchUser.FarmFlockPreviousDetails> getFeedAllocationPreviousDetails(String branchID,String flock) {
+        ArrayList<BranchUser.FarmFlockPreviousDetails> farmFlockPreviousDetailsArrayList = new ArrayList<BranchUser.FarmFlockPreviousDetails>();
+
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getFeedAllocationDetails");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchID);
+            storedProcedureQuery.setParameter(2, flock);
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(3);
+
+            while (resultSet.next()) {
+                BranchUser.FarmFlockPreviousDetails farmFlockPreviousDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.FarmFlockPreviousDetails.class);
+                farmFlockPreviousDetails.setGradeWiseDetails(getFeedAllocationPreviousBreakupDetails(branchID,flock,farmFlockPreviousDetails.getAge()));
+                farmFlockPreviousDetailsArrayList.add(farmFlockPreviousDetails);
+
+            }
+        } catch (Exception e) {
+
+        }
+        return farmFlockPreviousDetailsArrayList;
+    }
+
+    public ArrayList<BranchUser.FarmFlockPreviousBreakupDetails> getFeedAllocationPreviousBreakupDetails(String branchID,String flock,String age) {
+        ArrayList<BranchUser.FarmFlockPreviousBreakupDetails> farmFlockPreviousBreakupDetailsArrayList = new ArrayList<BranchUser.FarmFlockPreviousBreakupDetails>();
+
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getFeedAllocationBreakupDetails");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(4, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchID);
+            storedProcedureQuery.setParameter(2, flock);
+            storedProcedureQuery.setParameter(3, age);
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(4);
+
+            while (resultSet.next()) {
+                BranchUser.FarmFlockPreviousBreakupDetails farmFlockPreviousBreakupDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.FarmFlockPreviousBreakupDetails.class);
+                farmFlockPreviousBreakupDetailsArrayList.add(farmFlockPreviousBreakupDetails);
+
+            }
+        } catch (Exception e) {
+
+        }
+        return farmFlockPreviousBreakupDetailsArrayList;
+    }
+
+    @Override
+    public String saveMedicineScheduleDetails(BranchRequest branchRequest) {
+     /*   List<BranchRequest.SugFeedDetails> data=new ArrayList<>();
+        data= (List<BranchRequest.SugFeedDetails>) branchRequest.getData();
+*/
+
+        Object rawData = branchRequest.getData();
+        List<BranchRequest.MedicineAllocationDetails> data = new ArrayList<>();
+        List<SugGppsObservationBatchDTO> batchDTOS = getBatchDetails(branchRequest.getBatchID());
+        if (rawData instanceof List<?>) {
+            for (Object item : (List<?>) rawData) {
+                // Convert each LinkedHashMap into SugFeedDetails
+                BranchRequest.MedicineAllocationDetails details =
+                        mapper.convertValue(item, BranchRequest.MedicineAllocationDetails.class);
+                data.add(details);
+            }
+        }
+        SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
+
+        if (!data.isEmpty()) {
+            for (BranchRequest.MedicineAllocationDetails medicineAllocationDetails : data) {
+                SugMaiGppsItemAllocation sugMaiGppsItemAllocation = new SugMaiGppsItemAllocation();
+                sugMaiGppsItemAllocation.setAGE(Long.valueOf(branchRequest.getAge()));
+                sugMaiGppsItemAllocation.setFLOCK_ID(branchRequest.getFlockID());
+                sugMaiGppsItemAllocation.setSHED_NO(branchRequest.getShedNo());
+                sugMaiGppsItemAllocation.setFARM_CODE(gppsObservationBatchDTO.getBRANCH_CODE());
+                sugMaiGppsItemAllocation.setITEM_TYPE(medicineAllocationDetails.getItemType());
+                sugMaiGppsItemAllocation.setITEM_ID(Long.valueOf(medicineAllocationDetails.getItemId()));
+                sugMaiGppsItemAllocation.setUOM(medicineAllocationDetails.getUom());
+                sugMaiGppsItemAllocation.setQTY(BigDecimal.valueOf(Double.parseDouble(medicineAllocationDetails.getQuantity())));
+                sugMaiGppsItemAllocation.setINTAKE_MODE(medicineAllocationDetails.getIntakeMode());
+                sugMaiGppsItemAllocation.setCREATED_BY(branchRequest.getUserCode());
+                sugMaiGppsItemAllocation.setCREATION_DATE(new Date());
+                sugMaiGppsItemAllocation.setDATE_FROM(convertToDate(branchRequest.getStartDate()));
+                sugMaiGppsItemAllocation.setDATE_TO(convertToDate(branchRequest.getEndDate()));
+                sugMaiGppsItemAllocation.setBRANCH_ID(Long.valueOf(branchRequest.getBranchID()));
+                sugMaiGppsItemAllocation.setPREPARED_BY(branchRequest.getPreparedBy());
+                sugMaiGppsItemAllocationRepositories.save(sugMaiGppsItemAllocation);
+            }
+
+        }
+
+        return "200";
+    }
+
+    @Override
+    public ArrayList<BranchUser.MedicineScheduleDetails> getMedicineScheduleDetails(String branchID,String flock) {
+        ArrayList<BranchUser.MedicineScheduleDetails> medicineScheduleDetailsArrayList = new ArrayList<BranchUser.MedicineScheduleDetails>();
+
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getmedicinescheduledetails");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+
+            storedProcedureQuery.registerStoredProcedureParameter(3, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchID);
+            storedProcedureQuery.setParameter(2, flock);
+
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(3);
+
+            while (resultSet.next()) {
+                BranchUser.MedicineScheduleDetails medicineScheduleDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.MedicineScheduleDetails.class);
+                medicineScheduleDetailsArrayList.add(medicineScheduleDetails);
+
+            }
+        } catch (Exception e) {
+
+        }
+        return medicineScheduleDetailsArrayList;
+    }
+
+    @Override
+    public String saveFarmLogDetails(BranchRequest branchRequest) {
+     /*   List<BranchRequest.SugFeedDetails> data=new ArrayList<>();
+        data= (List<BranchRequest.SugFeedDetails>) branchRequest.getData();
+*/
+
+        Object rawData = branchRequest.getData();
+        List<BranchRequest.FarmLogDetails> data = new ArrayList<>();
+        List<SugGppsObservationBatchDTO> batchDTOS = getBatchDetails(branchRequest.getBatchID());
+        if (rawData instanceof List<?>) {
+            for (Object item : (List<?>) rawData) {
+                // Convert each LinkedHashMap into SugFeedDetails
+                BranchRequest.FarmLogDetails details =
+                        mapper.convertValue(item, BranchRequest.FarmLogDetails.class);
+                data.add(details);
+            }
+        }
+       // SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
+
+        if (!data.isEmpty()) {
+            for (BranchRequest.FarmLogDetails farmLogDetails : data) {
+                SugMaiGppsFarmLog sugMaiGppsFarmLog = new SugMaiGppsFarmLog();
+               // sugMaiGppsItemAllocation.setAGE(Long.valueOf(branchRequest.getAge()));
+                //sugMaiGppsItemAllocation.setFLOCK_ID(branchRequest.getFlockID());
+                //sugMaiGppsItemAllocation.setSHED_NO(branchRequest.getShedNo());
+                //sugMaiGppsItemAllocation.setFARM_CODE(gppsObservationBatchDTO.getBRANCH_CODE());
+                sugMaiGppsFarmLog.setITEM_TYPE(farmLogDetails.getItemType());
+               // sugMaiGppsItemAllocation.setITEM_ID(Long.valueOf(medicineAllocationDetails.getItemId()));
+                if(farmLogDetails.getUom() != null && !farmLogDetails.getUom().isEmpty()) {
+                    sugMaiGppsFarmLog.setUOM(farmLogDetails.getUom());
+                }
+                if(farmLogDetails.getTotal() != null && !farmLogDetails.getTotal().isEmpty()) {
+                    sugMaiGppsFarmLog.setQTY(Long.valueOf(farmLogDetails.getTotal()));
+                }
+                if(farmLogDetails.getOpening() != null && !farmLogDetails.getOpening().isEmpty()) {
+                    sugMaiGppsFarmLog.setOPENING_QTY(Long.valueOf(farmLogDetails.getOpening()));
+                }
+                if(farmLogDetails.getClosing() != null && !farmLogDetails.getClosing().isEmpty()) {
+                    sugMaiGppsFarmLog.setCLOSING_QTY(Long.valueOf(farmLogDetails.getClosing()));
+                }
+                if(farmLogDetails.getMaleCount() != null && !farmLogDetails.getMaleCount().isEmpty()) {
+                    sugMaiGppsFarmLog.setMALE_COUNT(Long.valueOf(farmLogDetails.getMaleCount()));
+                }
+                if(farmLogDetails.getFemaleCount() != null && !farmLogDetails.getFemaleCount().isEmpty()) {
+                    sugMaiGppsFarmLog.setFEMALE_COUNT(Long.valueOf(farmLogDetails.getFemaleCount()));
+                }
+
+
+
+                sugMaiGppsFarmLog.setCREATED_BY(branchRequest.getUserCode());
+                sugMaiGppsFarmLog.setCREATION_DATE(new Date());
+
+
+                sugMaiGppsFarmLog.setBRANCH_ID(Long.valueOf(branchRequest.getBranchID()));
+               // sugMaiGppsFarmLog.setPREPARED_BY(branchRequest.getPreparedBy());
+                sugMaiGppsFarmLogRepositories.save(sugMaiGppsFarmLog);
+            }
+
+        }
+
+        return "200";
     }
 }

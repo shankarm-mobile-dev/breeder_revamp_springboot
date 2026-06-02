@@ -32,6 +32,8 @@ public class BranchRequest<T> {
     String startDate;
     @JsonProperty("endDate")
     String endDate;
+    @JsonProperty("preparedBy")
+    String preparedBy;
     @JsonProperty("data")
     T data;
 
@@ -117,5 +119,39 @@ public class BranchRequest<T> {
         @JsonProperty("Remark")
         String Remark;
     }
+    @Getter
+    @Setter
+    public static class MedicineAllocationDetails
+    {
+        @JsonProperty("itemType")
+        String itemType;
+        @JsonProperty("itemId")
+        String itemId;
+        @JsonProperty("quantity")
+        String quantity;
+        @JsonProperty("Uom")
+        String Uom;
+        @JsonProperty("intakeMode")
+        String intakeMode;
+    }
 
+    @Getter
+    @Setter
+    public static class FarmLogDetails
+    {
+        @JsonProperty("itemType")
+        String itemType;
+        @JsonProperty("maleCount")
+        String maleCount;
+        @JsonProperty("femaleCount")
+        String femaleCount;
+        @JsonProperty("Uom")
+        String Uom;
+        @JsonProperty("opening")
+        String opening;
+        @JsonProperty("closing")
+        String closing;
+        @JsonProperty("total")
+        String total;
+    }
 }

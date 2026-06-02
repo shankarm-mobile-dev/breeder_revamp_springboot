@@ -62,6 +62,4 @@ public class TransferController {
         responseDto.setResult(transferService.getMedicineVaccineMaster(branchRequest));
         return responseDto;
     }
-
-
 }

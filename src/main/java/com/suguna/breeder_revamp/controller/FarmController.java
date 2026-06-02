@@ -261,4 +261,41 @@ public class FarmController {
         //}
         return responseDto;
     }
+
+    @PostMapping("/saveMedicineScheduleDetails")
+    public ResponseDto saveMedicineScheduleDetails(@RequestBody BranchRequest branchRequest) {
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        String response = "";
+        // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
+        responseDto.setResult(farmService.saveMedicineScheduleDetails(branchRequest));
+        //}
+        return responseDto;
+    }
+
+    @PostMapping("/getMedicineScheduleDetails")
+    public ResponseDto getMedicineScheduleDetails(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getMedicineScheduleDetails(branchRequest.getBranchID(),branchRequest.getFlockID()));
+        return responseDto;
+    }
+
+    @PostMapping("/saveFarmLogDetails")
+    public ResponseDto saveFarmLogDetails(@RequestBody BranchRequest branchRequest) {
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        String response = "";
+        // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
+        responseDto.setResult(farmService.saveFarmLogDetails(branchRequest));
+        //}
+        return responseDto;
+    }
 }
