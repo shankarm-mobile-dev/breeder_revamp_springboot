@@ -23,6 +23,9 @@ public class LayingReportServiceImpl implements LayingReportService {
     public String getLayingReport(LayingReportRequestDto req) {
 
         try {
+            // CLEAR OLD TEMP DATA
+            jdbcTemplate.execute("TRUNCATE TABLE sug_clob_gtt");
+
             // Step 1: Call procedure
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sug_rpt_gpps_pkg.sug_flk_lyreg_rpt");
 
