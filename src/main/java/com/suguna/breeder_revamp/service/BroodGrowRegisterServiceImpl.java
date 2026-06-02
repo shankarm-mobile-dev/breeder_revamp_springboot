@@ -22,6 +22,8 @@ public class BroodGrowRegisterServiceImpl implements BroodGrowRegisterService {
 
         try {
 
+            jdbcTemplate.execute("TRUNCATE TABLE sug_clob_gtt");
+
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sug_rpt_gpps_pkg.brd_brod_grow_reg_rpt");
 
             // OUT params

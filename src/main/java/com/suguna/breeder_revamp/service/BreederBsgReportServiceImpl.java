@@ -22,6 +22,9 @@ public class BreederBsgReportServiceImpl implements BreederBsgReportService {
     public String getBreederBsgReport(BreederBsgRequestDto req) {
 
         try {
+            // CLEAR OLD TEMP DATA
+            jdbcTemplate.execute("TRUNCATE TABLE sug_clob_gtt");
+
             // Step 1: Call procedure
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sug_tst_d7_pkg.breeder_bsg_rpt");
 
