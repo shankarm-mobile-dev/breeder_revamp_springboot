@@ -19,6 +19,8 @@ public class DailyFarmSummaryServiceImpl implements DailyFarmSummaryService {
     public String getDailyFarmSummary(DailyFarmSummaryRequestDto req) {
 
         try {
+            // CLEAR OLD TEMP DATA
+            jdbcTemplate.execute("TRUNCATE TABLE sug_clob_gtt");
 
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sug_rpt_gpps_pkg.brd_daily_sumry_rpt");
 
