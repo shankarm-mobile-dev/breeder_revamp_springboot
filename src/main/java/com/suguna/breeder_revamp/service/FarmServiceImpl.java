@@ -1497,7 +1497,7 @@ public class FarmServiceImpl implements FarmService {
 
         Object rawData = branchRequest.getData();
         List<BranchRequest.MedicineAllocationDetails> data = new ArrayList<>();
-        List<SugGppsObservationBatchDTO> batchDTOS = getBatchDetails(branchRequest.getBatchID());
+
         if (rawData instanceof List<?>) {
             for (Object item : (List<?>) rawData) {
                 // Convert each LinkedHashMap into SugFeedDetails
@@ -1506,14 +1506,16 @@ public class FarmServiceImpl implements FarmService {
                 data.add(details);
             }
         }
-        SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
+
 
         if (!data.isEmpty()) {
             for (BranchRequest.MedicineAllocationDetails medicineAllocationDetails : data) {
+                List<SugGppsObservationBatchDTO> batchDTOS = getBatchDetails(medicineAllocationDetails.getBatchID());
+                SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
                 SugMaiGppsItemAllocation sugMaiGppsItemAllocation = new SugMaiGppsItemAllocation();
-                sugMaiGppsItemAllocation.setAGE(Long.valueOf(branchRequest.getAge()));
-                sugMaiGppsItemAllocation.setFLOCK_ID(branchRequest.getFlockID());
-                sugMaiGppsItemAllocation.setSHED_NO(branchRequest.getShedNo());
+                sugMaiGppsItemAllocation.setAGE(Long.valueOf(medicineAllocationDetails.getAge()));
+                sugMaiGppsItemAllocation.setFLOCK_ID(medicineAllocationDetails.getFlockID());
+                sugMaiGppsItemAllocation.setSHED_NO(medicineAllocationDetails.getShedNo());
                 sugMaiGppsItemAllocation.setFARM_CODE(gppsObservationBatchDTO.getBRANCH_CODE());
                 sugMaiGppsItemAllocation.setITEM_TYPE(medicineAllocationDetails.getItemType());
                 sugMaiGppsItemAllocation.setITEM_ID(Long.valueOf(medicineAllocationDetails.getItemId()));
@@ -1522,10 +1524,10 @@ public class FarmServiceImpl implements FarmService {
                 sugMaiGppsItemAllocation.setINTAKE_MODE(medicineAllocationDetails.getIntakeMode());
                 sugMaiGppsItemAllocation.setCREATED_BY(branchRequest.getUserCode());
                 sugMaiGppsItemAllocation.setCREATION_DATE(new Date());
-                sugMaiGppsItemAllocation.setDATE_FROM(convertToDate(branchRequest.getStartDate()));
-                sugMaiGppsItemAllocation.setDATE_TO(convertToDate(branchRequest.getEndDate()));
+                sugMaiGppsItemAllocation.setDATE_FROM(convertToDate(medicineAllocationDetails.getStartDate()));
+                sugMaiGppsItemAllocation.setDATE_TO(convertToDate(medicineAllocationDetails.getEndDate()));
                 sugMaiGppsItemAllocation.setBRANCH_ID(Long.valueOf(branchRequest.getBranchID()));
-                sugMaiGppsItemAllocation.setPREPARED_BY(branchRequest.getPreparedBy());
+                sugMaiGppsItemAllocation.setPREPARED_BY(medicineAllocationDetails.getPreparedBy());
                 sugMaiGppsItemAllocationRepositories.save(sugMaiGppsItemAllocation);
             }
 

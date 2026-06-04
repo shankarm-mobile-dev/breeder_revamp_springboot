@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 
 @Getter
@@ -133,6 +134,20 @@ public class BranchRequest<T> {
         String Uom;
         @JsonProperty("intakeMode")
         String intakeMode;
+        @JsonProperty("flockID")
+        String flockID;
+        @JsonProperty("batchID")
+        String batchID;
+        @JsonProperty("startDate")
+        String startDate;
+        @JsonProperty("endDate")
+        String endDate;
+        @JsonProperty("shedNo")
+        String shedNo;
+        @JsonProperty("preparedBy")
+        String preparedBy;
+        @JsonProperty("age")
+        String age;
     }
 
     @Getter
@@ -154,4 +169,5 @@ public class BranchRequest<T> {
         @JsonProperty("total")
         String total;
     }
+
 }
