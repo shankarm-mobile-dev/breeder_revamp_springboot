@@ -1,14 +1,16 @@
 package com.suguna.breeder_revamp.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.suguna.breeder_revamp.dto.BranchRequest;
 import com.suguna.breeder_revamp.dto.PlacementRequest;
 import com.suguna.breeder_revamp.dto.ResponseDto;
 import com.suguna.breeder_revamp.service.FarmService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/farms/")
@@ -54,6 +56,17 @@ public class FarmController {
         return responseDto;
     }
 
+    @PostMapping("/getShedLineDetails")
+    public ResponseDto getShedLineDetails(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getShedLineDetails(branchRequest.getBranchID()));
+        return responseDto;
+    }
+
     @PostMapping("/getDailyEntrySchedule")
         public ResponseDto getDailyEntrySchedule(@RequestBody BranchRequest branchRequest)
     {
@@ -90,9 +103,17 @@ public class FarmController {
             return responseDto;
     }
 
-    @PostMapping("/saveDailyEntryScheduleDetails")
-    public ResponseDto saveDailyEntryScheduleDetails(@RequestBody BranchRequest branchRequest)
+    @PostMapping(value = "/saveDailyEntryScheduleDetails",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseDto saveDailyEntryScheduleDetails(/*@RequestBody BranchRequest branchRequest*/@RequestParam("entryRequest") String branchRequestJson,@RequestParam(value = "image", required = false) List<MultipartFile> imageFile)
     {
+        BranchRequest branchRequest = null;
+        try {
+            branchRequest = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(branchRequestJson, BranchRequest.class);
+        } catch (JsonProcessingException e) {
+            System.out.println("Error in parsing " + e.getMessage());
+            throw new RuntimeException(e);
+        }
         ResponseDto responseDto=new ResponseDto();
         responseDto.setMessage("Success");
         responseDto.setStatusCode(200);
@@ -102,13 +123,16 @@ public class FarmController {
             responseDto.setResult(farmService.saveObservationDetails(branchRequest));
         }
         else if(branchRequest.getActivityName().equalsIgnoreCase("FEED")) {
-            responseDto.setResult(farmService.saveFeedDetails(branchRequest));
+            responseDto.setResult(farmService.saveFeedDetails(branchRequest,imageFile));
         }
         else if(branchRequest.getActivityName().equalsIgnoreCase("MORTALITY")) {
             responseDto.setResult(farmService.saveMortalityDetails(branchRequest));
         }
         else if(branchRequest.getActivityName().equalsIgnoreCase("EGG COLLECTION")) {
             responseDto.setResult(farmService.saveEggCollectionDetails(branchRequest));
+        }
+        else if(branchRequest.getActivityName().equalsIgnoreCase("WEEK BIRD SEPERATION")) {
+            responseDto.setResult(farmService.saveWeekSeperationDetails(branchRequest));
         }
         return responseDto;
     }
@@ -194,15 +218,23 @@ public class FarmController {
         responseDto.setResult(farmService.getMortalityPmlDetails(branchRequest.getBranchID()));
         return responseDto;
     }
-    @PostMapping("/saveMortalityPmlDetails")
-    public ResponseDto saveMortalityPmlDetails(@RequestBody BranchRequest branchRequest) {
+    @PostMapping(value = "/saveMortalityPmlDetails",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseDto saveMortalityPmlDetails(/*@RequestBody BranchRequest branchRequest*/@RequestParam("entryRequest") String branchRequestJson,@RequestParam(value = "image", required = false) List<MultipartFile> imageFile) {
+        BranchRequest branchRequest = null;
+        try {
+            branchRequest = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(branchRequestJson, BranchRequest.class);
+        } catch (JsonProcessingException e) {
+            System.out.println("Error in parsing " + e.getMessage());
+            throw new RuntimeException(e);
+        }
         ResponseDto responseDto = new ResponseDto();
         responseDto.setMessage("Success");
         responseDto.setStatusCode(200);
         responseDto.setStatus("Success");
         String response = "";
         // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
-        responseDto.setResult(farmService.saveMortalityPmlDetails(branchRequest));
+        responseDto.setResult(farmService.saveMortalityPmlDetails(branchRequest,imageFile));
         //}
         return responseDto;
     }
@@ -228,7 +260,16 @@ public class FarmController {
         //}
         return responseDto;
     }
-
+    @PostMapping("/getWeekBirdReasonsDetails")
+    public ResponseDto getWeekBirdReasonsDetails(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getWeekBirdReasonsDetails(branchRequest.getBranchID()));
+        return responseDto;
+    }
     @PostMapping("/getPlacementInfo")
     public ResponseDto getPlacementInfo(@RequestBody BranchRequest branchRequest)
     {
@@ -295,6 +336,67 @@ public class FarmController {
         String response = "";
         // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
         responseDto.setResult(farmService.saveFarmLogDetails(branchRequest));
+        //}
+        return responseDto;
+    }
+
+    @PostMapping("/getFarmLogPreviousDetails")
+    public ResponseDto getFarmLogPreviousDetails(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getFarmLogPreviousDetails(branchRequest.getBranchID(),branchRequest.getFlockID()));
+        return responseDto;
+    }
+
+    @PostMapping("/getSanitizationReasonsDetails")
+    public ResponseDto getSanitizationReasonsDetails(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getSanitizationReasonsDetails(branchRequest.getBranchID()));
+        return responseDto;
+    }
+
+    @PostMapping("/saveSanitizationDetails")
+    public ResponseDto saveSanitizationDetails(@RequestBody BranchRequest branchRequest) {
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        String response = "";
+        // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
+        responseDto.setResult(farmService.saveSanitizationDetails(branchRequest));
+        //}
+        return responseDto;
+    }
+
+    @PostMapping("/saveEggWeightDetails")
+    public ResponseDto saveEggWeightDetails(@RequestBody BranchRequest branchRequest) {
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        String response = "";
+        // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
+        responseDto.setResult(farmService.saveEggWeightDetails(branchRequest));
+        //}
+        return responseDto;
+    }
+
+    @PostMapping("/saveCloseEntryDetails")
+    public ResponseDto saveCloseEntryDetails(@RequestBody BranchRequest branchRequest) {
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        String response = "";
+        // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
+        responseDto.setResult(farmService.saveCloseEntryDetails(branchRequest));
         //}
         return responseDto;
     }

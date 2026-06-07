@@ -2,10 +2,7 @@ package com.suguna.breeder_revamp.model;
 
 
 import com.suguna.breeder_revamp.dto.SugMaiGppsConsumptionsID;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.IdClass;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -16,29 +13,29 @@ import java.util.Date;
 @Setter
 @Entity
 @Table(name = "SUG_MAI_GPPS_CONSUMPTIONS", schema = "SUG")
-@IdClass(SugMaiGppsConsumptionsID.class)
+//@IdClass(SugMaiGppsConsumptionsID.class)
 public class SugMaiGppsConsumptions {
-    @Id
+
     String FARM_CODE;
-    @Id
+
     String FLOCK_ID;
-    @Id
+
     String SHED_CODE;
-    @Id
+
     Long BATCH_ID;
-    @Id
+
     String LINE_NO;
-    @Id
+
     String TXN_TYPE;
-    @Id
+
     Long ITEM_ID;
-    @Id
+
     String SEX;
-    @Id
+
     Date TXN_FROM;
-    @Id
+
     Long AGE;
-    @Id
+
     String GRADE;
     Long QTY;
     String UOM;
@@ -47,5 +44,19 @@ public class SugMaiGppsConsumptions {
     String STATUS;
     BigDecimal WEIGHT;
     String REMARK;
+
     String REASON;
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "id_seq_gpps_egg_weight")
+    @SequenceGenerator(sequenceName = "SUG_MAI_GPPS_CONSUMPTIONS_S", allocationSize = 1, name = "id_seq_gpps_egg_weight")
+    long TRANS_ID;
+    double TEMP_MIN;
+    double TEMP_MAX;
+    String LIGTHING_START_HRS;
+    String LIGTHING_END_HRS;
+    String SANITIZATION_START_HRS;
+    String SANITIZATION_END_HRS;
+    double PH_LEVEL;
+    double PM_LEVEL;
+    String REMARKS;
 }

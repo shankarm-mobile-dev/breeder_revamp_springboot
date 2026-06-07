@@ -500,5 +500,19 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         return result;
     }
+    public String get_supervisor_email(String userName)
+    {
+        String count ="0";
+        try {
+            count = (String) entityManager.createNativeQuery("select a.supervisor_email from sug_hr_emp_mst_mv a where a.email=?1")
+                    .setParameter(1, userName)
+                    .getSingleResult();
+        }
+        catch (Exception e)
+        {
+            count ="shankarm@sugunafoods.com";
+        }
+        return count;
 
+    }
 }

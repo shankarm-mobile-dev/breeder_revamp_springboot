@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 
 @Getter
@@ -35,6 +34,11 @@ public class BranchRequest<T> {
     String endDate;
     @JsonProperty("preparedBy")
     String preparedBy;
+
+    @JsonProperty("phLevel")
+    String phLevel;
+    @JsonProperty("pmLevel")
+    String pmLevel;
     @JsonProperty("data")
     T data;
 
@@ -168,6 +172,83 @@ public class BranchRequest<T> {
         String closing;
         @JsonProperty("total")
         String total;
+    }
+    @Getter
+    @Setter
+    public static class SugWeekBirdDetails
+    {
+        @JsonProperty("reasonType")
+        String reasonType;
+        @JsonProperty("femaleQty")
+        String femaleQty;
+        @JsonProperty("maleQty")
+        String maleQty;
+        @JsonProperty("lineNo")
+        String lineNo;
+
+    }
+
+
+    @Getter
+    @Setter
+    public static class SanitizationEntryDetails
+    {
+        @JsonProperty("itemType")
+        String itemType;
+        @JsonProperty("itemCode")
+        String itemCode;
+        @JsonProperty("itemName")
+        String itemName;
+        @JsonProperty("uom")
+        String uom;
+        @JsonProperty("flockID")
+        String flockID;
+        @JsonProperty("quantity")
+        String quantity;
+        @JsonProperty("batchID")
+        String batchID;
+        @JsonProperty("forLtrWater")
+        String forLtrWater;
+    }
+
+    @Getter
+    @Setter
+    public static class EggWeightReadingDetails
+    {
+        @JsonProperty("transDate")
+        String transDate;
+        @JsonProperty("flockID")
+        String flockID;
+        @JsonProperty("batchID")
+        String batchID;
+        @JsonProperty("noOfEgg")
+        String noOfEgg;
+        @JsonProperty("emptyTray")
+        String emptyTray;
+        @JsonProperty("totalTray")
+        String totalTray;
+        @JsonProperty("netEggWeight")
+        String netEggWeight;
+        @JsonProperty("averageEggWeight")
+        String averageEggWeight;
+    }
+    @Getter
+    @Setter
+    public static class SugCloseDetails {
+        @JsonProperty("tempMin")
+        String tempMin;
+        @JsonProperty("tempMax")
+        String tempMax;
+        @JsonProperty("lightStartTime")
+        String lightStartTime;
+        @JsonProperty("lightEndTime")
+        String lightEndTime;
+        @JsonProperty("sanitizationStartTime")
+        String sanitizationStartTime;
+        @JsonProperty("sanitizationEndTime")
+        String sanitizationEndTime;
+        @JsonProperty("Remarks")
+        String Remarks;
     }
 
 }

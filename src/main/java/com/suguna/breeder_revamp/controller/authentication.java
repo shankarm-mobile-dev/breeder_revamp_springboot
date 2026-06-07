@@ -1,16 +1,14 @@
 package com.suguna.breeder_revamp.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.suguna.breeder_revamp.dto.EmployeeValidationResult;
-import com.suguna.breeder_revamp.dto.ManagerLoginDto;
-import com.suguna.breeder_revamp.dto.ResponseDto;
-import com.suguna.breeder_revamp.dto.UserRequest;
+import com.suguna.breeder_revamp.dto.*;
+import com.suguna.breeder_revamp.response.ApiResponseList;
 import com.suguna.breeder_revamp.service.AuthenticationServiceImpl;
+import com.suguna.breeder_revamp.service.ShedReadyService;
+import com.suguna.breeder_revamp.service.ShedReadyServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +20,10 @@ import java.util.Objects;
 public class authentication {
     @Autowired
     AuthenticationServiceImpl authService;
+
+
+
+
 
     @PostMapping("/getUserID")
     public Integer getLogin(@RequestBody String empCode)
@@ -309,5 +311,13 @@ public class authentication {
 
 
     }
-
+    @GetMapping("/supervisorEmail/{email}")
+    public ResponseDto getShedReadyQuestion(@PathVariable String email){
+        ResponseDto loginDto=new ResponseDto();
+        loginDto.setMessage("Success");
+        loginDto.setStatusCode(200);
+        loginDto.setStatus("Ok");
+        loginDto.setResult(authService.get_supervisor_email(email));
+        return loginDto;
+    }
 }

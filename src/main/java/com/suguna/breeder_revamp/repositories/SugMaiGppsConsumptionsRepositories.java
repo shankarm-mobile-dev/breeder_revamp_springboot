@@ -11,7 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface SugMaiGppsConsumptionsRepositories extends JpaRepository<SugMaiGppsConsumptions, SugMaiGppsConsumptionsID> {
+public interface SugMaiGppsConsumptionsRepositories extends JpaRepository<SugMaiGppsConsumptions, Long> {
 
     @Query(value = "UPDATE SUG_MAI_GPPS_CONSUMPTIONS a SET a.qty = :qty WHERE  a.rowid=:rowid", nativeQuery = true)
     @Modifying

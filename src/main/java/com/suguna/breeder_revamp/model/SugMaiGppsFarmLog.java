@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.util.Date;
 
 @Getter
@@ -18,9 +19,9 @@ public class SugMaiGppsFarmLog {
     String FARM_CODE;
     String ITEM_TYPE;
     Long ITEM_ID ;
-    Long OPENING_QTY;
-    Long CLOSING_QTY;
-    Long QTY ;
+    BigDecimal OPENING_QTY;
+    BigDecimal CLOSING_QTY;
+    BigDecimal QTY ;
     String UOM ;
     String CREATED_BY ;
     Date CREATION_DATE ;

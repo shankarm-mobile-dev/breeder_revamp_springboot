@@ -116,6 +116,38 @@ public class BranchUser {
         String batchId;
     }
 
+    @Getter
+    @Setter
+    public static class ShedLineDetails {
+        @Column(name = "FLOCK_ID" , type = String.class)
+        @JsonProperty("flockID")
+        String flockID;
+        @Column(name = "AGE" , type = long.class)
+        @JsonProperty("age")
+        long age;
+        @Column(name = "SHED_NO" , type = String.class)
+        @JsonProperty("shedNo")
+        String shedNo;
+        @Column(name = "MALE_QTY" , type = long.class)
+        @JsonProperty("maleQty")
+        long maleQty;
+        @Column(name = "FEMALE_QTY" , type = long.class)
+        @JsonProperty("femaleQty")
+        long femaleQty;
+        @Column(name = "BATCH_NUMBER" , type = String.class)
+        @JsonProperty("batchNumber")
+        String batchNumber;
+        @Column(name = "BATCH_STATUS" , type = String.class)
+        @JsonProperty("batchStatus")
+        String batchStatus;
+        @Column(name = "BATCH_ID" , type = String.class)
+        @JsonProperty("batchId")
+        String batchId;
+        @Column(name = "LINE_NO" , type = String.class)
+        @JsonProperty("lineNo")
+        String lineNo;
+    }
+
    /* @Getter
     @Setter
     public static class ShedDetails {
@@ -653,5 +685,54 @@ public class BranchUser {
         @Column(name = "ITEM_DESC", type = String.class)
         @JsonProperty("itemDesc")
         String itemDesc;
+    }
+
+    @Getter
+    @Setter
+    public static class FarmLogPreviousDetails {
+        @Column(name = "ITEM_TYPE", type = String.class)
+        @JsonProperty("ItemType")
+        String ItemType;
+        @Column(name = "CREATION_DATE", type = String.class)
+        @JsonProperty("lastEntryDate")
+        String lastEntryDate;
+        @Column(name = "OPENING_QTY", type = String.class)
+        @JsonProperty("OpeningQty")
+        String OpeningQty;
+        @Column(name = "CLOSING_QTY", type = String.class)
+        @JsonProperty("ClosingQty")
+        String ClosingQty;
+        @Column(name = "QTY", type = String.class)
+        @JsonProperty("finalQty")
+        String finalQty;
+        @Column(name = "UOM", type = String.class)
+        @JsonProperty("uom")
+        String uom;
+        @Column(name = "MALE_COUNT", type = String.class)
+        @JsonProperty("maleLabourCount")
+        String maleLabourCount;
+        @Column(name = "FEMALE_COUNT", type = String.class)
+        @JsonProperty("femaleLabourCount")
+        String femaleLabourCount;
+        @Column(name = "BRANCH_ID", type = String.class)
+        @JsonProperty("branchId")
+        String branchId;
+    }
+
+    @Getter
+    @Setter
+    public static class SanitizationReasonDetails {
+        @Column(name = "type", type = String.class)
+        @JsonProperty("type")
+        String type;
+        @Column(name = "lookup_CODE", type = String.class)
+        @JsonProperty("lookupCode")
+        String lookupCode;
+        @Column(name = "meaning", type = String.class)
+        @JsonProperty("meaning")
+        String meaning;
+        @Column(name = "uom", type = String.class)
+        @JsonProperty("uom")
+        String uom;
     }
 }

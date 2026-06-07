@@ -13,4 +13,5 @@ public interface ShedReadyService {
     ResponseEntity<ShedReadyResponseDto<Object>> saveShedReadyLine(ShedReadyLineDto shedReadyLineDto, MultipartFile imageFile);
     ResponseEntity<ApiResponseList<ShedReadyLineDto>> fetchShedReadyLine(String farmCode);
 
+
 }
