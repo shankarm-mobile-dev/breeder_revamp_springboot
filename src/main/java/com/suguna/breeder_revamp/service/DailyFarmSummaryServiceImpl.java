@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.sql.Timestamp;
+
 @Service
 @RequiredArgsConstructor
 public class DailyFarmSummaryServiceImpl implements DailyFarmSummaryService {
@@ -24,8 +26,28 @@ public class DailyFarmSummaryServiceImpl implements DailyFarmSummaryService {
 
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sug_rpt_gpps_pkg.brd_daily_sumry_rpt");
 
-            // parameter
+            // OUT params
+            query.registerStoredProcedureParameter("errbuf", String.class, ParameterMode.OUT);
+            query.registerStoredProcedureParameter("retcode", Integer.class, ParameterMode.OUT);
+
+            // IN params
+            query.registerStoredProcedureParameter("p_company", Integer.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_region_id", Integer.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_branch_CODE", String.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_from_date", Timestamp.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_to_date", Timestamp.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_mode", String.class, ParameterMode.IN);
+
+            // SET values
+            query.setParameter("p_company", req.getCompany());
+            query.setParameter("p_region_id", req.getRegionId());
+            query.setParameter("p_branch_CODE", req.getBranchCode());
+
+            query.setParameter("p_from_date",
+                    Timestamp.valueOf(req.getFromDate().trim() + " 00:00:00"));
+
+            query.setParameter("p_to_date",
+                    Timestamp.valueOf(req.getToDate().trim() + " 00:00:00"));
 
             query.setParameter("p_mode", req.getMode().trim());
 
