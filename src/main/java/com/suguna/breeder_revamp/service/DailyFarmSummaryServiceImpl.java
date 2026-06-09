@@ -24,6 +24,7 @@ public class DailyFarmSummaryServiceImpl implements DailyFarmSummaryService {
 
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sug_rpt_gpps_pkg.brd_daily_sumry_rpt");
 
+            // parameter
             query.registerStoredProcedureParameter("p_mode", String.class, ParameterMode.IN);
 
             query.setParameter("p_mode", req.getMode().trim());
