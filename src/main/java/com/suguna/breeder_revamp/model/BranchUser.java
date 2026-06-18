@@ -30,6 +30,9 @@ public class BranchUser {
     @JsonProperty("userDetails")
     ArrayList<RegisteredBranchUser> userDetails;
 
+    @JsonProperty("branchUserDetails")
+    ArrayList<SupervisorDetails> branchUserDetails;
+
     @Getter
     @Setter
     public static class RegisteredBranchUser {
@@ -85,6 +88,8 @@ public class BranchUser {
         @Column(name = "MOBILE_NUMBER" , type = String.class)
         @JsonProperty("mobileNumber")
         String mobileNumber;
+        @JsonProperty("shedNo")
+        ArrayList<String> shedNo;
     }
 
     @Getter
@@ -114,6 +119,22 @@ public class BranchUser {
         @Column(name = "BATCH_ID" , type = String.class)
         @JsonProperty("batchId")
         String batchId;
+        @JsonProperty("opMaleFeedStandard")
+        String opMaleFeedStandard;
+        // @Column(name = "op_FEMALE", type = String.class)
+        @JsonProperty("opFemaleFeedStandard")
+        String opFemaleFeedStandard;
+        @JsonProperty("opMaleWeightStandard")
+        String opMaleWeightStandard;
+        // @Column(name = "op_FEMALE", type = String.class)
+        @JsonProperty("opFemaleWeightStandard")
+        String opFemaleWeightStandard;
+        @Column(name = "bodyWeightDeviation", type = String.class)
+        @JsonProperty("bodyWeightDeviation")
+        String bodyWeightDeviation;
+        @Column(name = "bodyWeightPercentage", type = String.class)
+        @JsonProperty("bodyWeightPercentage")
+        String bodyWeightPercentage;
     }
 
     @Getter
@@ -146,6 +167,9 @@ public class BranchUser {
         @Column(name = "LINE_NO" , type = String.class)
         @JsonProperty("lineNo")
         String lineNo;
+        @Column(name = "GRADE" , type = String.class)
+        @JsonProperty("grade")
+        String grade;
     }
 
    /* @Getter
@@ -341,6 +365,11 @@ public class BranchUser {
        // @Column(name = "op_FEMALE", type = String.class)
         @JsonProperty("opFemaleFeedStandard")
         String opFemaleFeedStandard;
+        @JsonProperty("opMaleWeightStandard")
+        String opMaleWeightStandard;
+        // @Column(name = "op_FEMALE", type = String.class)
+        @JsonProperty("opFemaleWeightStandard")
+        String opFemaleWeightStandard;
 
         @JsonProperty("farmFlockDetails")
         ArrayList<FarmFlockPreviousDetails> farmFlockDetails;
@@ -410,6 +439,38 @@ public class BranchUser {
     @Getter
     @Setter
     public static class PlacementInfoDetails {
+        /*@Column(name = "TOTAL_BIRDS_ALLOCATE", type = String.class)
+        @JsonProperty("TOTAL_BIRDS_ALLOCATE")
+        String totalBirdsAllocate;
+        @Column(name = "FEMALE_NOS", type = String.class)
+        @JsonProperty("FEMALE_NOS")
+        String femaleNos;
+        @Column(name = "MALE_NOS", type = String.class)
+        @JsonProperty("MALE_NOS")
+        String maleNos;
+        @Column(name = "ALLOCATE_PER", type = String.class)
+        @JsonProperty("ALLOCATE_PER")
+        String allocatePer;
+        @Column(name = "REMAINING_BIRDS", type = String.class)
+        @JsonProperty("REMAINING_BIRDS")
+        String remainingBirds;
+        @Column(name = "FLOCK_NUMBER", type = String.class)
+        @JsonProperty("FLOCK_NUMBER")
+        String flockNumber;
+        @Column(name = "BATCH_ID", type = String.class)
+        @JsonProperty("BATCH_ID")
+        String batchId;
+        @Column(name = "REPORT_NUM", type = String.class)
+        @JsonProperty("REPORT_NUM")
+        String reportNum;*/
+        @JsonProperty("PlacementInfoDetails")
+        ArrayList<PlacementInfoDetails1> PlacementInfoDetails;
+        @JsonProperty("PlacementInfoShedDetails")
+        ArrayList<PlacementInfoShedDetails> PlacementInfoShedDetails;
+    }
+    @Getter
+    @Setter
+    public static class PlacementInfoDetails1 {
         @Column(name = "TOTAL_BIRDS_ALLOCATE", type = String.class)
         @JsonProperty("TOTAL_BIRDS_ALLOCATE")
         String totalBirdsAllocate;
@@ -431,11 +492,11 @@ public class BranchUser {
         @Column(name = "BATCH_ID", type = String.class)
         @JsonProperty("BATCH_ID")
         String batchId;
-        @JsonProperty("PlacementInfoShedDetails")
-        ArrayList<PlacementInfoShedDetails> PlacementInfoShedDetails;
+        @Column(name = "REPORT_NUM", type = String.class)
+        @JsonProperty("REPORT_NUM")
+        String reportNum;
     }
-
-    @Getter
+        @Getter
     @Setter
     public static class PlacementInfoShedDetails {
         @Column(name = "TOTAL_BIRDS_CAPACITY", type = String.class)
@@ -456,6 +517,9 @@ public class BranchUser {
         @Column(name = "SHED_NAME", type = String.class)
         @JsonProperty("SHED_NAME")
         String shedName;
+            @Column(name = "FLOCK_ID", type = String.class)
+            @JsonProperty("FLOCK_ID")
+            String flockID;
         @JsonProperty("PlacementInfoLineDetails")
         ArrayList<PlacementInfoLineDetails> PlacementInfoLineDetails;
     }
@@ -616,6 +680,12 @@ public class BranchUser {
         @Column(name = "female_WEIGHT", type = String.class)
         @JsonProperty("femaleWeight")
         String femaleWeight;
+        @Column(name = "male_FEED_PER_WEEK", type = String.class)
+        @JsonProperty("maleFeedPerWeek")
+        String maleFeedPerWeek;
+        @Column(name = "female_FEED_PER_WEEK", type = String.class)
+        @JsonProperty("femaleFeedPerWeek")
+        String femaleFeedPerWeek;
     }
 
     @Getter
@@ -735,4 +805,19 @@ public class BranchUser {
         @JsonProperty("uom")
         String uom;
     }
+
+    @Getter
+    @Setter
+    public static class BodyWeightDeviationDetails {
+        @Column(name = "start_age", type = String.class)
+        @JsonProperty("startAge")
+        String startAge;
+        @Column(name = "end_age", type = String.class)
+        @JsonProperty("endAge")
+        String endAge;
+        @Column(name = "deviation", type = String.class)
+        @JsonProperty("deviation")
+        String deviation;
+    }
+
 }

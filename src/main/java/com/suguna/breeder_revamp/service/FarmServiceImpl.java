@@ -2,10 +2,7 @@ package com.suguna.breeder_revamp.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.suguna.breeder_revamp.components.FileStorageService;
-import com.suguna.breeder_revamp.dto.BranchRequest;
-import com.suguna.breeder_revamp.dto.PlacementRequest;
-import com.suguna.breeder_revamp.dto.SugGppsObservationBatchDTO;
-import com.suguna.breeder_revamp.dto.SugGppsObservationDTO;
+import com.suguna.breeder_revamp.dto.*;
 import com.suguna.breeder_revamp.enums.FileStorageCategory;
 import com.suguna.breeder_revamp.model.*;
 import com.suguna.breeder_revamp.repositories.*;
@@ -70,6 +67,12 @@ public class FarmServiceImpl implements FarmService {
     @Autowired
     SugMaiGppsEggWeightReadingRepositories sugMaiGppsEggWeightReadingRepositories;
 
+    @Autowired
+    SugCVBodyWeightRepository sugCVBodyWeightRepository;
+
+    @Autowired
+    SugCVBodyWeightDtlRepository sugCVBodyWeightDtlRepository;
+
     @Override
     public ArrayList<BranchUser> getBranchUsers(BranchRequest branchRequest) {
         ArrayList<BranchUser> branchUserArrayList = new ArrayList<BranchUser>();
@@ -86,6 +89,7 @@ public class FarmServiceImpl implements FarmService {
             while (resultSet.next()) {
                 BranchUser branchUser = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.class);
                 branchUser.setUserDetails(getRegisteredBranchUsers(String.valueOf(branchUser.getBranchID()), branchRequest.getUserType(), branchUser.getBranchName()));
+                branchUser.setBranchUserDetails(getSupervisorNewDetails(String.valueOf(branchUser.getBranchID()), branchRequest.getUserType()));
                 branchUserArrayList.add(branchUser);
             }
         } catch (Exception e) {
@@ -93,6 +97,29 @@ public class FarmServiceImpl implements FarmService {
         }
         return branchUserArrayList;
     }
+
+    public ArrayList<BranchUser.SupervisorDetails> getSupervisorNewDetails(String branchid,String userType) {
+        ArrayList<BranchUser.SupervisorDetails> supervisorDetailsArrayList = new ArrayList<BranchUser.SupervisorDetails>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getsupervisornew_dtls");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchid);
+            storedProcedureQuery.setParameter(2, userType);
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(3);
+            while (resultSet.next()) {
+                BranchUser.SupervisorDetails supervisorDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.SupervisorDetails.class);
+
+                supervisorDetailsArrayList.add(supervisorDetails);
+            }
+        } catch (Exception e) {
+
+        }
+        return supervisorDetailsArrayList;
+    }
+
 
     @Override
     public ArrayList<BranchUser.SupervisorDetails> getSupervisorDetails(BranchRequest branchRequest) {
@@ -108,7 +135,7 @@ public class FarmServiceImpl implements FarmService {
             ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(3);
             while (resultSet.next()) {
                 BranchUser.SupervisorDetails supervisorDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.SupervisorDetails.class);
-
+                supervisorDetails.setShedNo(getShedname_sup(supervisorDetails.getEmpNo()));
                 supervisorDetailsArrayList.add(supervisorDetails);
             }
         } catch (Exception e) {
@@ -117,20 +144,60 @@ public class FarmServiceImpl implements FarmService {
         return supervisorDetailsArrayList;
     }
 
-    @Override
-    public ArrayList<BranchUser.ShedDetails> getShedDetails(String branchID) {
-        ArrayList<BranchUser.ShedDetails> shedDetailsArrayList = new ArrayList<BranchUser.ShedDetails>();
+    private ArrayList<String> getShedname_sup(String empNo) {
+        ArrayList<String> shedDetailsArrayList = new ArrayList<String>();
         try {
-            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getshed_dtls");
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getShedname_sup");
             storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
-            storedProcedureQuery.setParameter(1, branchID);
+            storedProcedureQuery.setParameter(1, empNo);
             storedProcedureQuery.execute();
             ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
 
             while (resultSet.next()) {
-                BranchUser.ShedDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.ShedDetails.class);
+                String value = resultSet.getString("LINE_NAME");
+                shedDetailsArrayList.add(value);
+            }
+        } catch (Exception e) {
 
+        }
+        return shedDetailsArrayList;
+    }
+
+    @Override
+    public ArrayList<BranchUser.ShedDetails> getShedDetails(String branchID,String userType,String userCode) {
+        ArrayList<BranchUser.ShedDetails> shedDetailsArrayList = new ArrayList<BranchUser.ShedDetails>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getshed_dtls");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(4, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchID);
+            storedProcedureQuery.setParameter(2, userType);
+            storedProcedureQuery.setParameter(3, userCode);
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(4);
+
+            while (resultSet.next()) {
+                BranchUser.ShedDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.ShedDetails.class);
+                String Standard=getFeedStandard(branchID, String.valueOf(shedDetails.getAge()));
+                System.out.println("age : "+shedDetails.getAge());
+                try {
+                    String[] parts = Standard.split("~");
+                    shedDetails.setOpFemaleWeightStandard(parts[0]);
+                    shedDetails.setOpMaleWeightStandard(parts[1]);
+                    shedDetails.setOpFemaleFeedStandard(parts[2]);
+                    shedDetails.setOpMaleFeedStandard(parts[3]);
+                } catch (Exception e) {
+                    // throw new RuntimeException(e);
+                }
+                try {
+                    //String bodyweightdeviation=getbodyweightdeviation(branchID, String.valueOf(shedDetails.getAge()));
+                   // shedDetails.setBodyWeightDeviation(bodyweightdeviation);
+                } catch (Exception e) {
+                    // throw new RuntimeException(e);
+                }
                 shedDetailsArrayList.add(shedDetails);
             }
         } catch (Exception e) {
@@ -140,15 +207,17 @@ public class FarmServiceImpl implements FarmService {
     }
 
     @Override
-    public ArrayList<BranchUser.ShedLineDetails> getShedLineDetails(String branchID) {
+    public ArrayList<BranchUser.ShedLineDetails> getShedLineDetails(String branchID, String shedNo) {
         ArrayList<BranchUser.ShedLineDetails> shedLineDetailsArrayList = new ArrayList<BranchUser.ShedLineDetails>();
         try {
             StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getshedline_dtls");
             storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
-            storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, ArrayList.class, ParameterMode.REF_CURSOR);
             storedProcedureQuery.setParameter(1, branchID);
+            storedProcedureQuery.setParameter(2, shedNo);
             storedProcedureQuery.execute();
-            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(3);
 
             while (resultSet.next()) {
                 BranchUser.ShedLineDetails shedLineDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.ShedLineDetails.class);
@@ -636,8 +705,10 @@ public class FarmServiceImpl implements FarmService {
                 System.out.println("age : "+shedDetails.getAge());
                 try {
                     String[] parts = Standard.split("~");
-                    shedDetails.setOpFemaleFeedStandard(parts[0]);
-                    shedDetails.setOpMaleFeedStandard(parts[1]);
+                    shedDetails.setOpFemaleWeightStandard(parts[0]);
+                    shedDetails.setOpMaleWeightStandard(parts[1]);
+                    shedDetails.setOpFemaleFeedStandard(parts[2]);
+                    shedDetails.setOpMaleFeedStandard(parts[3]);
                 } catch (Exception e) {
                     // throw new RuntimeException(e);
                 }
@@ -830,8 +901,10 @@ public class FarmServiceImpl implements FarmService {
                 System.out.println("age : "+shedDetails.getAge());
                 try {
                     String[] parts = Standard.split("~");
-                    shedDetails.setOpFemaleFeedStandard(parts[0]);
-                    shedDetails.setOpMaleFeedStandard(parts[1]);
+                    shedDetails.setOpFemaleWeightStandard(parts[0]);
+                    shedDetails.setOpMaleWeightStandard(parts[1]);
+                    shedDetails.setOpFemaleFeedStandard(parts[2]);
+                    shedDetails.setOpMaleFeedStandard(parts[3]);
                 } catch (Exception e) {
                     // throw new RuntimeException(e);
                 }
@@ -952,8 +1025,10 @@ public class FarmServiceImpl implements FarmService {
                 System.out.println("age : "+shedDetails.getAge());
                 try {
                     String[] parts = Standard.split("~");
-                    shedDetails.setOpFemaleFeedStandard(parts[0]);
-                    shedDetails.setOpMaleFeedStandard(parts[1]);
+                    shedDetails.setOpFemaleWeightStandard(parts[0]);
+                    shedDetails.setOpMaleWeightStandard(parts[1]);
+                    shedDetails.setOpFemaleFeedStandard(parts[2]);
+                    shedDetails.setOpMaleFeedStandard(parts[3]);
                 } catch (Exception e) {
                     // throw new RuntimeException(e);
                 }
@@ -1049,8 +1124,10 @@ public class FarmServiceImpl implements FarmService {
                 System.out.println("age : "+shedDetails.getAge());
                 try {
                     String[] parts = Standard.split("~");
-                    shedDetails.setOpFemaleFeedStandard(parts[0]);
-                    shedDetails.setOpMaleFeedStandard(parts[1]);
+                    shedDetails.setOpFemaleWeightStandard(parts[0]);
+                    shedDetails.setOpMaleWeightStandard(parts[1]);
+                    shedDetails.setOpFemaleFeedStandard(parts[2]);
+                    shedDetails.setOpMaleFeedStandard(parts[3]);
                 } catch (Exception e) {
                     // throw new RuntimeException(e);
                 }
@@ -1106,8 +1183,10 @@ public class FarmServiceImpl implements FarmService {
                 System.out.println("age : "+shedDetails.getAge());
                 try {
                     String[] parts = Standard.split("~");
-                    shedDetails.setOpFemaleFeedStandard(parts[0]);
-                    shedDetails.setOpMaleFeedStandard(parts[1]);
+                    shedDetails.setOpFemaleWeightStandard(parts[0]);
+                    shedDetails.setOpMaleWeightStandard(parts[1]);
+                    shedDetails.setOpFemaleFeedStandard(parts[2]);
+                    shedDetails.setOpMaleFeedStandard(parts[3]);
                 } catch (Exception e) {
                    // throw new RuntimeException(e);
                 }
@@ -1309,7 +1388,7 @@ public class FarmServiceImpl implements FarmService {
     @Override
     public BranchUser.PlacementInfoDetails getPlacementInfo(String branchID) {
         BranchUser.PlacementInfoDetails details = new BranchUser.PlacementInfoDetails();
-        ArrayList<BranchUser.PlacementInfoDetails> shedDetailsArrayList = new ArrayList<BranchUser.PlacementInfoDetails>();
+        ArrayList<BranchUser.PlacementInfoDetails1> shedDetailsArrayList = new ArrayList<BranchUser.PlacementInfoDetails1>();
         try {
             StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getplacementinfo");
 
@@ -1320,19 +1399,21 @@ public class FarmServiceImpl implements FarmService {
             ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
 
             while (resultSet.next()) {
-                BranchUser.PlacementInfoDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.PlacementInfoDetails.class);
-                details.setTotalBirdsAllocate(shedDetails.getTotalBirdsAllocate());
+                BranchUser.PlacementInfoDetails1 shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.PlacementInfoDetails1.class);
+                /*details.setTotalBirdsAllocate(shedDetails.getTotalBirdsAllocate());
                 details.setRemainingBirds(shedDetails.getRemainingBirds());
                 details.setMaleNos(shedDetails.getMaleNos());
                 details.setFemaleNos(shedDetails.getFemaleNos());
                 details.setAllocatePer(shedDetails.getAllocatePer());
                 details.setFlockNumber(shedDetails.getFlockNumber());
                 details.setBatchId(shedDetails.getBatchId());
-               // shedDetailsArrayList.add(shedDetails);
+                details.setReportNum(shedDetails.getReportNum());*/
+                shedDetailsArrayList.add(shedDetails);
             }
         } catch (Exception e) {
 
         }
+        details.setPlacementInfoDetails(shedDetailsArrayList);
         details.setPlacementInfoShedDetails(getplacementshedinfo(branchID));
         //details.setCullsReasonDetails(getexcessshortagereason(branchID));
         return details;
@@ -1414,83 +1495,93 @@ public class FarmServiceImpl implements FarmService {
     }
 
     @Override
-    public String savePlacementInfoDetails(PlacementRequest placementRequest) {
-        Object rawData = placementRequest.getData();
-        List<PlacementRequest.SugLineDetails> data = new ArrayList<>();
+    public String savePlacementInfoDetails(ArrayList<PlacementRequest> placementRequest1) {
+        /*Object rawData = placementRequest;
+        List<PlacementRequest> data1 = new ArrayList<>();
         //List<SugGppsObservationBatchDTO> batchDTOS = getBatchDetails(placementRequest.getBatchID());
         if (rawData instanceof List<?>) {
             for (Object item : (List<?>) rawData) {
                 // Convert each LinkedHashMap into SugFeedDetails
-                PlacementRequest.SugLineDetails details =
-                        mapper.convertValue(item, PlacementRequest.SugLineDetails.class);
-                data.add(details);
+                PlacementRequest details =
+                        mapper.convertValue(item, PlacementRequest.class);
+                data1.add(details);
             }
-        }
+        }*/
         //SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
-        if (!data.isEmpty()) {
-            if(!placementRequest.getTotalFemaleQty().isEmpty()) {
-                SugMaiGppsHousingShed sugMaiGppsHousingShed = new SugMaiGppsHousingShed();
-                sugMaiGppsHousingShed.setFLOCK_ID(placementRequest.getFlockID());
-                sugMaiGppsHousingShed.setTXN_DATE(new Date());
-                sugMaiGppsHousingShed.setFARM_CODE("BGI");
-                sugMaiGppsHousingShed.setSHED_NO(placementRequest.getShedNo());
-                sugMaiGppsHousingShed.setSEX("F");
-                sugMaiGppsHousingShed.setOP_QTY(Long.valueOf(placementRequest.getTotalFemaleQty()));
-                sugMaiGppsHousingShed.setCREATED_BY(placementRequest.getUserCode());
-                sugMaiGppsHousingShed.setCREATION_DATE(new Date());
-                sugMaiGppsHousingShed.setBATCH_ID(Long.valueOf(placementRequest.getBatchID()));
-                sugMaiGppsHousingShed.setBRANCH_ID(Long.valueOf(placementRequest.getBranchID()));
-                sugMaiGppsHousingShedRepositories.save(sugMaiGppsHousingShed);
-            }
-            if(!placementRequest.getTotalMaleQty().isEmpty()) {
-                SugMaiGppsHousingShed sugMaiGppsHousingShed = new SugMaiGppsHousingShed();
-                sugMaiGppsHousingShed.setFLOCK_ID(placementRequest.getFlockID());
-                sugMaiGppsHousingShed.setTXN_DATE(new Date());
-                sugMaiGppsHousingShed.setFARM_CODE("BGI");
-                sugMaiGppsHousingShed.setSHED_NO(placementRequest.getShedNo());
-                sugMaiGppsHousingShed.setSEX("M");
-                sugMaiGppsHousingShed.setOP_QTY(Long.valueOf(placementRequest.getTotalMaleQty()));
-                sugMaiGppsHousingShed.setCREATED_BY(placementRequest.getUserCode());
-                sugMaiGppsHousingShed.setCREATION_DATE(new Date());
-                sugMaiGppsHousingShed.setBATCH_ID(Long.valueOf(placementRequest.getBatchID()));
-                sugMaiGppsHousingShed.setBRANCH_ID(Long.valueOf(placementRequest.getBranchID()));
-                sugMaiGppsHousingShedRepositories.save(sugMaiGppsHousingShed);
-            }
-            for (PlacementRequest.SugLineDetails sugLineDetails : data) {
-                if(!sugLineDetails.getFemaleBirdsCount().isEmpty()) {
-                    SugMaiGppsHousingLine maiGppsHousingLine = new SugMaiGppsHousingLine();
-                    maiGppsHousingLine.setFLOCK_ID(placementRequest.getFlockID());
-                    maiGppsHousingLine.setTXN_DATE(new Date());
-                    maiGppsHousingLine.setFARM_CODE("BGI");
-                    maiGppsHousingLine.setSHED_NO(placementRequest.getShedNo());
-                    maiGppsHousingLine.setSEX("F");
-                    maiGppsHousingLine.setGRADE("3");
-                    maiGppsHousingLine.setOP_QTY(Long.valueOf(sugLineDetails.getFemaleBirdsCount()));
-                    maiGppsHousingLine.setLINE_NO(sugLineDetails.getLineNo());
-                    maiGppsHousingLine.setCREATED_BY(placementRequest.getUserCode());
-                    maiGppsHousingLine.setCREATION_DATE(new Date());
-                    maiGppsHousingLine.setBATCH_ID(Long.valueOf(placementRequest.getBatchID()));
-                    maiGppsHousingLine.setBRANCH_ID(Long.valueOf(placementRequest.getBranchID()));
-                    sugMaiGppsHousingLineRepositories.save(maiGppsHousingLine);
-                }
-                if(!sugLineDetails.getMaleBirdsCount().isEmpty()) {
-                    SugMaiGppsHousingLine maiGppsHousingLine = new SugMaiGppsHousingLine();
-                    maiGppsHousingLine.setFLOCK_ID(placementRequest.getFlockID());
-                    maiGppsHousingLine.setTXN_DATE(new Date());
-                    maiGppsHousingLine.setFARM_CODE("BGI");
-                    maiGppsHousingLine.setSHED_NO(placementRequest.getShedNo());
-                    maiGppsHousingLine.setSEX("M");
-                    maiGppsHousingLine.setGRADE("3");
-                    maiGppsHousingLine.setOP_QTY(Long.valueOf(sugLineDetails.getMaleBirdsCount()));
-                    maiGppsHousingLine.setLINE_NO(sugLineDetails.getLineNo());
-                    maiGppsHousingLine.setCREATED_BY(placementRequest.getUserCode());
-                    maiGppsHousingLine.setCREATION_DATE(new Date());
-                    maiGppsHousingLine.setBATCH_ID(Long.valueOf(placementRequest.getBatchID()));
-                    maiGppsHousingLine.setBRANCH_ID(Long.valueOf(placementRequest.getBranchID()));
-                    sugMaiGppsHousingLineRepositories.save(maiGppsHousingLine);
-                }
-            }
+        if (!placementRequest1.isEmpty()) {
 
+            for(PlacementRequest placementRequest:placementRequest1) {
+                List<PlacementRequest.SugLineDetails> data = new ArrayList<>();
+                data = placementRequest.getData();
+
+                String branch_code = get_branch_code(placementRequest.getBranchID());
+                if (!placementRequest.getTotalFemaleQty().isEmpty()) {
+                    SugMaiGppsHousingShed sugMaiGppsHousingShed = new SugMaiGppsHousingShed();
+                    sugMaiGppsHousingShed.setFLOCK_ID(placementRequest.getFlockID());
+                    sugMaiGppsHousingShed.setTXN_DATE(new Date());
+                    sugMaiGppsHousingShed.setFARM_CODE(branch_code);
+                    sugMaiGppsHousingShed.setSHED_NO(placementRequest.getShedNo());
+                    sugMaiGppsHousingShed.setSEX("F");
+                    sugMaiGppsHousingShed.setOP_QTY(Long.valueOf(placementRequest.getTotalFemaleQty()));
+                    sugMaiGppsHousingShed.setCREATED_BY(placementRequest.getUserCode());
+                    sugMaiGppsHousingShed.setCREATION_DATE(new Date());
+                    sugMaiGppsHousingShed.setBATCH_ID(Long.valueOf(placementRequest.getBatchID()));
+                    sugMaiGppsHousingShed.setBRANCH_ID(Long.valueOf(placementRequest.getBranchID()));
+                    sugMaiGppsHousingShed.setREPORT_NUM(Long.valueOf(placementRequest.getReportNum()));
+                    sugMaiGppsHousingShedRepositories.save(sugMaiGppsHousingShed);
+                }
+                if (!placementRequest.getTotalMaleQty().isEmpty()) {
+                    SugMaiGppsHousingShed sugMaiGppsHousingShed = new SugMaiGppsHousingShed();
+                    sugMaiGppsHousingShed.setFLOCK_ID(placementRequest.getFlockID());
+                    sugMaiGppsHousingShed.setTXN_DATE(new Date());
+                    sugMaiGppsHousingShed.setFARM_CODE(branch_code);
+                    sugMaiGppsHousingShed.setSHED_NO(placementRequest.getShedNo());
+                    sugMaiGppsHousingShed.setSEX("M");
+                    sugMaiGppsHousingShed.setOP_QTY(Long.valueOf(placementRequest.getTotalMaleQty()));
+                    sugMaiGppsHousingShed.setCREATED_BY(placementRequest.getUserCode());
+                    sugMaiGppsHousingShed.setCREATION_DATE(new Date());
+                    sugMaiGppsHousingShed.setBATCH_ID(Long.valueOf(placementRequest.getBatchID()));
+                    sugMaiGppsHousingShed.setBRANCH_ID(Long.valueOf(placementRequest.getBranchID()));
+                    sugMaiGppsHousingShed.setREPORT_NUM(Long.valueOf(placementRequest.getReportNum()));
+                    sugMaiGppsHousingShedRepositories.save(sugMaiGppsHousingShed);
+
+                }
+                for (PlacementRequest.SugLineDetails sugLineDetails : data) {
+                    if (!sugLineDetails.getFemaleBirdsCount().isEmpty()) {
+                        SugMaiGppsHousingLine maiGppsHousingLine = new SugMaiGppsHousingLine();
+                        maiGppsHousingLine.setFLOCK_ID(placementRequest.getFlockID());
+                        maiGppsHousingLine.setTXN_DATE(new Date());
+                        maiGppsHousingLine.setFARM_CODE(branch_code);
+                        maiGppsHousingLine.setSHED_NO(placementRequest.getShedNo());
+                        maiGppsHousingLine.setSEX("F");
+                        maiGppsHousingLine.setGRADE("3");
+                        maiGppsHousingLine.setOP_QTY(Long.valueOf(sugLineDetails.getFemaleBirdsCount()));
+                        maiGppsHousingLine.setLINE_NO(sugLineDetails.getLineNo());
+                        maiGppsHousingLine.setCREATED_BY(placementRequest.getUserCode());
+                        maiGppsHousingLine.setCREATION_DATE(new Date());
+                        maiGppsHousingLine.setBATCH_ID(Long.valueOf(placementRequest.getBatchID()));
+                        maiGppsHousingLine.setBRANCH_ID(Long.valueOf(placementRequest.getBranchID()));
+                        sugMaiGppsHousingLineRepositories.save(maiGppsHousingLine);
+                    }
+                    if (!sugLineDetails.getMaleBirdsCount().isEmpty()) {
+                        SugMaiGppsHousingLine maiGppsHousingLine = new SugMaiGppsHousingLine();
+                        maiGppsHousingLine.setFLOCK_ID(placementRequest.getFlockID());
+                        maiGppsHousingLine.setTXN_DATE(new Date());
+                        maiGppsHousingLine.setFARM_CODE(branch_code);
+                        maiGppsHousingLine.setSHED_NO(placementRequest.getShedNo());
+                        maiGppsHousingLine.setSEX("M");
+                        maiGppsHousingLine.setGRADE("3");
+                        maiGppsHousingLine.setOP_QTY(Long.valueOf(sugLineDetails.getMaleBirdsCount()));
+                        maiGppsHousingLine.setLINE_NO(sugLineDetails.getLineNo());
+                        maiGppsHousingLine.setCREATED_BY(placementRequest.getUserCode());
+                        maiGppsHousingLine.setCREATION_DATE(new Date());
+                        maiGppsHousingLine.setBATCH_ID(Long.valueOf(placementRequest.getBatchID()));
+                        maiGppsHousingLine.setBRANCH_ID(Long.valueOf(placementRequest.getBranchID()));
+                        sugMaiGppsHousingLineRepositories.save(maiGppsHousingLine);
+                    }
+                    sugMaiGppsHousingShedRepositories.updateentry(placementRequest.getFlockID(),placementRequest.getReportNum(),branch_code);
+                }
+            }
         }
         return "200";
     }
@@ -1605,7 +1696,7 @@ public class FarmServiceImpl implements FarmService {
             while (resultSet.next()) {
                 BranchUser.StandardDetails standardDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.StandardDetails.class);
                 standardDetailsArrayList.add(standardDetails);
-                Standard=standardDetails.getFemaleWeight()+"~"+standardDetails.getMaleWeight();
+                Standard=standardDetails.getFemaleWeight()+"~"+standardDetails.getMaleWeight()+"~"+standardDetails.getFemaleFeedPerWeek()+"~"+standardDetails.getMaleFeedPerWeek();
             }
         } catch (Exception e) {
 
@@ -2019,6 +2110,21 @@ public class FarmServiceImpl implements FarmService {
         return count;
 
     }
+    public String get_branch_code(String branchId)
+    {
+        String count ="0";
+        try {
+            count = (String) entityManager.createNativeQuery("select a.branch_code from sug_organization_mv a where a.branch_id=?1")
+                    .setParameter(1, branchId)
+                    .getSingleResult();
+        }
+        catch (Exception e)
+        {
+            count ="-";
+        }
+        return count;
+
+    }
     @Override
     public String saveCloseEntryDetails(BranchRequest branchRequest) {
      /*   List<BranchRequest.SugFeedDetails> data=new ArrayList<>();
@@ -2064,6 +2170,113 @@ public class FarmServiceImpl implements FarmService {
         //}
 
         return "200";
+    }
+
+    @Override
+    public String SugCVBodyWeight(ArrayList<SugCVBodyWeightDto> entry) {
+        String fromdateFormat = "DD-MM-YYYY hh:mm:ss";
+        String fromdateFormat1 = "DD-MM-YYYY";
+        try {
+            for (SugCVBodyWeightDto Farmdto : entry) {
+                SugCVBodyWeightModels sugCVBodyWeightModels = new SugCVBodyWeightModels();
+                sugCVBodyWeightModels.setDEVICE_ID(Long.parseLong(String.valueOf(Farmdto.getDevice_id())));
+                sugCVBodyWeightModels.setEMP_CODE(Farmdto.getEmp_code());
+                sugCVBodyWeightModels.setBRANCH_ID(Farmdto.getBranch_id());
+                sugCVBodyWeightModels.setINVENTORY_LOCATION_ID(Farmdto.getInventory_location_id());
+                sugCVBodyWeightModels.setLOCATION(Farmdto.getLocation());
+               // sugCVBodyWeightModels.setTXN_HEADER_ID(Farmdto.getTxn_header_id());
+                sugCVBodyWeightModels.setTXN_DATE(getTxnDateString(Farmdto.getTxn_date(), fromdateFormat1));
+                sugCVBodyWeightModels.setBIRD_TYPE(Farmdto.getBird_type());
+                sugCVBodyWeightModels.setMIN_WEIGHT(Farmdto.getMin_weight());
+                sugCVBodyWeightModels.setMAX_WEIGHT(Farmdto.getMax_weight());
+                sugCVBodyWeightModels.setINCREMENT_VALUE(Farmdto.getIncrement_value());
+                sugCVBodyWeightModels.setAGE(Farmdto.getAge());
+                sugCVBodyWeightModels.setSTD_BODYWT(Farmdto.getStd_bodywt());
+                sugCVBodyWeightModels.setACT_BODYWT(Farmdto.getAct_bodywt());
+                sugCVBodyWeightModels.setCV(Farmdto.getCv());
+                sugCVBodyWeightModels.setBELOW_STD(Farmdto.getBelow_std());
+                sugCVBodyWeightModels.setABOVE_STD(Farmdto.getAbove_std());
+                sugCVBodyWeightModels.setWITHIN_STD(Farmdto.getWithin_std());
+                sugCVBodyWeightModels.setMOST_ABOVE_STD(Farmdto.getMost_above_date());
+                sugCVBodyWeightModels.setMOST_BELOW_STD(Farmdto.getMost_below_date());
+                sugCVBodyWeightModels.setGRADING_NO(Farmdto.getGrading_no());
+                sugCVBodyWeightModels.setFLOCK_NO(Farmdto.getFlock_no());
+                sugCVBodyWeightModels.setLINE_NO(Farmdto.getLine_no());
+               // sugCVBodyWeightModels.setPHYSICAL_SHED_NO(Farmdto.getPhysical_shed_no());
+                //sugCVBodyWeightModels.setPHYSICAL_SHED_NO(Long.parseLong(Farmdto.getPhysical_shed_no()));
+                //sugCVBodyWeightModels.setENTRY_CREATION_DATE(getTxnDateString(Farmdto.getEntry_creation_date(), fromdateFormat));
+                sugCVBodyWeightModels.setPOSTED_FLAG("N");
+                sugCVBodyWeightModels.setCREATED_DATE(new Date());
+                SugCVBodyWeightModels sugCVBodyWeightModels1 = sugCVBodyWeightRepository.save(sugCVBodyWeightModels);
+                for(SugCVBodyWeightDto.SugCVBodyWeightDtlDto sugCVBodyWeightDtlDto:Farmdto.getDetails())
+                {
+                    SugCVBodyWeightDtlModels sugCVBodyWeightDtlModels = new SugCVBodyWeightDtlModels();
+                    sugCVBodyWeightDtlModels.setDEVICE_ID(sugCVBodyWeightDtlDto.getDevice_id());
+                    sugCVBodyWeightDtlModels.setEMP_CODE(sugCVBodyWeightDtlDto.getEmp_code());
+                    sugCVBodyWeightDtlModels.setBRANCH_ID(Farmdto.getBranch_id());
+                    sugCVBodyWeightDtlModels.setINVENTORY_LOCATION_ID(Farmdto.getInventory_location_id());
+                    sugCVBodyWeightDtlModels.setTXN_HEADER_ID(sugCVBodyWeightModels1.getTXN_HEADER_ID());
+                    sugCVBodyWeightDtlModels.setWEIGHT(sugCVBodyWeightDtlDto.getWeight());
+                    sugCVBodyWeightDtlModels.setNO_OF_BIRDS(sugCVBodyWeightDtlDto.getNo_of_birds());
+                   // sugCVBodyWeightDtlModels.setENTRY_CREATION_DATE(getTxnDateString(sugCVBodyWeightDtlModels.getEntry_creation_date(), fromdateFormat));
+                    sugCVBodyWeightDtlModels.setBIRD_TYPE(sugCVBodyWeightDtlDto.getBird_type());
+                    sugCVBodyWeightDtlModels.setLINE_NO(sugCVBodyWeightDtlDto.getLine_no());
+                    sugCVBodyWeightDtlModels.setGRADING_NO(sugCVBodyWeightDtlDto.getGrading_no());
+                    sugCVBodyWeightDtlModels.setFLOCK_NO(sugCVBodyWeightDtlDto.getFlock_no());
+                    sugCVBodyWeightDtlModels.setPHYSICAL_SHED_NO(sugCVBodyWeightDtlDto.getPhysical_shed_no());
+                    sugCVBodyWeightDtlModels.setAGE(sugCVBodyWeightDtlDto.getAge());
+
+                    sugCVBodyWeightDtlModels.setPOSTED_FLAG("N");
+                    sugCVBodyWeightDtlModels.setCREATED_DATE(new Date());
+                    sugCVBodyWeightDtlRepository.save(sugCVBodyWeightDtlModels);
+                }
+                return "True";
+            }
+
+        } catch (Exception e) {
+            e.getMessage();
+        }
+        return "false";
+    }
+
+    @Override
+    public ArrayList<BranchUser.BodyWeightDeviationDetails> getBodyWeightRange(String branchID) {
+        ArrayList<BranchUser.BodyWeightDeviationDetails> shedDetailsArrayList = new ArrayList<BranchUser.BodyWeightDeviationDetails>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getbodyweightrange");
+
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchID);
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+
+            while (resultSet.next()) {
+                BranchUser.BodyWeightDeviationDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.BodyWeightDeviationDetails.class);
+
+                shedDetailsArrayList.add(shedDetails);
+            }
+        } catch (Exception e) {
+
+        }
+        return shedDetailsArrayList;
+    }
+    public String getbodyweightdeviation(String branchId,String age)
+    {
+        String count ="0";
+        try {
+            count = (String) entityManager.createNativeQuery("select sug_mai_gpps_mob_pkg.getbodyweightdeviation(?1,?2) from dual")
+                    .setParameter(1, branchId)
+                    .setParameter(2, age)
+                    .getSingleResult().toString();
+        }
+        catch (Exception e)
+        {
+            System.out.println(e.getMessage());
+            count ="0";
+        }
+        return count;
+
     }
 
 }

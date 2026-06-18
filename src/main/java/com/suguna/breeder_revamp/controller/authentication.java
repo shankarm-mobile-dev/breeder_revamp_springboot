@@ -184,7 +184,8 @@ public class authentication {
                 loginDto.setStatusCode(200);
                 loginDto.setStatus("Success");
                 loginDto.setMessage("Updated Success");
-                if(userRequest.getUserType().equalsIgnoreCase("MANAGER")) {
+                var response=  authService.validateEmployee(userRequest.getUserCode());
+                if(response.getUserType().equalsIgnoreCase("MANAGER")) {
                     loginDto.setUser_details(authService.getManagerDetails(userRequest.getUserCode()));
                 }
                 else
@@ -311,6 +312,38 @@ public class authentication {
 
 
     }
+
+    @PostMapping("/createSupervisorLogin")
+    public ResponseDto createSupervisorLogin(@RequestBody SupervisorRequest userRequest)
+    {
+        ResponseDto loginDto=new ResponseDto();
+
+        var response= authService.createSupervisorLogin(userRequest);
+        if(Objects.equals(response.getFlag(), "N"))
+        {
+            loginDto.setMessage(response.getMessage());
+            loginDto.setStatusCode(201);
+            loginDto.setStatus("Failed");
+            // List<EmployeeValidationResult> resultList = new ArrayList<>();
+            loginDto.setResult(response);
+
+        }
+        else
+        {
+            loginDto.setMessage(response.getMessage());
+            loginDto.setStatusCode(200);
+            loginDto.setStatus("Success");
+            List<EmployeeValidationResult> resultList = new ArrayList<>();
+            resultList.add(response);
+            loginDto.setResult(response);
+
+        }
+        return loginDto;
+
+
+
+    }
+
     @GetMapping("/supervisorEmail/{email}")
     public ResponseDto getShedReadyQuestion(@PathVariable String email){
         ResponseDto loginDto=new ResponseDto();

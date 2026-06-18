@@ -46,5 +46,9 @@ public class ManagerLoginDto {
         @JsonProperty("mPin")
         Integer mPIN;
 
+        @Column(name = "EMP_NAME" , type = String.class)
+        @JsonProperty("empName")
+        String empName;
+
     }
 }

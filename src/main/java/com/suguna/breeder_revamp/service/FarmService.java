@@ -2,6 +2,7 @@ package com.suguna.breeder_revamp.service;
 
 import com.suguna.breeder_revamp.dto.BranchRequest;
 import com.suguna.breeder_revamp.dto.PlacementRequest;
+import com.suguna.breeder_revamp.dto.SugCVBodyWeightDto;
 import com.suguna.breeder_revamp.model.BranchUser;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -13,9 +14,9 @@ public interface FarmService {
 
     ArrayList<BranchUser.SupervisorDetails> getSupervisorDetails(BranchRequest branchRequest);
 
-    ArrayList<BranchUser.ShedDetails> getShedDetails(String branchId);
+    ArrayList<BranchUser.ShedDetails> getShedDetails(String branchId,String userType,String userCode);
 
-    ArrayList<BranchUser.ShedLineDetails> getShedLineDetails(String branchID);
+    ArrayList<BranchUser.ShedLineDetails> getShedLineDetails(String branchID, String shedNo);
 
     ArrayList<BranchUser.DailyFlockEntryDetails> getDailyEntrySchedule(String branchID);
 
@@ -61,7 +62,7 @@ public interface FarmService {
 
     ArrayList<BranchUser.DashboardDetails> getDashboardInfo(String branchID);
 
-    String savePlacementInfoDetails(PlacementRequest placementRequest);
+    String savePlacementInfoDetails(ArrayList<PlacementRequest> placementRequest);
 
     String saveMedicineScheduleDetails(BranchRequest branchRequest);
 
@@ -81,4 +82,8 @@ public interface FarmService {
     String saveEggWeightDetails(BranchRequest branchRequest);
 
     String saveCloseEntryDetails(BranchRequest branchRequest);
+
+    String SugCVBodyWeight(ArrayList<SugCVBodyWeightDto> entry);
+
+    ArrayList<BranchUser.BodyWeightDeviationDetails> getBodyWeightRange(String branchID);
 }

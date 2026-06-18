@@ -4,9 +4,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
+
 @Getter
 @Setter
-public class PlacementRequest <T>{
+public class PlacementRequest{
     @JsonProperty("userCode")
     String userCode;
     @JsonProperty("deviceID")
@@ -23,8 +25,10 @@ public class PlacementRequest <T>{
     String batchID;
     @JsonProperty("branchID")
     String branchID;
+    @JsonProperty("reportNum")
+    String reportNum;
     @JsonProperty("data")
-    T data;
+    ArrayList<SugLineDetails> data;
 
     @Getter
     @Setter

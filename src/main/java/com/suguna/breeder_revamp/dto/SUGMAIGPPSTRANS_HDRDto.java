@@ -116,6 +116,7 @@ public class SUGMAIGPPSTRANS_HDRDto {
 
         @JsonProperty("to_batch_id")
         public BigDecimal to_batch_id;
+
         @JsonProperty("txn_type")
         public String txn_type;
 
@@ -168,6 +169,9 @@ public class SUGMAIGPPSTRANS_HDRDto {
 
         @JsonProperty("breedname")
         public String breedname;
+
+        @JsonProperty("transfer_type")
+        public String transfer_type;
 
     }
 }

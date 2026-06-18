@@ -4,12 +4,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.suguna.breeder_revamp.dto.BranchRequest;
 import com.suguna.breeder_revamp.dto.PlacementRequest;
 import com.suguna.breeder_revamp.dto.ResponseDto;
+import com.suguna.breeder_revamp.dto.SugCVBodyWeightDto;
 import com.suguna.breeder_revamp.service.FarmService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -52,7 +54,7 @@ public class FarmController {
         responseDto.setMessage("");
         responseDto.setStatusCode(200);
         responseDto.setStatus("Success");
-        responseDto.setResult(farmService.getShedDetails(branchRequest.getBranchID()));
+        responseDto.setResult(farmService.getShedDetails(branchRequest.getBranchID(),branchRequest.getUserType(),branchRequest.getUserCode()));
         return responseDto;
     }
 
@@ -63,7 +65,7 @@ public class FarmController {
         responseDto.setMessage("");
         responseDto.setStatusCode(200);
         responseDto.setStatus("Success");
-        responseDto.setResult(farmService.getShedLineDetails(branchRequest.getBranchID()));
+        responseDto.setResult(farmService.getShedLineDetails(branchRequest.getBranchID(),branchRequest.getShedNo()));
         return responseDto;
     }
 
@@ -291,7 +293,7 @@ public class FarmController {
         return responseDto;
     }
     @PostMapping("/savePlacementInfoDetails")
-    public ResponseDto savePlacementInfoDetails(@RequestBody PlacementRequest placementRequest) {
+    public ResponseDto savePlacementInfoDetails(@RequestBody ArrayList<PlacementRequest> placementRequest) {
         ResponseDto responseDto = new ResponseDto();
         responseDto.setMessage("Success");
         responseDto.setStatusCode(200);
@@ -398,6 +400,28 @@ public class FarmController {
         // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
         responseDto.setResult(farmService.saveCloseEntryDetails(branchRequest));
         //}
+        return responseDto;
+    }
+    @PostMapping("/saveCVBodyWeight")
+    public ResponseDto saveCVBodyWeight(@RequestBody ArrayList<SugCVBodyWeightDto> branchRequest) {
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        String response = "";
+        // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
+        responseDto.setResult(farmService.SugCVBodyWeight(branchRequest));
+        //}
+        return responseDto;
+    }
+    @PostMapping("/getBodyWeightRange")
+    public ResponseDto getBodyWeightRange(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getBodyWeightRange(branchRequest.getBranchID()));
         return responseDto;
     }
 }

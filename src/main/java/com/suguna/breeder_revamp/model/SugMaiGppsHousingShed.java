@@ -35,4 +35,5 @@ public class SugMaiGppsHousingShed {
     Long BATCH_ID;
     @Id
     Long BRANCH_ID;
+    Long REPORT_NUM;
 }
