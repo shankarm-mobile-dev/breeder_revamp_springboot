@@ -2261,6 +2261,34 @@ public class FarmServiceImpl implements FarmService {
         }
         return shedDetailsArrayList;
     }
+
+    @Override
+    public ArrayList<BranchUser.FlockWiseGradingDetails> getFlockWiseGradingDetails(String branchID,String shedNo,String age) {
+        ArrayList<BranchUser.FlockWiseGradingDetails> shedDetailsArrayList = new ArrayList<BranchUser.FlockWiseGradingDetails>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getflockwisegradedtls");
+
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(4, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchID);
+            storedProcedureQuery.setParameter(2, shedNo);
+            storedProcedureQuery.setParameter(3, age);
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(4);
+
+            while (resultSet.next()) {
+                BranchUser.FlockWiseGradingDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.FlockWiseGradingDetails.class);
+
+                shedDetailsArrayList.add(shedDetails);
+            }
+        } catch (Exception e) {
+
+        }
+        return shedDetailsArrayList;
+    }
+
     public String getbodyweightdeviation(String branchId,String age)
     {
         String count ="0";
@@ -2278,5 +2306,188 @@ public class FarmServiceImpl implements FarmService {
         return count;
 
     }
+    @Override
+    public String saveFlockGradeWiseDetails(ArrayList<PlacementRequest> placementRequest1) {
+        /*Object rawData = placementRequest;
+        List<PlacementRequest> data1 = new ArrayList<>();
+        //List<SugGppsObservationBatchDTO> batchDTOS = getBatchDetails(placementRequest.getBatchID());
+        if (rawData instanceof List<?>) {
+            for (Object item : (List<?>) rawData) {
+                // Convert each LinkedHashMap into SugFeedDetails
+                PlacementRequest details =
+                        mapper.convertValue(item, PlacementRequest.class);
+                data1.add(details);
+            }
+        }*/
+        //SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
+        if (!placementRequest1.isEmpty()) {
 
+            for(PlacementRequest placementRequest:placementRequest1) {
+                List<PlacementRequest.SugLineDetails> data = new ArrayList<>();
+                data = placementRequest.getData();
+
+                String branch_code = get_branch_code(placementRequest.getBranchID());
+                if (!placementRequest.getTotalFemaleQty().isEmpty()) {
+                    SugMaiGppsHousingShed sugMaiGppsHousingShed = new SugMaiGppsHousingShed();
+                    sugMaiGppsHousingShed.setFLOCK_ID(placementRequest.getFlockID());
+                    sugMaiGppsHousingShed.setTXN_DATE(new Date());
+                    sugMaiGppsHousingShed.setFARM_CODE(branch_code);
+                    sugMaiGppsHousingShed.setSHED_NO(placementRequest.getShedNo());
+                    sugMaiGppsHousingShed.setSEX("F");
+                    sugMaiGppsHousingShed.setOP_QTY(Long.valueOf(placementRequest.getTotalFemaleQty()));
+                    sugMaiGppsHousingShed.setCREATED_BY(placementRequest.getUserCode());
+                    sugMaiGppsHousingShed.setCREATION_DATE(new Date());
+                    sugMaiGppsHousingShed.setBATCH_ID(Long.valueOf(placementRequest.getBatchID()));
+                    sugMaiGppsHousingShed.setBRANCH_ID(Long.valueOf(placementRequest.getBranchID()));
+                   // sugMaiGppsHousingShed.setREPORT_NUM(Long.valueOf(placementRequest.getReportNum()));
+                    sugMaiGppsHousingShed.setAGE(Long.valueOf(placementRequest.getAge()));
+                    sugMaiGppsHousingShedRepositories.save(sugMaiGppsHousingShed);
+                }
+                if (!placementRequest.getTotalMaleQty().isEmpty()) {
+                    SugMaiGppsHousingShed sugMaiGppsHousingShed = new SugMaiGppsHousingShed();
+                    sugMaiGppsHousingShed.setFLOCK_ID(placementRequest.getFlockID());
+                    sugMaiGppsHousingShed.setTXN_DATE(new Date());
+                    sugMaiGppsHousingShed.setFARM_CODE(branch_code);
+                    sugMaiGppsHousingShed.setSHED_NO(placementRequest.getShedNo());
+                    sugMaiGppsHousingShed.setSEX("M");
+                    sugMaiGppsHousingShed.setOP_QTY(Long.valueOf(placementRequest.getTotalMaleQty()));
+                    sugMaiGppsHousingShed.setCREATED_BY(placementRequest.getUserCode());
+                    sugMaiGppsHousingShed.setCREATION_DATE(new Date());
+                    sugMaiGppsHousingShed.setBATCH_ID(Long.valueOf(placementRequest.getBatchID()));
+                    sugMaiGppsHousingShed.setBRANCH_ID(Long.valueOf(placementRequest.getBranchID()));
+                  //  sugMaiGppsHousingShed.setREPORT_NUM(Long.valueOf(placementRequest.getReportNum()));
+                    sugMaiGppsHousingShed.setAGE(Long.valueOf(placementRequest.getAge()));
+                    sugMaiGppsHousingShedRepositories.save(sugMaiGppsHousingShed);
+
+                }
+                for (PlacementRequest.SugLineDetails sugLineDetails : data) {
+                    if (!sugLineDetails.getFemaleBirdsCount().isEmpty()) {
+                        SugMaiGppsHousingLine maiGppsHousingLine = new SugMaiGppsHousingLine();
+                        maiGppsHousingLine.setFLOCK_ID(placementRequest.getFlockID());
+                        maiGppsHousingLine.setTXN_DATE(new Date());
+                        maiGppsHousingLine.setFARM_CODE(branch_code);
+                        maiGppsHousingLine.setSHED_NO(placementRequest.getShedNo());
+                        maiGppsHousingLine.setSEX("F");
+                        maiGppsHousingLine.setGRADE(sugLineDetails.getGradeNo());
+                        maiGppsHousingLine.setOP_QTY(Long.valueOf(sugLineDetails.getFemaleBirdsCount()));
+                        maiGppsHousingLine.setLINE_NO(sugLineDetails.getLineNo());
+                        maiGppsHousingLine.setCREATED_BY(placementRequest.getUserCode());
+                        maiGppsHousingLine.setCREATION_DATE(new Date());
+                        maiGppsHousingLine.setBATCH_ID(Long.valueOf(placementRequest.getBatchID()));
+                        maiGppsHousingLine.setBRANCH_ID(Long.valueOf(placementRequest.getBranchID()));
+                        maiGppsHousingLine.setAGE(Long.valueOf(placementRequest.getAge()));
+                        sugMaiGppsHousingLineRepositories.save(maiGppsHousingLine);
+                    }
+                    if (!sugLineDetails.getMaleBirdsCount().isEmpty()) {
+                        SugMaiGppsHousingLine maiGppsHousingLine = new SugMaiGppsHousingLine();
+                        maiGppsHousingLine.setFLOCK_ID(placementRequest.getFlockID());
+                        maiGppsHousingLine.setTXN_DATE(new Date());
+                        maiGppsHousingLine.setFARM_CODE(branch_code);
+                        maiGppsHousingLine.setSHED_NO(placementRequest.getShedNo());
+                        maiGppsHousingLine.setSEX("M");
+                        maiGppsHousingLine.setGRADE((sugLineDetails.getGradeNo()));
+                        maiGppsHousingLine.setOP_QTY(Long.valueOf(sugLineDetails.getMaleBirdsCount()));
+                        maiGppsHousingLine.setLINE_NO(sugLineDetails.getLineNo());
+                        maiGppsHousingLine.setCREATED_BY(placementRequest.getUserCode());
+                        maiGppsHousingLine.setCREATION_DATE(new Date());
+                        maiGppsHousingLine.setBATCH_ID(Long.valueOf(placementRequest.getBatchID()));
+                        maiGppsHousingLine.setBRANCH_ID(Long.valueOf(placementRequest.getBranchID()));
+                        maiGppsHousingLine.setAGE(Long.valueOf(placementRequest.getAge()));
+                        sugMaiGppsHousingLineRepositories.save(maiGppsHousingLine);
+                    }
+                    sugCVBodyWeightDtlRepository.updateentry(placementRequest.getBranchID(),placementRequest.getShedNo(),placementRequest.getAge(),sugLineDetails.getGradeNo());
+                   // sugMaiGppsHousingShedRepositories.updateentry(placementRequest.getFlockID(),placementRequest.getReportNum(),branch_code);
+                }
+            }
+        }
+        return "200";
+    }
+    @Override
+    public ArrayList<BranchUser.MedicineScheduleDetails> getDailyMedicineSchedule(String branchID,String shedNo,String date) {
+        ArrayList<BranchUser.MedicineScheduleDetails> medicineScheduleDetailsArrayList = new ArrayList<BranchUser.MedicineScheduleDetails>();
+
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getdaily_medicinevaccine_sch");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(4, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchID);
+            storedProcedureQuery.setParameter(2, shedNo);
+            storedProcedureQuery.setParameter(3, date);
+
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(4);
+
+            while (resultSet.next()) {
+                BranchUser.MedicineScheduleDetails medicineScheduleDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.MedicineScheduleDetails.class);
+                medicineScheduleDetailsArrayList.add(medicineScheduleDetails);
+
+            }
+        } catch (Exception e) {
+
+        }
+        return medicineScheduleDetailsArrayList;
+    }
+    @Override
+    public String saveDailyMedicineVaccine(BranchRequest branchRequest, List<MultipartFile> imageFile) {
+     /*   List<BranchRequest.SugFeedDetails> data=new ArrayList<>();
+        data= (List<BranchRequest.SugFeedDetails>) branchRequest.getData();
+*/
+        Object rawData = branchRequest.getData();
+        List<BranchRequest.SugMedicineVaccineDetails> data = new ArrayList<>();
+        List<SugGppsObservationBatchDTO> batchDTOS = getBatchDetails(branchRequest.getBatchID());
+        if (rawData instanceof List<?>) {
+            for (Object item : (List<?>) rawData) {
+                // Convert each LinkedHashMap into SugFeedDetails
+                BranchRequest.SugMedicineVaccineDetails details =
+                        mapper.convertValue(item, BranchRequest.SugMedicineVaccineDetails.class);
+                data.add(details);
+            }
+        }
+        SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
+        if (!data.isEmpty()) {
+            for (BranchRequest.SugMedicineVaccineDetails sugMedicineVaccineDetails : data) {
+                SugMaiGppsConsumptions maiGppsConsumptions = new SugMaiGppsConsumptions();
+                maiGppsConsumptions.setFARM_CODE(gppsObservationBatchDTO.getBRANCH_CODE());
+                maiGppsConsumptions.setFLOCK_ID(gppsObservationBatchDTO.getFLOCK_NO());
+                maiGppsConsumptions.setSHED_CODE(branchRequest.getShedNo());
+                maiGppsConsumptions.setFLOCK_ID(branchRequest.getFlockID());
+                maiGppsConsumptions.setITEM_ID(Long.valueOf(sugMedicineVaccineDetails.getItemId()));
+                maiGppsConsumptions.setUOM(sugMedicineVaccineDetails.getUom());
+                maiGppsConsumptions.setQTY(Long.valueOf(sugMedicineVaccineDetails.getQty()));
+                maiGppsConsumptions.setBATCH_ID(Long.valueOf(branchRequest.getBatchID()));
+                //maiGppsConsumptions.setSEX(sugMortalityDetails.getBirdType());
+                maiGppsConsumptions.setTXN_FROM(getTxnDateString(branchRequest.getTransDate(),fromdateFormat1));
+                maiGppsConsumptions.setCREATION_DATE(new Date());
+                maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
+                maiGppsConsumptions.setTXN_TYPE(sugMedicineVaccineDetails.getItemType());
+                maiGppsConsumptions.setBATCH_ID(Long.valueOf(branchRequest.getBranchID()));
+                sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
+                sugMaiGppsItemAllocationRepositories.updateentry(sugMedicineVaccineDetails.getTransId());
+            }
+
+            try {String mortalityImage = null;
+                if (imageFile != null && !imageFile.isEmpty()) {
+                    for (MultipartFile data1 : imageFile) {
+                        mortalityImage = fileStorageService.saveImage(data1, gppsObservationBatchDTO.getBRANCH_CODE(), Long.valueOf(branchRequest.getBatchID()), FileStorageCategory.MEDICINE);
+                    /*DailyEntryLines dailyEntryLines = DailyEntryLines.builder()
+                            .transId(saveResult.getTransId())
+                            .hdrType("MORTALITY")
+                            .imagePath(mortalityImage)
+                            .build();*/
+                        /**
+                         * AI Mortality Count
+                         */
+
+
+
+                    }
+                }
+            } catch (IOException | IllegalArgumentException ex) {
+                //  return Response.buildSingleResponse("Failed", HttpStatus.BAD_REQUEST, ex.getMessage(), null);
+            }
+        }
+        return "200";
+    }
 }

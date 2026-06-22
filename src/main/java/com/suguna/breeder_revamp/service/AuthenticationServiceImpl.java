@@ -6,7 +6,7 @@ import com.suguna.breeder_revamp.dto.EmployeeValidationResult;
 import com.suguna.breeder_revamp.dto.ManagerLoginDto;
 import com.suguna.breeder_revamp.dto.SupervisorRequest;
 import com.suguna.breeder_revamp.dto.UserRequest;
-import com.suguna.breeder_revamp.model.OTPModel;
+import com.suguna.breeder_revamp.model.OTPsModel;
 import com.suguna.breeder_revamp.repositories.EmpDataRepository;
 import com.suguna.breeder_revamp.repositories.OtpRepositories;
 import com.suguna.breeder_revamp.smsgateway.SMSGateway;
@@ -272,7 +272,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 mobileNumber=this.get_cbf_employee_mobileno(UserCode.getUserCode());
             }
             String otp = "123456"; //Utils.generateOtp();
-            OTPModel otpModel = new OTPModel();
+            OTPsModel otpModel = new OTPsModel();
             otpModel.setOTP(otp);
             otpModel.setAPPLICATION("BREEDER_NEW");
 
@@ -281,7 +281,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             otpModel.setTYPE(UserCode.getMode()); // REGISTER,FORGOT
             otpModel.setLOGIN_NAME(UserCode.getUserCode());
             otpModel.setMOBILE_NO(String.valueOf(mobileNumber));
-            OTPModel responseOtp = createNewOtp(otpModel);
+            OTPsModel responseOtp = createNewOtp(otpModel);
 
             if (responseOtp.getSEQ() == null) {
                 result.setFlag("N");
@@ -352,7 +352,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .getSingleResult()).longValue();
     }
 
-    public OTPModel createNewOtp(OTPModel otpModel) {
+    public OTPsModel createNewOtp(OTPsModel otpModel) {
         return otpRepositories.save(otpModel);
     }
 
@@ -371,7 +371,15 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 result.setUserType(UserCode.getUserType());
                 return result;
             }
-            OTPModel otpModel = otpRepositories.findRecentOtp(UserCode.getUserCode(), "BREEDER_NEW", UserCode.getOtp(), UserCode.getMode()); //FORGOT
+            String lastfivepwd=lastfivepass(UserCode.getUserCode(),UserCode.getPassword());
+            if(lastfivepwd.equalsIgnoreCase("False"))
+            {
+                result.setFlag("N");
+                result.setMessage("Last Five Password is not allowed to use");
+                result.setUserType(UserCode.getUserType());
+                return result;
+            }
+            OTPsModel otpModel = otpRepositories.findRecentOtp(UserCode.getUserCode(), "BREEDER_NEW", UserCode.getOtp(), UserCode.getMode()); //FORGOT
             ObjectMapper objectMapper = new ObjectMapper();
             try {
                 String jsonStr = objectMapper.writeValueAsString(otpModel);
@@ -409,7 +417,22 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         return result;
     }
 
+    public String lastfivepass(String usercode,String password)
+    {
+        String Output="";
+        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_fnd_pkg.lastfivepass");
+        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
 
+        storedProcedureQuery.registerStoredProcedureParameter(4, String.class, ParameterMode.OUT);
+        storedProcedureQuery.setParameter(1, "BREEDER_NEW");
+        storedProcedureQuery.setParameter(2, usercode);
+        storedProcedureQuery.setParameter(3, password);
+
+        Output = (String) storedProcedureQuery.getOutputParameterValue(4);
+        return  Output;
+    }
     public EmployeeValidationResult createLogin(UserRequest UserCode) {
         EmployeeValidationResult result = new EmployeeValidationResult();
         String Output ="";

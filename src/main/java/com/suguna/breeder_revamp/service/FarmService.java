@@ -86,4 +86,9 @@ public interface FarmService {
     String SugCVBodyWeight(ArrayList<SugCVBodyWeightDto> entry);
 
     ArrayList<BranchUser.BodyWeightDeviationDetails> getBodyWeightRange(String branchID);
+
+    ArrayList<BranchUser.FlockWiseGradingDetails> getFlockWiseGradingDetails(String branchID,String shedNo,String age);
+    String saveFlockGradeWiseDetails(ArrayList<PlacementRequest> placementRequest1);
+    ArrayList<BranchUser.MedicineScheduleDetails> getDailyMedicineSchedule(String branchID,String shedNo,String date);
+    String saveDailyMedicineVaccine(BranchRequest branchRequest, List<MultipartFile> imageFile);
 }

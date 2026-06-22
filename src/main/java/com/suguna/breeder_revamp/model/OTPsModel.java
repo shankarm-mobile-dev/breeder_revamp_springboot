@@ -10,7 +10,7 @@ import java.util.Date;
 @Setter
 @Entity
 @Table(name = "SUG_MAI_OTP", schema = "SUG")
-public class OTPModel {
+public class OTPsModel {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "id_seq")
     @SequenceGenerator(sequenceName = "SUG_MAI_OTP_S", allocationSize = 1, name = "id_seq")

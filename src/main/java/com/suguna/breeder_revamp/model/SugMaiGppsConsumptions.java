@@ -59,4 +59,5 @@ public class SugMaiGppsConsumptions {
     double PH_LEVEL;
     double PM_LEVEL;
     String REMARKS;
+    Long BRANCH_ID;
 }

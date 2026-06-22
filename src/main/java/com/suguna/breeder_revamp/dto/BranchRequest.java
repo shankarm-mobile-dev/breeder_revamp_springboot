@@ -34,7 +34,8 @@ public class BranchRequest<T> {
     String endDate;
     @JsonProperty("preparedBy")
     String preparedBy;
-
+    @JsonProperty("transDate")
+    String transDate;
     @JsonProperty("phLevel")
     String phLevel;
     @JsonProperty("pmLevel")
@@ -249,6 +250,21 @@ public class BranchRequest<T> {
         String sanitizationEndTime;
         @JsonProperty("Remarks")
         String Remarks;
+    }
+    @Getter
+    @Setter
+    public static class SugMedicineVaccineDetails
+    {
+        @JsonProperty("qty")
+        String qty;
+        @JsonProperty("itemId")
+        String itemId;
+        @JsonProperty("transId")
+        String transId;
+        @JsonProperty("uom")
+        String uom;
+        @JsonProperty("itemType")
+        String itemType;
     }
 
 }

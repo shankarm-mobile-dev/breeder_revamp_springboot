@@ -170,6 +170,9 @@ public class BranchUser {
         @Column(name = "GRADE" , type = String.class)
         @JsonProperty("grade")
         String grade;
+        @Column(name = "TOTAL_BIRDS_CAPACITY" , type = String.class)
+        @JsonProperty("totalBirdsCapacity")
+        String totalBirdsCapacity;
     }
 
    /* @Getter
@@ -731,6 +734,9 @@ public class BranchUser {
     @Getter
     @Setter
     public static class MedicineScheduleDetails {
+        @Column(name = "FARM_CODE", type = String.class)
+        @JsonProperty("farmCode")
+        String farmCode;
         @Column(name = "FLOCK_ID", type = String.class)
         @JsonProperty("flockId")
         String flockId;
@@ -755,6 +761,27 @@ public class BranchUser {
         @Column(name = "ITEM_DESC", type = String.class)
         @JsonProperty("itemDesc")
         String itemDesc;
+        @Column(name = "QTY", type = String.class)
+        @JsonProperty("qty")
+        String qty;
+        @Column(name = "UOM", type = String.class)
+        @JsonProperty("uom")
+        String uom;
+        @Column(name = "INTAKE_MODE", type = String.class)
+        @JsonProperty("intakeMode")
+        String intakeMode;
+        @Column(name = "PREPARED_BY", type = String.class)
+        @JsonProperty("preparedBy")
+        String preparedBy;
+        @Column(name = "ITEM_NAME", type = String.class)
+        @JsonProperty("itemName")
+        String itemName;
+        @Column(name = "ITEM_CODE", type = String.class)
+        @JsonProperty("itemCode")
+        String itemCode;
+        @Column(name = "TRANS_ID", type = String.class)
+        @JsonProperty("transId")
+        String transId;
     }
 
     @Getter
@@ -818,6 +845,20 @@ public class BranchUser {
         @Column(name = "deviation", type = String.class)
         @JsonProperty("deviation")
         String deviation;
+    }
+
+    @Getter
+    @Setter
+    public static class FlockWiseGradingDetails {
+        @Column(name = "GRADING_NO", type = String.class)
+        @JsonProperty("gradingNo")
+        String grading_no;
+        @Column(name = "MALE_COUNT", type = String.class)
+        @JsonProperty("maleCount")
+        String maleCount;
+        @Column(name = "FEMALE_COUNT", type = String.class)
+        @JsonProperty("femaleCount")
+        String femaleCount;
     }
 
 }

@@ -136,6 +136,9 @@ public class FarmController {
         else if(branchRequest.getActivityName().equalsIgnoreCase("WEEK BIRD SEPERATION")) {
             responseDto.setResult(farmService.saveWeekSeperationDetails(branchRequest));
         }
+        else if(branchRequest.getActivityName().equalsIgnoreCase("MEDICINE/VACCINE")) {
+            responseDto.setResult(farmService.saveDailyMedicineVaccine(branchRequest,imageFile));
+        }
         return responseDto;
     }
 
@@ -422,6 +425,41 @@ public class FarmController {
         responseDto.setStatusCode(200);
         responseDto.setStatus("Success");
         responseDto.setResult(farmService.getBodyWeightRange(branchRequest.getBranchID()));
+        return responseDto;
+    }
+
+    @PostMapping("/getFlockWiseGradingDetails")
+    public ResponseDto getFlockWiseGradingDetails(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getFlockWiseGradingDetails(branchRequest.getBranchID(),branchRequest.getShedNo(),branchRequest.getAge()));
+        return responseDto;
+    }
+
+    @PostMapping("/saveFlockGradeWiseDetails")
+    public ResponseDto saveFlockGradeWiseDetails(@RequestBody ArrayList<PlacementRequest> placementRequest) {
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        String response = "";
+        // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
+        responseDto.setResult(farmService.saveFlockGradeWiseDetails(placementRequest));
+        //}
+        return responseDto;
+    }
+
+    @PostMapping("/getDailyMedicineSchedule")
+    public ResponseDto getDailyMedicineSchedule(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getDailyMedicineSchedule(branchRequest.getBranchID(),branchRequest.getShedNo(),branchRequest.getTransDate()));
         return responseDto;
     }
 }

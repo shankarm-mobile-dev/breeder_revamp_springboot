@@ -22,6 +22,12 @@ public class ManagerLoginDto {
     @Getter
     @Setter
     public static class UserDetailsSetResultDto {
+        @Column(name = "region_ID" , type = long.class)
+        @JsonProperty("regionId")
+        long regionId;
+        @Column(name = "region_CODE", type = String.class)
+        @JsonProperty("regionCode")
+        String regionCode;
         @Column(name = "branch_ID" , type = long.class)
         @JsonProperty("branchId")
         long branchID;

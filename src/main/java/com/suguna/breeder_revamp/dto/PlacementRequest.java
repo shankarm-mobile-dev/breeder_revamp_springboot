@@ -27,6 +27,8 @@ public class PlacementRequest{
     String branchID;
     @JsonProperty("reportNum")
     String reportNum;
+    @JsonProperty("age")
+    String age;
     @JsonProperty("data")
     ArrayList<SugLineDetails> data;
 
@@ -40,6 +42,8 @@ public class PlacementRequest{
         String femaleBirdsCount;
         @JsonProperty("MaleBirdsCount")
         String maleBirdsCount;
+        @JsonProperty("gradeNo")
+        String gradeNo;
 
     }
 }
