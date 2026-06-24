@@ -5,6 +5,8 @@ import com.suguna.breeder_revamp.utils.Column;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
+
 @Getter
 @Setter
 public class TransferPlace {
@@ -154,4 +156,137 @@ public class TransferPlace {
         @JsonProperty("age")
         long age;
     }
-}
+
+    @Getter
+    @Setter
+    public static class TransferInHdr {
+        @Column(name = "empcode", type = String.class)
+        @JsonProperty("empCode")
+        String empCode;
+        @Column(name = "from_farm_id", type = String.class)
+        @JsonProperty("fromFarmId")
+        String fromFarmId;
+        @Column(name = "from_farm_name", type = String.class)
+        @JsonProperty("fromFarmName")
+        String fromFarmName;
+        @Column(name = "to_farm_id", type = String.class)
+        @JsonProperty("toFarmId")
+        String toFarmId;
+        @Column(name = "txn_header_id", type = String.class)
+        @JsonProperty("txnHeaderId")
+        String txnHeaderId;
+        @Column(name = "transfer_type", type = String.class)
+        @JsonProperty("transferType")
+        String transferType;
+        @Column(name = "txn_date", type = String.class)
+        @JsonProperty("txnDate")
+        String txnDate;
+        @Column(name = "vehicle_no", type = String.class)
+        @JsonProperty("vehicleNo")
+        String vehicleNo;
+        @Column(name = "out_pass_no", type = String.class)
+        @JsonProperty("outPassNo")
+        String outPassNo;
+        @Column(name = "receiver_name", type = String.class)
+        @JsonProperty("receiverName")
+        String receiverName;
+        @Column(name = "transfer_rsn", type = String.class)
+        @JsonProperty("transferRsn")
+        String transferRsn;
+        @Column(name = "location_TYPE", type = String.class)
+        @JsonProperty("locationTYPE")
+        String locationTYPE;
+        @Column(name = "is_uploaded", type = String.class)
+        @JsonProperty("isUploaded")
+        String isUploaded;
+        @Column(name = "is_committed", type = String.class)
+        @JsonProperty("isCommitted")
+        String isCommitted;
+
+        @JsonProperty("transferInDetails")
+        ArrayList<TransferInDetails> transferInDetails;
+    }
+    @Getter
+    @Setter
+    public static class TransferInDetails {
+        @Column(name = "txn_header_id", type = String.class)
+        @JsonProperty("txnHeaderId")
+        String txnHeaderId;
+        @Column(name = "txn_line_id", type = String.class)
+        @JsonProperty("txnLineId")
+        String txnLineId;
+        @Column(name = "from_farm_id", type = String.class)
+        @JsonProperty("fromFarmId")
+        String fromFarmId;
+        @Column(name = "to_farm_id", type = String.class)
+        @JsonProperty("toFarmId")
+        String toFarmId;
+        @Column(name = "from_inventory_location_id", type = String.class)
+        @JsonProperty("fromInventoryLocationId")
+        String fromInventoryLocationId;
+        @Column(name = "from_inventory_loc_desc", type = String.class)
+        @JsonProperty("fromInventoryLocDesc")
+        String fromInventoryLocDesc;
+        @Column(name = "from_batch_id", type = String.class)
+        @JsonProperty("fromBatchId")
+        String fromBatchId;
+        @Column(name = "to_inventory_location_id", type = String.class)
+        @JsonProperty("toInventoryLocationId")
+        String toInventoryLocationId;
+        @Column(name = "to_batch_id", type = String.class)
+        @JsonProperty("toBatchId")
+        String toBatchId;
+        @Column(name = "txn_type", type = String.class)
+        @JsonProperty("txnType")
+        String txnType;
+        @Column(name = "bird_type", type = String.class)
+        @JsonProperty("birdType")
+        String birdType;
+        @Column(name = "item_id", type = String.class)
+        @JsonProperty("itemId")
+        String itemId;
+        @Column(name = "item_desc", type = String.class)
+        @JsonProperty("itemDesc")
+        String itemDesc;
+        @Column(name = "uom", type = String.class)
+        @JsonProperty("uom")
+        String uom;
+        @Column(name = "stock_qty", type = String.class)
+        @JsonProperty("stockQty")
+        String stockQty;
+        @Column(name = "days", type = String.class)
+        @JsonProperty("days")
+        String days;
+        @Column(name = "age", type = String.class)
+        @JsonProperty("age")
+        String age;
+        @Column(name = "qty", type = String.class)
+        @JsonProperty("qty")
+        String qty;
+        @Column(name = "receiving_qty", type = String.class)
+        @JsonProperty("receivingQty")
+        String receivingQty;
+        @Column(name = "diff_qty", type = String.class)
+        @JsonProperty("diffQty")
+        String diffQty;
+        @Column(name = "lotnumber", type = String.class)
+        @JsonProperty("lotNumber")
+        String lotNumber;
+        @Column(name = "lay_date", type = String.class)
+        @JsonProperty("layDate")
+        String layDate;
+        @Column(name = "breedname", type = String.class)
+        @JsonProperty("breedName")
+        String breedName;
+        @Column(name = "location_TYPE", type = String.class)
+        @JsonProperty("locationType")
+        String locationType;
+        @Column(name = "is_uploaded", type = String.class)
+        @JsonProperty("isUploaded")
+        String isUploaded;
+        @Column(name = "is_committed", type = String.class)
+        @JsonProperty("isCommitted")
+        String isCommitted;
+
+    }
+    }

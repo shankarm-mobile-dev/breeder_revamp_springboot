@@ -32,6 +32,14 @@ public class BranchRequest<T> {
     String startDate;
     @JsonProperty("endDate")
     String endDate;
+    @JsonProperty("preparedBy")
+    String preparedBy;
+    @JsonProperty("transDate")
+    String transDate;
+    @JsonProperty("phLevel")
+    String phLevel;
+    @JsonProperty("pmLevel")
+    String pmLevel;
     @JsonProperty("data")
     T data;
 
@@ -116,6 +124,147 @@ public class BranchRequest<T> {
         String Reason;
         @JsonProperty("Remark")
         String Remark;
+    }
+    @Getter
+    @Setter
+    public static class MedicineAllocationDetails
+    {
+        @JsonProperty("itemType")
+        String itemType;
+        @JsonProperty("itemId")
+        String itemId;
+        @JsonProperty("quantity")
+        String quantity;
+        @JsonProperty("Uom")
+        String Uom;
+        @JsonProperty("intakeMode")
+        String intakeMode;
+        @JsonProperty("flockID")
+        String flockID;
+        @JsonProperty("batchID")
+        String batchID;
+        @JsonProperty("startDate")
+        String startDate;
+        @JsonProperty("endDate")
+        String endDate;
+        @JsonProperty("shedNo")
+        String shedNo;
+        @JsonProperty("preparedBy")
+        String preparedBy;
+        @JsonProperty("age")
+        String age;
+    }
+
+    @Getter
+    @Setter
+    public static class FarmLogDetails
+    {
+        @JsonProperty("itemType")
+        String itemType;
+        @JsonProperty("maleCount")
+        String maleCount;
+        @JsonProperty("femaleCount")
+        String femaleCount;
+        @JsonProperty("Uom")
+        String Uom;
+        @JsonProperty("opening")
+        String opening;
+        @JsonProperty("closing")
+        String closing;
+        @JsonProperty("total")
+        String total;
+    }
+    @Getter
+    @Setter
+    public static class SugWeekBirdDetails
+    {
+        @JsonProperty("reasonType")
+        String reasonType;
+        @JsonProperty("femaleQty")
+        String femaleQty;
+        @JsonProperty("maleQty")
+        String maleQty;
+        @JsonProperty("lineNo")
+        String lineNo;
+
+    }
+
+
+    @Getter
+    @Setter
+    public static class SanitizationEntryDetails
+    {
+        @JsonProperty("itemType")
+        String itemType;
+        @JsonProperty("itemCode")
+        String itemCode;
+        @JsonProperty("itemName")
+        String itemName;
+        @JsonProperty("uom")
+        String uom;
+        @JsonProperty("flockID")
+        String flockID;
+        @JsonProperty("quantity")
+        String quantity;
+        @JsonProperty("batchID")
+        String batchID;
+        @JsonProperty("forLtrWater")
+        String forLtrWater;
+    }
+
+    @Getter
+    @Setter
+    public static class EggWeightReadingDetails
+    {
+        @JsonProperty("transDate")
+        String transDate;
+        @JsonProperty("flockID")
+        String flockID;
+        @JsonProperty("batchID")
+        String batchID;
+        @JsonProperty("noOfEgg")
+        String noOfEgg;
+        @JsonProperty("emptyTray")
+        String emptyTray;
+        @JsonProperty("totalTray")
+        String totalTray;
+        @JsonProperty("netEggWeight")
+        String netEggWeight;
+        @JsonProperty("averageEggWeight")
+        String averageEggWeight;
+    }
+    @Getter
+    @Setter
+    public static class SugCloseDetails {
+        @JsonProperty("tempMin")
+        String tempMin;
+        @JsonProperty("tempMax")
+        String tempMax;
+        @JsonProperty("lightStartTime")
+        String lightStartTime;
+        @JsonProperty("lightEndTime")
+        String lightEndTime;
+        @JsonProperty("sanitizationStartTime")
+        String sanitizationStartTime;
+        @JsonProperty("sanitizationEndTime")
+        String sanitizationEndTime;
+        @JsonProperty("Remarks")
+        String Remarks;
+    }
+    @Getter
+    @Setter
+    public static class SugMedicineVaccineDetails
+    {
+        @JsonProperty("qty")
+        String qty;
+        @JsonProperty("itemId")
+        String itemId;
+        @JsonProperty("transId")
+        String transId;
+        @JsonProperty("uom")
+        String uom;
+        @JsonProperty("itemType")
+        String itemType;
     }
 
 }

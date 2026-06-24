@@ -4,8 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.suguna.breeder_revamp.dto.EmployeeValidationResult;
 import com.suguna.breeder_revamp.dto.ManagerLoginDto;
+import com.suguna.breeder_revamp.dto.SupervisorRequest;
 import com.suguna.breeder_revamp.dto.UserRequest;
-import com.suguna.breeder_revamp.model.OTPModel;
+import com.suguna.breeder_revamp.model.OTPsModel;
 import com.suguna.breeder_revamp.repositories.EmpDataRepository;
 import com.suguna.breeder_revamp.repositories.OtpRepositories;
 import com.suguna.breeder_revamp.smsgateway.SMSGateway;
@@ -271,7 +272,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 mobileNumber=this.get_cbf_employee_mobileno(UserCode.getUserCode());
             }
             String otp = "123456"; //Utils.generateOtp();
-            OTPModel otpModel = new OTPModel();
+            OTPsModel otpModel = new OTPsModel();
             otpModel.setOTP(otp);
             otpModel.setAPPLICATION("BREEDER_NEW");
 
@@ -280,7 +281,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             otpModel.setTYPE(UserCode.getMode()); // REGISTER,FORGOT
             otpModel.setLOGIN_NAME(UserCode.getUserCode());
             otpModel.setMOBILE_NO(String.valueOf(mobileNumber));
-            OTPModel responseOtp = createNewOtp(otpModel);
+            OTPsModel responseOtp = createNewOtp(otpModel);
 
             if (responseOtp.getSEQ() == null) {
                 result.setFlag("N");
@@ -351,7 +352,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .getSingleResult()).longValue();
     }
 
-    public OTPModel createNewOtp(OTPModel otpModel) {
+    public OTPsModel createNewOtp(OTPsModel otpModel) {
         return otpRepositories.save(otpModel);
     }
 
@@ -370,7 +371,15 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 result.setUserType(UserCode.getUserType());
                 return result;
             }
-            OTPModel otpModel = otpRepositories.findRecentOtp(UserCode.getUserCode(), "BREEDER_NEW", UserCode.getOtp(), UserCode.getMode()); //FORGOT
+            String lastfivepwd=lastfivepass(UserCode.getUserCode(),UserCode.getPassword());
+            if(lastfivepwd.equalsIgnoreCase("False"))
+            {
+                result.setFlag("N");
+                result.setMessage("Last Five Password is not allowed to use");
+                result.setUserType(UserCode.getUserType());
+                return result;
+            }
+            OTPsModel otpModel = otpRepositories.findRecentOtp(UserCode.getUserCode(), "BREEDER_NEW", UserCode.getOtp(), UserCode.getMode()); //FORGOT
             ObjectMapper objectMapper = new ObjectMapper();
             try {
                 String jsonStr = objectMapper.writeValueAsString(otpModel);
@@ -408,7 +417,22 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         return result;
     }
 
+    public String lastfivepass(String usercode,String password)
+    {
+        String Output="";
+        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_fnd_pkg.lastfivepass");
+        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
 
+        storedProcedureQuery.registerStoredProcedureParameter(4, String.class, ParameterMode.OUT);
+        storedProcedureQuery.setParameter(1, "BREEDER_NEW");
+        storedProcedureQuery.setParameter(2, usercode);
+        storedProcedureQuery.setParameter(3, password);
+
+        Output = (String) storedProcedureQuery.getOutputParameterValue(4);
+        return  Output;
+    }
     public EmployeeValidationResult createLogin(UserRequest UserCode) {
         EmployeeValidationResult result = new EmployeeValidationResult();
         String Output ="";
@@ -429,7 +453,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             storedProcedureQuery.setParameter(4, UserCode.getPassword());
             storedProcedureQuery.setParameter(5, UserCode.getBranchId());
             storedProcedureQuery.setParameter(6, UserCode.getMobileNumber());
-            storedProcedureQuery.setParameter(7, UserCode.getDeviceID());
+            storedProcedureQuery.setParameter(7, "0");
             storedProcedureQuery.setParameter(8, UserCode.getShedNo());
             Output = (String) storedProcedureQuery.getOutputParameterValue(9);
         }
@@ -450,7 +474,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             storedProcedureQuery.setParameter(4, UserCode.getPassword());
             storedProcedureQuery.setParameter(5, UserCode.getBranchId());
             storedProcedureQuery.setParameter(6, UserCode.getMobileNumber());
-            storedProcedureQuery.setParameter(7, UserCode.getDeviceID());
+            storedProcedureQuery.setParameter(7, "0");
             storedProcedureQuery.setParameter(8, UserCode.getExistingCode());
             Output = (String) storedProcedureQuery.getOutputParameterValue(9);
         }
@@ -500,5 +524,165 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         return result;
     }
+    @Transactional
+    public EmployeeValidationResult createSupervisorLogin(SupervisorRequest UserCode) {
+        EmployeeValidationResult result = new EmployeeValidationResult();
+        String Output ="";
+        if(UserCode.getMode().equals("NEW")) {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gpps_mob_pkg.registersupervisor");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(4, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(5, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(6, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(7, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(8, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(9, String.class, ParameterMode.OUT);
+            storedProcedureQuery.setParameter(1, "BREEDER_NEW");
+            storedProcedureQuery.setParameter(2, UserCode.getUserCode());
+            storedProcedureQuery.setParameter(3, UserCode.getUserType());
+            storedProcedureQuery.setParameter(4, UserCode.getPassword());
+            storedProcedureQuery.setParameter(5, UserCode.getBranchId());
+            storedProcedureQuery.setParameter(6, UserCode.getMobileNumber());
+            storedProcedureQuery.setParameter(7, "0");
+            storedProcedureQuery.setParameter(8, "");
+            Output = (String) storedProcedureQuery.getOutputParameterValue(9);
+            String sql = "delete from sug_mai_line_access a where a.USER_NAME=?1 and a.APPLICATION_NAME='BREEDER_NEW'";
+            /*entityManager.createNativeQuery(sql).setParameter(1,UserCode.getUserCode()).executeUpdate();
+            updateshed(UserCode,"-");*/
+            if(UserCode.getExistingCode() != null && UserCode.getExistingCode().isEmpty()) {
+                entityManager.createNativeQuery(sql).setParameter(1, UserCode.getUserCode()).executeUpdate();
+                updateshed(UserCode, UserCode.getUserCode());
+            }
+            else {
+                entityManager.createNativeQuery(sql).setParameter(1, UserCode.getExistingCode()).executeUpdate();
+                updateshed(UserCode, UserCode.getExistingCode());
+            }
+        }
+        else if(UserCode.getMode().equals("EDIT")) {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gpps_mob_pkg.updateotheruser");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(4, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(5, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(6, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(7, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(8, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(9, String.class, ParameterMode.OUT);
+            storedProcedureQuery.setParameter(1, "BREEDER_NEW");
+            storedProcedureQuery.setParameter(2, UserCode.getUserCode());
+            storedProcedureQuery.setParameter(3, UserCode.getUserType());
+            storedProcedureQuery.setParameter(4, UserCode.getPassword());
+            storedProcedureQuery.setParameter(5, UserCode.getBranchId());
+            storedProcedureQuery.setParameter(6, UserCode.getMobileNumber());
+            storedProcedureQuery.setParameter(7, "0");
+            storedProcedureQuery.setParameter(8, UserCode.getExistingCode());
+            Output = (String) storedProcedureQuery.getOutputParameterValue(9);
+            String sql = "delete from sug_mai_line_access a where a.USER_NAME=?1 and a.APPLICATION_NAME='BREEDER_NEW'";
+            if(UserCode.getExistingCode() != null && UserCode.getExistingCode().isEmpty()) {
+                entityManager.createNativeQuery(sql).setParameter(1, UserCode.getUserCode()).executeUpdate();
+                updateshed(UserCode, UserCode.getUserCode());
+            }
+            else {
+                entityManager.createNativeQuery(sql).setParameter(1, UserCode.getExistingCode()).executeUpdate();
+                updateshed(UserCode, UserCode.getExistingCode());
+            }
+        }
+        else if(UserCode.getMode().equals("INACTIVE")) {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gpps_mob_pkg.inactiveotheruser");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(4, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(5, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(6, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(7, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(8, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(9, String.class, ParameterMode.OUT);
+            storedProcedureQuery.setParameter(1, "BREEDER_NEW");
+            storedProcedureQuery.setParameter(2, UserCode.getUserCode());
+            storedProcedureQuery.setParameter(3, UserCode.getUserType());
+            storedProcedureQuery.setParameter(4, UserCode.getPassword());
+            storedProcedureQuery.setParameter(5, UserCode.getBranchId());
+            storedProcedureQuery.setParameter(6, UserCode.getMobileNumber());
+            storedProcedureQuery.setParameter(7, UserCode.getDeviceID());
+            storedProcedureQuery.setParameter(8, UserCode.getExistingCode());
+            Output = (String) storedProcedureQuery.getOutputParameterValue(9);
+        }
+        if(Output.equals("1")) {
+            if(UserCode.getMode().equals("NEW")) {
+                result.setFlag("Y");
+                result.setMessage("User ID Created");
+                result.setUserType(UserCode.getUserType());
+            }else if(UserCode.getMode().equals("EDIT")){
+                result.setFlag("Y");
+                result.setMessage("User Details are Updated");
+                result.setUserType(UserCode.getUserType());
+            }
+            else if(UserCode.getMode().equals("INACTIVE")) {
+                result.setFlag("Y");
+                result.setMessage("User ID InActivated");
+                result.setUserType(UserCode.getUserType());
+            }
+        }
+        else
+        {
+            result.setFlag("N");
+            result.setMessage("User ID Creation Error");
+            result.setUserType(UserCode.getUserType());
+        }
 
+        return result;
+    }
+    public  String updateshed(SupervisorRequest UserCode,String usercode)
+    {
+        for (String value : UserCode.getShedNo()) {
+
+            System.out.println("Shed value: " + value);
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gpps_mob_pkg.registershed");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(4, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(5, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(6, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(7, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(8, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(9, String.class, ParameterMode.OUT);
+            storedProcedureQuery.setParameter(1, "BREEDER_NEW");
+            if(usercode != null && !usercode.equals("-"))
+            {
+                storedProcedureQuery.setParameter(2, usercode);
+            }
+            else {
+                storedProcedureQuery.setParameter(2, UserCode.getUserCode());
+            }
+            storedProcedureQuery.setParameter(3, UserCode.getUserType());
+            storedProcedureQuery.setParameter(4, UserCode.getPassword());
+            storedProcedureQuery.setParameter(5, UserCode.getBranchId());
+            storedProcedureQuery.setParameter(6, UserCode.getMobileNumber());
+            storedProcedureQuery.setParameter(7, "0");
+            storedProcedureQuery.setParameter(8, value);
+           String Output = (String) storedProcedureQuery.getOutputParameterValue(9);
+           /*return Output;*/
+        }
+        return "";
+    }
+    public String get_supervisor_email(String userName)
+    {
+        String count ="0";
+        try {
+            count = (String) entityManager.createNativeQuery("select a.supervisor_email from sug_hr_emp_mst_mv a where a.email=?1")
+                    .setParameter(1, userName)
+                    .getSingleResult();
+        }
+        catch (Exception e)
+        {
+            count ="shankarm@sugunafoods.com";
+        }
+        return count;
+
+    }
 }

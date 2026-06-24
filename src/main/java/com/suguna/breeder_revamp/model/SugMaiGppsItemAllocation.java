@@ -29,4 +29,8 @@ public class SugMaiGppsItemAllocation {
     String UOM;
     String CREATED_BY ;
     Date CREATION_DATE ;
+    Long BRANCH_ID ;
+    String SHED_NO ;
+    String INTAKE_MODE ;
+    String PREPARED_BY;
 }

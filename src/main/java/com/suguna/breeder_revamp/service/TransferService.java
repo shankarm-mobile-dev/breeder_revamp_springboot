@@ -1,6 +1,7 @@
 package com.suguna.breeder_revamp.service;
 
 import com.suguna.breeder_revamp.dto.BranchRequest;
+import com.suguna.breeder_revamp.dto.SUGMAIGPPSTRANS_HDRDto;
 import com.suguna.breeder_revamp.model.TransferPlace;
 
 
@@ -14,4 +15,8 @@ public interface TransferService {
     ArrayList<TransferPlace.FeedItemDetails> getFeedItemMaster(BranchRequest branchRequest);
 
     ArrayList<TransferPlace.MedicineVaccineDetails> getMedicineVaccineMaster(BranchRequest branchRequest);
+
+    ArrayList<TransferPlace.TransferInHdr> getTransferInHdr(BranchRequest branchRequest);
+
+    String saveTransOut(ArrayList<SUGMAIGPPSTRANS_HDRDto> entry);
 }

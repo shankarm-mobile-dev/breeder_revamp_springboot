@@ -26,20 +26,11 @@ public class BreederBsgReportServiceImpl implements BreederBsgReportService {
             jdbcTemplate.execute("TRUNCATE TABLE sug_clob_gtt");
 
             // Step 1: Call procedure
-            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sug_rpt_gpps_pkg.breeder_bsg_rpt");
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sug_tst_d7_pkg.breeder_bsg_rpt");
 
             // Input parameter
-            query.registerStoredProcedureParameter("errbuf", String.class, ParameterMode.OUT);
-            query.registerStoredProcedureParameter("retcode", Integer.class, ParameterMode.OUT);
-
-            query.registerStoredProcedureParameter("p_ledger", Integer.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter("p_region_id", Integer.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter("p_plant_code", String.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("ps_flock_no", String.class, ParameterMode.IN);
 
-            query.setParameter("p_ledger", req.getLedger());
-            query.setParameter("p_region_id", req.getRegionId());
-            query.setParameter("p_plant_code", req.getPlantCode());
             query.setParameter("ps_flock_no", req.getFlockNo());
 
             query.execute();

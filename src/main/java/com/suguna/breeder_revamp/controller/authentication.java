@@ -1,16 +1,14 @@
 package com.suguna.breeder_revamp.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.suguna.breeder_revamp.dto.EmployeeValidationResult;
-import com.suguna.breeder_revamp.dto.ManagerLoginDto;
-import com.suguna.breeder_revamp.dto.ResponseDto;
-import com.suguna.breeder_revamp.dto.UserRequest;
+import com.suguna.breeder_revamp.dto.*;
+import com.suguna.breeder_revamp.response.ApiResponseList;
 import com.suguna.breeder_revamp.service.AuthenticationServiceImpl;
+import com.suguna.breeder_revamp.service.ShedReadyService;
+import com.suguna.breeder_revamp.service.ShedReadyServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +20,10 @@ import java.util.Objects;
 public class authentication {
     @Autowired
     AuthenticationServiceImpl authService;
+
+
+
+
 
     @PostMapping("/getUserID")
     public Integer getLogin(@RequestBody String empCode)
@@ -182,7 +184,8 @@ public class authentication {
                 loginDto.setStatusCode(200);
                 loginDto.setStatus("Success");
                 loginDto.setMessage("Updated Success");
-                if(userRequest.getUserType().equalsIgnoreCase("MANAGER")) {
+                var response=  authService.validateEmployee(userRequest.getUserCode());
+                if(response.getUserType().equalsIgnoreCase("MANAGER")) {
                     loginDto.setUser_details(authService.getManagerDetails(userRequest.getUserCode()));
                 }
                 else
@@ -310,4 +313,44 @@ public class authentication {
 
     }
 
+    @PostMapping("/createSupervisorLogin")
+    public ResponseDto createSupervisorLogin(@RequestBody SupervisorRequest userRequest)
+    {
+        ResponseDto loginDto=new ResponseDto();
+
+        var response= authService.createSupervisorLogin(userRequest);
+        if(Objects.equals(response.getFlag(), "N"))
+        {
+            loginDto.setMessage(response.getMessage());
+            loginDto.setStatusCode(201);
+            loginDto.setStatus("Failed");
+            // List<EmployeeValidationResult> resultList = new ArrayList<>();
+            loginDto.setResult(response);
+
+        }
+        else
+        {
+            loginDto.setMessage(response.getMessage());
+            loginDto.setStatusCode(200);
+            loginDto.setStatus("Success");
+            List<EmployeeValidationResult> resultList = new ArrayList<>();
+            resultList.add(response);
+            loginDto.setResult(response);
+
+        }
+        return loginDto;
+
+
+
+    }
+
+    @GetMapping("/supervisorEmail/{email}")
+    public ResponseDto getShedReadyQuestion(@PathVariable String email){
+        ResponseDto loginDto=new ResponseDto();
+        loginDto.setMessage("Success");
+        loginDto.setStatusCode(200);
+        loginDto.setStatus("Ok");
+        loginDto.setResult(authService.get_supervisor_email(email));
+        return loginDto;
+    }
 }
