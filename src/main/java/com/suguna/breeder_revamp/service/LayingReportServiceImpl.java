@@ -1,6 +1,6 @@
 package com.suguna.breeder_revamp.service;
 
-import com.suguna.breeder_revamp.dto.LayingReportRequest;
+import com.suguna.breeder_revamp.dto.LayingReportRequestDto;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.StoredProcedureQuery;
@@ -22,7 +22,7 @@ public class LayingReportServiceImpl implements LayingReportService {
 
     @Override
     @Transactional
-    public String getLayingReport(LayingReportRequest req) {
+    public String getLayingReport(LayingReportRequestDto req) {
 
         try {
             // CLEAR OLD TEMP DATA
