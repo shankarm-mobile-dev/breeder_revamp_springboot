@@ -10,7 +10,7 @@ public interface ShedReadyHeaderRepositories  extends JpaRepository<ShedReadyHea
 
 
         @Query
-        ShedReadyHeader findByFarmCodeAndFarmerStatus(String farmCode, String farmerStatus);
+        ShedReadyHeader findByFarmCodeAndFarmerStatusAndShedCode(String farmCode, String farmerStatus, String shedCode);
 
         @Query
         ShedReadyHeader findByFarmCode(String farmCode);

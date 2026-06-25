@@ -38,4 +38,8 @@ public class ShedReadyLines {
     private String remarks;
     @Column(name = "MANAGER_COMMENTS")
     private String managerComments;
+    @Column(name = "VALUE")
+    private Float value;
+    @Column(name = "UOM")
+    private String uom;
 }

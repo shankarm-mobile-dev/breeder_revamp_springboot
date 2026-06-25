@@ -23,9 +23,9 @@ public class ShedReadyController {
         this.shedReadyServices = shedReadyServices;
     }
 
-    @GetMapping("/question/{farmCode}/{feedbackRef}/{language}")
-    public ResponseEntity<ApiResponseList<ShedReadyDto>> getShedReadyQuestion(@PathVariable String farmCode, @PathVariable String feedbackRef, @PathVariable String language){
-        return shedReadyServices.getShedReadyQuestion(farmCode,feedbackRef,language);
+    @GetMapping("/question/{farmCode}/{feedbackRef}/{language}/{shedCode}")
+    public ResponseEntity<ApiResponseList<ShedReadyDto>> getShedReadyQuestion(@PathVariable String farmCode, @PathVariable String feedbackRef, @PathVariable String language,@PathVariable String shedCode){
+        return shedReadyServices.getShedReadyQuestion(farmCode,feedbackRef,language,shedCode);
     }
 
     @PostMapping(value = "/", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -34,19 +34,21 @@ public class ShedReadyController {
             @RequestParam("FARM_CODE") String farmCode,
             @RequestParam("ACTIVITY_ID") Long activityId,
             @RequestParam("REMARKS") String remarks,
-            @RequestParam(value = "image", required = false) MultipartFile imageFile
+            @RequestParam(value = "image", required = false) MultipartFile imageFile,
+            @RequestParam("SHED_CODE") String shedCode
     ) {
         ShedReadyLineDto shedReadyLineDto = new ShedReadyLineDto();
         shedReadyLineDto.setActivityId(activityId);
         shedReadyLineDto.setOrgId(orgId);
         shedReadyLineDto.setFarmCode(farmCode);
         shedReadyLineDto.setRemarks(remarks);
+        shedReadyLineDto.setShedCode(shedCode);
         return shedReadyServices.saveShedReadyLine(shedReadyLineDto, imageFile);
     }
 
-    @GetMapping("/{farm_code}")
-    public ResponseEntity<ApiResponseList<ShedReadyLineDto>> getShedReadyLines(@PathVariable String farm_code)
+    @GetMapping("/{farm_code}/{shed_code}")
+    public ResponseEntity<ApiResponseList<ShedReadyLineDto>> getShedReadyLines(@PathVariable String farm_code,@PathVariable String shed_code)
     {
-        return shedReadyServices.fetchShedReadyLine(farm_code);
+        return shedReadyServices.fetchShedReadyLine(farm_code,shed_code);
     }
 }

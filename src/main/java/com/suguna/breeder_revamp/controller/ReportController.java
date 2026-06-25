@@ -1,5 +1,6 @@
 package com.suguna.breeder_revamp.controller;
 
+import com.suguna.breeder_revamp.dto.*;
 import com.suguna.breeder_revamp.response.ApiResponse;
 import com.suguna.breeder_revamp.service.BodyWeightReportServiceImpl;
 import com.suguna.breeder_revamp.service.GrdReportServiceImpl;
@@ -10,11 +11,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import com.suguna.breeder_revamp.dto.LayingReportRequestDto;
-import com.suguna.breeder_revamp.dto.BreederBsgRequestDto;
-import com.suguna.breeder_revamp.dto.BodyWeightReportRequestDto;
-import com.suguna.breeder_revamp.dto.GrdReportRequestDto;
 
 @RestController
 @RequestMapping("/api/reports")
@@ -63,7 +59,7 @@ public class ReportController {
     // 1. LAYING REPORT
     @PostMapping(value = "/laying", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<String>> getLayingReport(
-            @RequestBody LayingReportRequestDto request) {
+            @RequestBody LayingReportRequest request) {
 
         try {
             String html = layingReportService.getLayingReport(request);

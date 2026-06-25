@@ -30,4 +30,6 @@ public class SugMaiGppsHousingLine {
     Date CREATION_DATE;
     Long BATCH_ID;
     Long BRANCH_ID;
+    //String ALLOCATE_STATUS;
+    String SIDE;
     }
