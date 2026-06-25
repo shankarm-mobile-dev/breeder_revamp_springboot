@@ -27,7 +27,8 @@ public class GrdReportServiceImpl implements GrdReportService {
             jdbcTemplate.execute("TRUNCATE TABLE sug_clob_gtt");
 
             // Step 1: Call procedure
-            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sug_rpt_gpps_pkg.sug_100_grd_det");
+            // StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sug_rpt_gpps_pkg.sug_100_grd_det");
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sug_rpt_gpps_pkg.sug_dig_flk_main");
 
             query.registerStoredProcedureParameter("errbuf", String.class, ParameterMode.OUT);
             query.registerStoredProcedureParameter("retcode", Integer.class, ParameterMode.OUT);
@@ -36,11 +37,18 @@ public class GrdReportServiceImpl implements GrdReportService {
             query.registerStoredProcedureParameter("p_region_id", Integer.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_plant_code", String.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_flock", String.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_type", String.class, ParameterMode.IN);
+
+            query.registerStoredProcedureParameter("P_fm_age", Integer.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_to_age", Integer.class, ParameterMode.IN);
 
             query.setParameter("p_ledger", req.getLedger());
             query.setParameter("p_region_id", req.getRegionId());
             query.setParameter("p_plant_code", req.getPlantCode());
             query.setParameter("p_flock", req.getFlock());
+            query.setParameter("P_type", "100 Grading details");
+            query.setParameter("P_fm_age", null);
+            query.setParameter("p_to_age", null);
 
             query.execute();
 
