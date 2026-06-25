@@ -91,4 +91,7 @@ public interface FarmService {
     String saveFlockGradeWiseDetails(ArrayList<PlacementRequest> placementRequest1);
     ArrayList<BranchUser.MedicineScheduleDetails> getDailyMedicineSchedule(String branchID,String shedNo,String date);
     String saveDailyMedicineVaccine(BranchRequest branchRequest, List<MultipartFile> imageFile);
+    ArrayList<BranchUser.PlacementInfoShedDetails> getShedReadyshedinfo(String branchID);
+
+    ArrayList<BranchUser.ShedDetailsReport>  getShedDetailsReport(String branchID);
 }

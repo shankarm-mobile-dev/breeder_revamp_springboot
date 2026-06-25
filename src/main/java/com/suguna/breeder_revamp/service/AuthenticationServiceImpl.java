@@ -551,7 +551,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             String sql = "delete from sug_mai_line_access a where a.USER_NAME=?1 and a.APPLICATION_NAME='BREEDER_NEW'";
             /*entityManager.createNativeQuery(sql).setParameter(1,UserCode.getUserCode()).executeUpdate();
             updateshed(UserCode,"-");*/
-            if(UserCode.getExistingCode() != null && UserCode.getExistingCode().isEmpty()) {
+            if(!UserCode.getUserType().equals("CBFFARM_SUPERVISOR")) {
                 entityManager.createNativeQuery(sql).setParameter(1, UserCode.getUserCode()).executeUpdate();
                 updateshed(UserCode, UserCode.getUserCode());
             }
@@ -580,13 +580,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             storedProcedureQuery.setParameter(7, "0");
             storedProcedureQuery.setParameter(8, UserCode.getExistingCode());
             Output = (String) storedProcedureQuery.getOutputParameterValue(9);
-            String sql = "delete from sug_mai_line_access a where a.USER_NAME=?1 and a.APPLICATION_NAME='BREEDER_NEW'";
-            if(UserCode.getExistingCode() != null && UserCode.getExistingCode().isEmpty()) {
-                entityManager.createNativeQuery(sql).setParameter(1, UserCode.getUserCode()).executeUpdate();
+            String sql = "delete from sug_mai_line_access a where a.USER_NAME=?1 and a.ORGANIZATION_ID=?2 and a.APPLICATION_NAME='BREEDER_NEW'";
+            if(!UserCode.getUserType().equals("CBFFARM_SUPERVISOR")) {
+                entityManager.createNativeQuery(sql).setParameter(1, UserCode.getUserCode()).setParameter(2, UserCode.getBranchId()).executeUpdate();
                 updateshed(UserCode, UserCode.getUserCode());
             }
             else {
-                entityManager.createNativeQuery(sql).setParameter(1, UserCode.getExistingCode()).executeUpdate();
+                entityManager.createNativeQuery(sql).setParameter(1, UserCode.getExistingCode()).setParameter(2, UserCode.getBranchId()).executeUpdate();
                 updateshed(UserCode, UserCode.getExistingCode());
             }
         }

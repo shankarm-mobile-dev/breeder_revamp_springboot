@@ -47,6 +47,11 @@ public class ShedReadyDto {
         @JsonProperty("REMARKS")
         private String remarks;
 
+        @JsonProperty("VALUE")
+        private String value;
+        @JsonProperty("UOM")
+        private String uom;
+
 
 
 }

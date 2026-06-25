@@ -44,6 +44,8 @@ public class PlacementRequest{
         String maleBirdsCount;
         @JsonProperty("gradeNo")
         String gradeNo;
+        @JsonProperty("side")
+        String side;
 
     }
 }

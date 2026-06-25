@@ -38,7 +38,7 @@ public class ShedReadyServiceImpl  implements ShedReadyService{
     FileStorageService fileStorageService;
 
     @Override
-    public ResponseEntity<ApiResponseList<ShedReadyDto>> getShedReadyQuestion(String farmCode, String feedbackRef, String language) {
+    public ResponseEntity<ApiResponseList<ShedReadyDto>> getShedReadyQuestion(String farmCode, String feedbackRef, String language, String shedCode) {
     // Query the repository (DB/view) using the provided filters
     List<FeedbackMaster> feedbackMasterList = feedMstRepositories.findByFeedbackRefAndLanguage(feedbackRef, language);
 
@@ -51,7 +51,7 @@ public class ShedReadyServiceImpl  implements ShedReadyService{
     List<ShedReadyDto> feedbackMstDtoList = new ArrayList<>();
 
     ShedReadyHeader shedReadyHeaders = shedReadyHeaderRepositories
-            .findByFarmCodeAndFarmerStatus(farmCode, "NO");
+            .findByFarmCodeAndFarmerStatusAndShedCode(farmCode, "NO",shedCode);
 
         if (shedReadyHeaders == null) {
         shedReadyHeaders = shedReadyHeaderRepositories.findByFarmCodeAndFarmerStatusAndManagerStatus(farmCode, "YES", "NO");
@@ -66,6 +66,8 @@ public class ShedReadyServiceImpl  implements ShedReadyService{
         Date submittedDate = null;
         String status = "";
         String remarks = "";
+        String value="";
+        String uom="";
         if (shedReadyHeaders != null) {
             ShedReadyLines shedReadyLines = shedReadyLineRepositories.findByTransIdAndActivityId(shedReadyHeaders.getTransId(), feedbackMaster.getQuestionId());
             if (shedReadyLines != null) {
@@ -73,6 +75,8 @@ public class ShedReadyServiceImpl  implements ShedReadyService{
                 submittedDate = shedReadyLines.getCreationDate();
                 status = (shedReadyLines.getManagerStatus().equals("NO") ? "PENDING" : (shedReadyLines.getManagerStatus().equals("A") ? "APPROVED" : "REJECTED"));
                 remarks = shedReadyLines.getManagerComments();
+                value= String.valueOf(shedReadyLines.getValue());
+                uom=shedReadyLines.getUom();
             }
         }
 
@@ -90,6 +94,8 @@ public class ShedReadyServiceImpl  implements ShedReadyService{
                         .submittedDate(submittedDate)
                         .status(status)
                         .remarks(remarks)
+                        .value(value)
+                        .uom(uom)
                         .build()
         );
     }
@@ -124,7 +130,7 @@ public class ShedReadyServiceImpl  implements ShedReadyService{
         // Check if header exists (your business logic seems to check YES, but your comment says NO)
         // Adjusted based on your code (find by YES)
         ShedReadyHeader shedReadyHeaders = shedReadyHeaderRepositories
-                .findByFarmCodeAndFarmerStatus(shedReadyLineDto.getFarmCode(), "NO");
+                .findByFarmCodeAndFarmerStatusAndShedCode(shedReadyLineDto.getFarmCode(), "NO",shedReadyLineDto.getShedCode());
 
         Long transId;
         if (shedReadyHeaders != null) {
@@ -138,6 +144,7 @@ public class ShedReadyServiceImpl  implements ShedReadyService{
                     .postedFlag("N")
                     .managerStatus("NO")
                     .creationDate(new Date())
+                    .shedCode(shedReadyLineDto.getShedCode())
                     .build();
             ShedReadyHeader optHeaders = shedReadyHeaderRepositories.save(shedHeaders);
             transId = optHeaders.getTransId();
@@ -179,6 +186,10 @@ public class ShedReadyServiceImpl  implements ShedReadyService{
                     .imagePath(imageUrl)
                     .audioPath(voiceUrl)
                     .remarks(shedReadyLineDto.getRemarks())
+                    /*if(shedReadyLineDto.getValue() != null && !shedReadyLineDto.getValue().isEmpty()) {
+                        .value(Float.valueOf(shedReadyLineDto.getValue()))
+                    }*/
+                    .uom(shedReadyLineDto.getUom())
                     .build();
         } else {
             shedReadyLines.setUpdationDate(new Date());
@@ -210,7 +221,7 @@ public class ShedReadyServiceImpl  implements ShedReadyService{
     }
 
     @Override
-    public ResponseEntity<ApiResponseList<ShedReadyLineDto>> fetchShedReadyLine(String farmCode) {
+    public ResponseEntity<ApiResponseList<ShedReadyLineDto>> fetchShedReadyLine(String farmCode, String shed_code) {
 
         List<FeedbackMaster> feedbackMasterList = feedMstRepositories.findByFeedbackRefAndLanguage("BREEDER_SHED_ACTIVITY", "en");
         //List<FeedbackMaster> feedbackMaster = feedbackMstRepositories.findByFeedbackRefAndLanguageAndQuestionId("FARMER_SHED_ACTIVITY", "en", Integer.parseInt(String.valueOf(shedReadyLineDto.getActivityId())));
@@ -218,7 +229,7 @@ public class ShedReadyServiceImpl  implements ShedReadyService{
             return Response.buildSingleResponseList("Failure", HttpStatus.NOT_FOUND, "Question Not Found", null);
 
         ShedReadyHeader shedReadyHeaders = shedReadyHeaderRepositories
-                .findByFarmCodeAndFarmerStatus(farmCode, "NO");
+                .findByFarmCodeAndFarmerStatusAndShedCode(farmCode, "NO", shed_code);
 
         Long transId;
         if (shedReadyHeaders == null) {
@@ -244,6 +255,7 @@ public class ShedReadyServiceImpl  implements ShedReadyService{
                             .farmerStatus(data.getFarmerStatus())
                             .managerStatus(data.getManagerStatus())
                             .farmCode(shedReadyHeaders.getFarmCode())
+                            .shedCode(shedReadyHeaders.getShedCode())
                             .build()
             );
         }

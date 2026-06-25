@@ -9,9 +9,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface ShedReadyService {
 
-    ResponseEntity<ApiResponseList<ShedReadyDto>> getShedReadyQuestion(String farmCode, String feedbackRef, String language);
+    ResponseEntity<ApiResponseList<ShedReadyDto>> getShedReadyQuestion(String farmCode, String feedbackRef, String language, String shedCode);
     ResponseEntity<ShedReadyResponseDto<Object>> saveShedReadyLine(ShedReadyLineDto shedReadyLineDto, MultipartFile imageFile);
-    ResponseEntity<ApiResponseList<ShedReadyLineDto>> fetchShedReadyLine(String farmCode);
+    ResponseEntity<ApiResponseList<ShedReadyLineDto>> fetchShedReadyLine(String farmCode, String shed_code);
 
 
 }
