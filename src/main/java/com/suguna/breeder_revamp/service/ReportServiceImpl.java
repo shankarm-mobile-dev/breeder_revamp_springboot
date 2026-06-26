@@ -1,5 +1,6 @@
 package com.suguna.breeder_revamp.service;
 
+import com.suguna.breeder_revamp.dto.ReportDto;
 import com.suguna.breeder_revamp.dto.ReportResultDto;
 import com.suguna.breeder_revamp.utils.ResultSetMapper;
 import jakarta.persistence.EntityManager;
@@ -39,5 +40,145 @@ public class ReportServiceImpl implements ReportService{
         }
         reportResultDto.setCoolroommst(Result);
         return reportResultDto;
+    }
+
+    @Override
+    public ReportResultDto DAILYMONITORING(String branch_ID) throws SQLException{
+        ReportResultDto reportResultDto=new ReportResultDto();
+        ReportResultDto.dailymonitoring appinfo = new ReportResultDto.dailymonitoring();
+        ArrayList<ReportResultDto.dailymonitoring> Result = new ArrayList<ReportResultDto.dailymonitoring>();
+        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gppsmob_pkg.getdailymonitoring");
+        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+        storedProcedureQuery.setParameter(1, branch_ID);
+        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+        storedProcedureQuery.execute();
+
+        while (resultSet.next()) {
+            try {
+                appinfo = ResultSetMapper.mapResultSetToObject(resultSet,ReportResultDto.dailymonitoring.class);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+            Result.add(appinfo);
+        }
+        reportResultDto.setDailymonitoringmst(Result);
+        return reportResultDto;
+    }
+
+    public ReportResultDto GPPSCANDLINGREPORT(String branch_ID) throws SQLException{
+        ReportResultDto reportResultDto=new ReportResultDto();
+        ReportResultDto.gppscandlingreport appinfo = new ReportResultDto.gppscandlingreport();
+        ArrayList<ReportResultDto.gppscandlingreport> Result = new ArrayList<ReportResultDto.gppscandlingreport>();
+        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gppsmob_pkg.getgppscandlingreport");
+        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+        storedProcedureQuery.setParameter(1, branch_ID);
+        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+        storedProcedureQuery.execute();
+
+        while (resultSet.next()) {
+            try {
+                appinfo = ResultSetMapper.mapResultSetToObject(resultSet,ReportResultDto.gppscandlingreport.class);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+            Result.add(appinfo);
+        }
+        reportResultDto.setCandlingreportmst(Result);
+        return reportResultDto;
+    }
+
+    public ReportResultDto GPPSHATCHINGREPORT(String branch_ID) throws SQLException{
+        ReportResultDto reportResultDto=new ReportResultDto();
+        ReportResultDto.gppshatchingreport appinfo = new ReportResultDto.gppshatchingreport();
+        ArrayList<ReportResultDto.gppshatchingreport> Result = new ArrayList<ReportResultDto.gppshatchingreport>();
+        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gppsmob_pkg.getgppshatchingreport");
+        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+        storedProcedureQuery.setParameter(1, branch_ID);
+        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+        storedProcedureQuery.execute();
+
+        while (resultSet.next()) {
+            try {
+                appinfo = ResultSetMapper.mapResultSetToObject(resultSet,ReportResultDto.gppshatchingreport.class);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+            Result.add(appinfo);
+        }
+        reportResultDto.setHatchingreportmst(Result);
+        return reportResultDto;
+    }
+
+    public ReportResultDto GPPSHATCHINGREPORTAGEWISE(String branch_ID) throws SQLException{
+        ReportResultDto reportResultDto=new ReportResultDto();
+        ReportResultDto.gppshatchingreport appinfo = new ReportResultDto.gppshatchingreport();
+        ArrayList<ReportResultDto.gppshatchingreport> Result = new ArrayList<ReportResultDto.gppshatchingreport>();
+        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gppsmob_pkg.getgppshatchingreportagewise");
+        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+        storedProcedureQuery.setParameter(1, branch_ID);
+        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+        storedProcedureQuery.execute();
+
+        while (resultSet.next()) {
+            try {
+                appinfo = ResultSetMapper.mapResultSetToObject(resultSet,ReportResultDto.gppshatchingreport.class);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+            Result.add(appinfo);
+        }
+        reportResultDto.setHatchingreportmst(Result);
+        return reportResultDto;
+    }
+
+    public ReportResultDto EGGGRADINGREPORTS(String branch_ID) throws SQLException{
+        ReportResultDto reportResultDto=new ReportResultDto();
+        ReportResultDto.egggradingreport appinfo = new ReportResultDto.egggradingreport();
+        ArrayList<ReportResultDto.egggradingreport> Result = new ArrayList<ReportResultDto.egggradingreport>();
+        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gppsmob_pkg.getegggradingreport");
+        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+        storedProcedureQuery.setParameter(1, branch_ID);
+        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+        storedProcedureQuery.execute();
+
+        while (resultSet.next()) {
+            try {
+                appinfo = ResultSetMapper.mapResultSetToObject(resultSet,ReportResultDto.egggradingreport.class);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+            Result.add(appinfo);
+        }
+        reportResultDto.setEgggradingreportmst(Result);
+        return reportResultDto;
+    }
+
+    public ArrayList<ReportDto.feedStock> getFeedstock(String branchid)throws SQLException{
+        ReportDto.feedStock api = new ReportDto.feedStock();
+        ArrayList<ReportDto.feedStock> Result = new ArrayList<ReportDto.feedStock>();
+        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("Sug_Mai_Gppsmgr_Pkg.getfeedstock");
+        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+        storedProcedureQuery.setParameter(1,branchid);
+        System.out.println(branchid);
+        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+        storedProcedureQuery.execute();
+
+
+        while (resultSet.next()) {
+            try {
+                api = ResultSetMapper.mapResultSetToObject(resultSet, ReportDto.feedStock.class);
+            } catch (Exception e) {
+                throw new RuntimeException();
+            }
+
+            Result.add(api);
+        }
+        return Result;
     }
 }

@@ -3,12 +3,15 @@ package com.suguna.breeder_revamp.controller;
 import com.suguna.breeder_revamp.dto.*;
 import com.suguna.breeder_revamp.response.ApiResponse;
 import com.suguna.breeder_revamp.service.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(name = "Report APIs", description = "New Reports")
 @RestController
 @RequestMapping("/api/reports")
 public class ReportController {
@@ -60,6 +63,7 @@ public class ReportController {
     }
 
     // 1. LAYING REPORT
+    @Operation(summary = "Laying Report")
     @PostMapping(value = "/laying", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<String>> getLayingReport(
             @RequestBody LayingReportRequestDto request) {
@@ -74,6 +78,7 @@ public class ReportController {
     }
 
     // 2. BSG REPORT
+    @Operation(summary = "Breeder Birds Shifting Report")
     @PostMapping(value = "/bsg", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<String>> getBreederBsgReport(
             @RequestBody BreederBsgRequestDto request) {
@@ -88,6 +93,7 @@ public class ReportController {
     }
 
     // 3. BODY WEIGHT REPORT
+    @Operation(summary = "Body Weight Report")
     @PostMapping(value = "/bodyWeight", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<String>> getBodyWeight(
             @RequestBody BodyWeightReportRequestDto request) {
@@ -102,6 +108,7 @@ public class ReportController {
     }
 
     // 4. GRD REPORT
+    @Operation(summary = "100 GRADE Detail Report")
     @PostMapping(value = "/grd", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<String>> getGrdReport(
             @RequestBody GrdReportRequestDto request) {
@@ -116,6 +123,7 @@ public class ReportController {
     }
 
     // 5. DAILY SUMMARY REPORT (Brooding Growing and Laying)
+    @Operation(summary = "Daily Summary Report")
     @PostMapping(value = "/dailySummary", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<String>> getDailySummary(
             @RequestBody DailyFarmSummaryRequestDto request) {
@@ -130,6 +138,7 @@ public class ReportController {
     }
 
     // 6. Brooding & Growing Register Report
+    @Operation(summary = "Brooding & Growing Register Report")
     @PostMapping(value = "/broodGrowRegister", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<String>> getBroodGrowRegister(
             @RequestBody BroodGrowRegisterRequestDto request) {
