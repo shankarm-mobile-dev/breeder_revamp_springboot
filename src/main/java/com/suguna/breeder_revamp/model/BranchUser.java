@@ -170,6 +170,9 @@ public class BranchUser {
         @Column(name = "GRADE" , type = String.class)
         @JsonProperty("grade")
         String grade;
+        @Column(name = "SIDE" , type = String.class)
+        @JsonProperty("SIDE")
+        String side;
         @Column(name = "TOTAL_BIRDS_CAPACITY" , type = String.class)
         @JsonProperty("totalBirdsCapacity")
         String totalBirdsCapacity;
@@ -499,7 +502,7 @@ public class BranchUser {
         @JsonProperty("REPORT_NUM")
         String reportNum;
     }
-        @Getter
+    @Getter
     @Setter
     public static class PlacementInfoShedDetails {
         @Column(name = "TOTAL_BIRDS_CAPACITY", type = String.class)
@@ -528,6 +531,77 @@ public class BranchUser {
     }
     @Getter
     @Setter
+    public static class ShedDetailsReport {
+        @Column(name = "TOTAL_BIRDS_CAPACITY", type = String.class)
+        @JsonProperty("TOTAL_BIRDS_CAPACITY")
+        String totalBirdsCapacity;
+        @Column(name = "FEMALE_NOS", type = String.class)
+        @JsonProperty("FEMALE_NOS")
+        String femaleNos;
+        @Column(name = "MALE_NOS", type = String.class)
+        @JsonProperty("MALE_NOS")
+        String maleNos;
+        @Column(name = "ALLOCATE_PER", type = String.class)
+        @JsonProperty("ALLOCATE_PER")
+        String allocatePer;
+        @Column(name = "REMAINING_BIRDS", type = String.class)
+        @JsonProperty("REMAINING_BIRDS")
+        String remainingBirds;
+        @Column(name = "SHED_NAME", type = String.class)
+        @JsonProperty("SHED_NAME")
+        String shedName;
+        @Column(name = "FLOCK_ID", type = String.class)
+        @JsonProperty("FLOCK_ID")
+        String flockID;
+
+
+        @Column(name = "SHED_REARING_AREA", type = String.class)
+        @JsonProperty("SHED_REARING_AREA")
+        String shedRearingArea;
+        @Column(name = "SHED_TYPE", type = String.class)
+        @JsonProperty("SHED_TYPE")
+        String shedType;
+        @Column(name = "SHED_DIRECTION", type = String.class)
+        @JsonProperty("SHED_DIRECTION")
+        String shedDirection;
+        @Column(name = "SHED_LENGTH", type = String.class)
+        @JsonProperty("SHED_LENGTH")
+        String shedLength;
+        @Column(name = "SHED_BREATH", type = String.class)
+        @JsonProperty("SHED_BREATH")
+        String shedBreath;
+        @Column(name = "SHED_AREA", type = String.class)
+        @JsonProperty("SHED_AREA")
+        String shedArea;
+
+        @Column(name = "ROOF_TYPE", type = String.class)
+        @JsonProperty("ROOF_TYPE")
+        String roofType;
+        @Column(name = "FLOOR_TYPE", type = String.class)
+        @JsonProperty("FLOOR_TYPE")
+        String floorType;
+        @Column(name = "CAPACITY_BIRDS_F", type = String.class)
+        @JsonProperty("CAPACITY_BIRDS_F")
+        String capacityBirdsF;
+        @Column(name = "CAPACITY_BIRDS_M", type = String.class)
+        @JsonProperty("CAPACITY_BIRDS_M")
+        String capacityBirdsM;
+        @Column(name = "CAPACITY_UOM", type = String.class)
+        @JsonProperty("CAPACITY_UOM")
+        String capacityUom;
+        @Column(name = "LINES_NO", type = String.class)
+        @JsonProperty("LINES_NO")
+        String linesNo;
+        @Column(name = "SL_NO", type = String.class)
+        @JsonProperty("SL_NO")
+        String slNo;
+
+
+        @JsonProperty("PlacementInfoLineDetails")
+        ArrayList<PlacementInfoLineDetails> PlacementInfoLineDetails;
+    }
+    @Getter
+    @Setter
     public static class PlacementInfoLineDetails {
         @Column(name = "TOTAL_BIRDS_CAPACITY", type = String.class)
         @JsonProperty("TOTAL_BIRDS_CAPACITY")
@@ -547,6 +621,9 @@ public class BranchUser {
         @Column(name = "LINE_NAME", type = String.class)
         @JsonProperty("LINE_NAME")
         String lineName;
+        @Column(name = "SIDE", type = String.class)
+        @JsonProperty("SIDE")
+        String side;
     }
 
     @Getter

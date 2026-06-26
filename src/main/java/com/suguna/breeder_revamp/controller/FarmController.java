@@ -462,4 +462,25 @@ public class FarmController {
         responseDto.setResult(farmService.getDailyMedicineSchedule(branchRequest.getBranchID(),branchRequest.getShedNo(),branchRequest.getTransDate()));
         return responseDto;
     }
+    @PostMapping("/getShedReadyshedinfo")
+    public ResponseDto getShedReadyshedinfo(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getShedReadyshedinfo(branchRequest.getBranchID()));
+        return responseDto;
+    }
+
+    @PostMapping("/getShedDetailsReport")
+    public ResponseDto getShedDetailsReport(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getShedDetailsReport(branchRequest.getBranchID()));
+        return responseDto;
+    }
 }

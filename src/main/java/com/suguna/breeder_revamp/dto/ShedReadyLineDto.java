@@ -36,4 +36,11 @@ public class ShedReadyLineDto {
     private String voicePath;
     @JsonProperty("BATCH_ID")
     private Integer batchId;
+    @JsonProperty("SHED_CODE")
+    private String shedCode;
+
+    @JsonProperty("VALUE")
+    private String value;
+    @JsonProperty("UOM")
+    private String uom;
 }
