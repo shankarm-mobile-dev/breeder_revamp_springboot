@@ -67,4 +67,10 @@ public class ReportControllers {
     public ArrayList<ReportDto.feedStock> getFeedstock(@PathVariable String branchid) throws Exception{
         return reportService.getFeedstock(branchid);
     }
+
+    @Operation(summary = "Egg Unboxing Report")
+    @GetMapping("/eggUnboxing/{branchId}/{fromMonth}/{toMonth}")
+    public ReportResultDto EGGUNBOXINGREPORT(@PathVariable String branchId, @PathVariable String fromMonth, @PathVariable String toMonth) throws Exception {
+        return reportService.EGGUNBOXINGREPORT(branchId, fromMonth, toMonth);
+    }
 }

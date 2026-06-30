@@ -1,5 +1,6 @@
 package com.suguna.breeder_revamp.service;
 
+import com.suguna.breeder_revamp.dto.LayingReportRequest;
 import com.suguna.breeder_revamp.dto.LayingReportRequestDto;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
@@ -22,7 +23,7 @@ public class LayingReportServiceImpl implements LayingReportService {
 
     @Override
     @Transactional
-    public String getLayingReport(LayingReportRequestDto req) {
+    public String getLayingReport(LayingReportRequest req) {
 
         try {
             // CLEAR OLD TEMP DATA
@@ -35,13 +36,13 @@ public class LayingReportServiceImpl implements LayingReportService {
             query.registerStoredProcedureParameter("errbuf", String.class, ParameterMode.OUT);
             query.registerStoredProcedureParameter("retcode", Integer.class, ParameterMode.OUT);
 
-            query.registerStoredProcedureParameter("p_ledger", Integer.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter("p_region_id", Integer.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_ledger", String.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_region_id", String.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_plant_code", String.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_flock", String.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("P_type", String.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter("p_fm_age", Integer.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter("p_to_age", Integer.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_fm_age", String.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_to_age", String.class, ParameterMode.IN);
 
             query.setParameter("p_ledger", req.getLedger());
             query.setParameter("p_region_id", req.getRegionId());
