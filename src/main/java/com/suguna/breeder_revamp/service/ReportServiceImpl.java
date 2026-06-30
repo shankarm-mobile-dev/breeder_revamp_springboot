@@ -181,4 +181,34 @@ public class ReportServiceImpl implements ReportService{
         }
         return Result;
     }
+
+    @Override
+    public ReportResultDto EGGUNBOXINGREPORT(String branchId, String fromMonth, String toMonth) throws SQLException {
+
+        ReportResultDto reportResultDto = new ReportResultDto();
+        ReportResultDto.eggunboxing appinfo = new ReportResultDto.eggunboxing();
+
+        ArrayList<ReportResultDto.eggunboxing> result = new ArrayList<>();
+        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gppsmob_pkg.getEggUnboxingReport");
+        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(4, ArrayList.class, ParameterMode.REF_CURSOR);
+
+        storedProcedureQuery.setParameter(1, branchId);
+        storedProcedureQuery.setParameter(2, fromMonth);
+        storedProcedureQuery.setParameter(3, toMonth);
+
+        storedProcedureQuery.execute();
+
+        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(4);
+
+        while (resultSet.next()) {
+            appinfo = ResultSetMapper.mapResultSetToObject(resultSet, ReportResultDto.eggunboxing.class);
+            result.add(appinfo);
+        }
+        reportResultDto.setEggunboxingmst(result);
+
+        return reportResultDto;
+    }
 }

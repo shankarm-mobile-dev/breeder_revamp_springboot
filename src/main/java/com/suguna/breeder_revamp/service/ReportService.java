@@ -20,4 +20,6 @@ public interface ReportService {
     ReportResultDto EGGGRADINGREPORTS(String branch_ID) throws SQLException;
 
     ArrayList<ReportDto.feedStock> getFeedstock(String branchid)throws SQLException;
+
+    ReportResultDto EGGUNBOXINGREPORT(String branchId, String fromMonth, String toMonth) throws SQLException;
 }

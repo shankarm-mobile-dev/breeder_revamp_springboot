@@ -17,6 +17,8 @@ public class ReportResultDto {
     ArrayList<egggradingreport> egggradingreportmst;
     @JsonProperty("coolroommst")
     ArrayList<coolroomstock> coolroommst;
+    @JsonProperty("eggunboxingmst")
+    ArrayList<eggunboxing> eggunboxingmst;
 
     public ArrayList<coolroomstock> getCoolroommst() {
         return coolroommst;
@@ -56,6 +58,12 @@ public class ReportResultDto {
 
     public void setDailymonitoringmst(ArrayList<dailymonitoring> dailymonitoringmst) {
         this.dailymonitoringmst = dailymonitoringmst;
+    }
+
+    public ArrayList<eggunboxing> getEggunboxingmst() {return eggunboxingmst;}
+
+    public void setEggunboxingmst(ArrayList<eggunboxing> eggunboxingmst) {
+        this.eggunboxingmst = eggunboxingmst;
     }
 
     public static class dailymonitoring{
@@ -315,15 +323,6 @@ public class ReportResultDto {
         @JsonProperty("cull")
         public String cull;
 
-
-
-
-
-
-
-
-
-
     }
     public static class gppshatchingreportagewise{
         @Column(name = "region_CODE", type = String.class)
@@ -493,5 +492,55 @@ public class ReportResultDto {
         @JsonProperty("qty")
         public String qty;
 
+    }
+    public static class eggunboxing {
+
+        @Column(name = "TRANS_ID", type = Long.class)
+        @JsonProperty("TRANS_ID")
+        public Long TRANS_ID;
+
+        @Column(name = "BRANCH_ID", type = Integer.class)
+        @JsonProperty("BRANCH_ID")
+        public Integer BRANCH_ID;
+
+        @Column(name = "BRANCH_NAME", type = String.class)
+        @JsonProperty("BRANCH_NAME")
+        public String BRANCH_NAME;
+
+        @Column(name = "UNBOXING_DATE", type = String.class)
+        @JsonProperty("UNBOXING_DATE")
+        public String UNBOXING_DATE;
+
+        @Column(name = "FLOCK", type = String.class)
+        @JsonProperty("FLOCK")
+        public String FLOCK;
+
+        @Column(name = "CRACK_EGGS", type = Integer.class)
+        @JsonProperty("CRACK_EGGS")
+        public Integer CRACK_EGGS;
+
+        @Column(name = "DAMAGE_EGGS", type = Integer.class)
+        @JsonProperty("DAMAGE_EGGS")
+        public Integer DAMAGE_EGGS;
+
+        @Column(name = "MISSING_EGGS", type = Integer.class)
+        @JsonProperty("MISSING_EGGS")
+        public Integer MISSING_EGGS;
+
+        @Column(name = "TOTAL_DEFECTED", type = Integer.class)
+        @JsonProperty("TOTAL_DEFECTED")
+        public Integer TOTAL_DEFECTED;
+
+        @Column(name = "TOTAL_CHECKED", type = Integer.class)
+        @JsonProperty("TOTAL_CHECKED")
+        public Integer TOTAL_CHECKED;
+
+        @Column(name = "INSPECTOR_NAME", type = String.class)
+        @JsonProperty("INSPECTOR_NAME")
+        public String INSPECTOR_NAME;
+
+        @Column(name = "REMARKS", type = String.class)
+        @JsonProperty("REMARKS")
+        public String REMARKS;
     }
 }
