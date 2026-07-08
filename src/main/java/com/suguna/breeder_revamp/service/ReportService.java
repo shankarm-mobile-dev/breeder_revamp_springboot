@@ -22,4 +22,6 @@ public interface ReportService {
     ArrayList<ReportDto.feedStock> getFeedstock(String branchid)throws SQLException;
 
     ReportResultDto EGGUNBOXINGREPORT(String branchId, String fromMonth, String toMonth) throws SQLException;
+
+    ReportDto getGppsperformance(String branch_code) throws SQLException;
 }

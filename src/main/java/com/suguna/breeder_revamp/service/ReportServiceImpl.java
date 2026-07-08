@@ -211,4 +211,27 @@ public class ReportServiceImpl implements ReportService{
 
         return reportResultDto;
     }
+
+    public ReportDto getGppsperformance(String branch_code) throws SQLException {
+        ReportDto reportDto=new ReportDto();
+        ReportDto.gppsPerformanceResultDto api = new ReportDto.gppsPerformanceResultDto();
+        ArrayList<ReportDto.gppsPerformanceResultDto> Result = new ArrayList<ReportDto.gppsPerformanceResultDto>();
+        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("Sug_Mai_Gppsmgr_Pkg.getgppsperformance");
+        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+        storedProcedureQuery.setParameter(1, branch_code);
+        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+        storedProcedureQuery.execute();
+
+        while (resultSet.next()) {
+            try {
+                api = ResultSetMapper.mapResultSetToObject(resultSet, ReportDto.gppsPerformanceResultDto.class);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+            Result.add(api);
+        }
+        reportDto.setPerformance(Result);
+        return reportDto;
+    }
 }
