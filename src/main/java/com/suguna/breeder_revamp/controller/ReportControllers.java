@@ -73,4 +73,10 @@ public class ReportControllers {
     public ReportResultDto EGGUNBOXINGREPORT(@PathVariable String branchId, @PathVariable String fromMonth, @PathVariable String toMonth) throws Exception {
         return reportService.EGGUNBOXINGREPORT(branchId, fromMonth, toMonth);
     }
+
+    @Operation(summary = "Get GPPS Performance")
+    @GetMapping("/getgppsperformance/{branch_code}")
+    public ReportDto getGppsperformance(@PathVariable String branch_code) throws Exception{
+        return reportService.getGppsperformance(branch_code);
+    }
 }
