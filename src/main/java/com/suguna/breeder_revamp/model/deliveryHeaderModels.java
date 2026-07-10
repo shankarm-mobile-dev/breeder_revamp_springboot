@@ -1,20 +1,22 @@
 package com.suguna.breeder_revamp.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.util.Date;
 
+
 @Entity
 @Table(name="SUG_DELIVERY_HEADER",schema = "SUG")
 public class deliveryHeaderModels {
-    @Id
+
     BigDecimal LEDGER_ID;
     BigDecimal ORG_ID;
     BigDecimal BRANCH_ID;
-    BigDecimal DELV_TRANS_ID;
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "id_seq_sug_delivery_header_s")
+    @SequenceGenerator(sequenceName = "sug_delivery_header_s", allocationSize = 1, name = "id_seq_sug_delivery_header_s")
+    long DELV_TRANS_ID;
     Date DELIVERY_DATE;
     BigDecimal CUSTOMER_ID;
     String VEHICLE_NO;
@@ -60,11 +62,11 @@ public class deliveryHeaderModels {
         this.BRANCH_ID = BRANCH_ID;
     }
 
-    public BigDecimal getDELV_TRANS_ID() {
+    public long getDELV_TRANS_ID() {
         return DELV_TRANS_ID;
     }
 
-    public void setDELV_TRANS_ID(BigDecimal DELV_TRANS_ID) {
+    public void setDELV_TRANS_ID(long DELV_TRANS_ID) {
         this.DELV_TRANS_ID = DELV_TRANS_ID;
     }
 

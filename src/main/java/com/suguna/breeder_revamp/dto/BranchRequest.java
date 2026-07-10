@@ -40,6 +40,8 @@ public class BranchRequest<T> {
     String phLevel;
     @JsonProperty("pmLevel")
     String pmLevel;
+    @JsonProperty("entryDate")
+    String entryDate;
     @JsonProperty("data")
     T data;
 

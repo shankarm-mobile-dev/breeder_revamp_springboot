@@ -1,8 +1,6 @@
 package com.suguna.breeder_revamp.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.util.Date;
@@ -10,10 +8,13 @@ import java.util.Date;
 @Entity
 @Table(name = "SUG_DELIVERY_LOT_DETAILS",schema = "SUG")
 public class deliveryLotDetailsModels {
+
+    long DELV_TRANS_ID;
+    long DELV_TRANS_LINE_ID;
     @Id
-    BigDecimal DELV_TRANS_ID;
-    BigDecimal DELV_TRANS_LINE_ID;
-    BigDecimal DELV_TRANS_LOT_DET_ID;
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "id_seq_sug_delivery_lot_details_s")
+    @SequenceGenerator(sequenceName = "sug_delivery_lot_details_s", allocationSize = 1, name = "id_seq_sug_delivery_lot_details_s")
+    long DELV_TRANS_LOT_DET_ID;
     String LOT_NUMBER;
     Date RECEIPT_DATE;
     BigDecimal ONHAND_STK_QTY;
@@ -30,27 +31,27 @@ public class deliveryLotDetailsModels {
     BigDecimal BRANCH_ID;
 
 
-    public BigDecimal getDELV_TRANS_ID() {
+    public long getDELV_TRANS_ID() {
         return DELV_TRANS_ID;
     }
 
-    public void setDELV_TRANS_ID(BigDecimal DELV_TRANS_ID) {
+    public void setDELV_TRANS_ID(long DELV_TRANS_ID) {
         this.DELV_TRANS_ID = DELV_TRANS_ID;
     }
 
-    public BigDecimal getDELV_TRANS_LINE_ID() {
+    public long getDELV_TRANS_LINE_ID() {
         return DELV_TRANS_LINE_ID;
     }
 
-    public void setDELV_TRANS_LINE_ID(BigDecimal DELV_TRANS_LINE_ID) {
+    public void setDELV_TRANS_LINE_ID(long DELV_TRANS_LINE_ID) {
         this.DELV_TRANS_LINE_ID = DELV_TRANS_LINE_ID;
     }
 
-    public BigDecimal getDELV_TRANS_LOT_DET_ID() {
+    public long getDELV_TRANS_LOT_DET_ID() {
         return DELV_TRANS_LOT_DET_ID;
     }
 
-    public void setDELV_TRANS_LOT_DET_ID(BigDecimal DELV_TRANS_LOT_DET_ID) {
+    public void setDELV_TRANS_LOT_DET_ID(long DELV_TRANS_LOT_DET_ID) {
         this.DELV_TRANS_LOT_DET_ID = DELV_TRANS_LOT_DET_ID;
     }
 

@@ -51,4 +51,13 @@ public class ShedReadyController {
     {
         return shedReadyServices.fetchShedReadyLine(farm_code,shed_code);
     }
+
+    //@GetMapping("/{farm_code}/{shed_code}")
+    @PostMapping(value = "/updateShedAcknowledge")
+    public ResponseEntity<ApiResponseList<ShedReadyLineDto>> updateShedAcknowledge(@RequestParam("FARM_CODE") String farmCode,
+                                                                                   @RequestParam("SHED_CODE") String shedCode
+                                                                                   )
+    {
+        return shedReadyServices.updateShedAcknowledge(farmCode,shedCode);
+    }
 }

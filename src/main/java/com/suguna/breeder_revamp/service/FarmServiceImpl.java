@@ -18,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -72,6 +73,12 @@ public class FarmServiceImpl implements FarmService {
 
     @Autowired
     SugCVBodyWeightDtlRepository sugCVBodyWeightDtlRepository;
+
+    @Autowired
+    EggWeightCaptureRepository eggWeightCaptureRepository;
+
+    @Autowired
+    SugMaiBreederDailyEntryRepository sugMaiBreederDailyEntryRepository;
 
     @Override
     public ArrayList<BranchUser> getBranchUsers(BranchRequest branchRequest) {
@@ -193,6 +200,11 @@ public class FarmServiceImpl implements FarmService {
                     // throw new RuntimeException(e);
                 }
                 try {
+                    BranchUser.DailyEntryCompletedDetails standardDetailsArrayList = new BranchUser.DailyEntryCompletedDetails();
+                    standardDetailsArrayList=getDailyShedEntryDetails(branchID,shedDetails.getBatchId(),shedDetails.getFlockID());
+                    shedDetails.setEggProductionAge(standardDetailsArrayList.getEgg_PRODUCTION_AGE());
+                    shedDetails.setEntryDate(standardDetailsArrayList.getEntry_DATE());
+                    shedDetails.setEntryAllowed(standardDetailsArrayList.getEntry_allowed());
                     //String bodyweightdeviation=getbodyweightdeviation(branchID, String.valueOf(shedDetails.getAge()));
                    // shedDetails.setBodyWeightDeviation(bodyweightdeviation);
                 } catch (Exception e) {
@@ -255,19 +267,21 @@ public class FarmServiceImpl implements FarmService {
     }
 
     @Override
-    public ArrayList<BranchUser.DailyFlockEntryDetails> getDailyEntrySchedule(String branchID) {
+    public ArrayList<BranchUser.DailyFlockEntryDetails> getDailyEntrySchedule(BranchRequest branchRequest) {
         ArrayList<BranchUser.DailyFlockEntryDetails> shedDetailsArrayList = new ArrayList<BranchUser.DailyFlockEntryDetails>();
         try {
             StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getshed_dailyentrydtls");
             storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
-            storedProcedureQuery.registerStoredProcedureParameter(4, ArrayList.class, ParameterMode.REF_CURSOR);
-            storedProcedureQuery.setParameter(1, branchID);
-            storedProcedureQuery.setParameter(2, branchID);
-            storedProcedureQuery.setParameter(3, branchID);
+            storedProcedureQuery.registerStoredProcedureParameter(4, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(5, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchRequest.getBranchID());
+            storedProcedureQuery.setParameter(2, branchRequest.getBatchID());
+            storedProcedureQuery.setParameter(3, branchRequest.getShedNo());
+            storedProcedureQuery.setParameter(4, branchRequest.getEntryDate());
             storedProcedureQuery.execute();
-            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(4);
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(5);
 
             while (resultSet.next()) {
                 BranchUser.DailyFlockEntryDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.DailyFlockEntryDetails.class);
@@ -281,7 +295,7 @@ public class FarmServiceImpl implements FarmService {
     }
 
     @Override
-    public ArrayList<BranchUser.ObservationCategory> getObservationCategory(String branchID) {
+    public ArrayList<BranchUser.ObservationCategory> getObservationCategory(BranchRequest branchRequest) {
         ArrayList<BranchUser.ObservationCategory> shedDetailsArrayList = new ArrayList<BranchUser.ObservationCategory>();
         try {
             StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getobservationslist");
@@ -293,7 +307,7 @@ public class FarmServiceImpl implements FarmService {
 
             while (resultSet.next()) {
                 BranchUser.ObservationCategory shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.ObservationCategory.class);
-                shedDetails.setQuestion(getObservationCategoryDetails(shedDetails.getCategoryId()));
+                shedDetails.setQuestion(getObservationCategoryDetails(shedDetails.getCategoryId(),branchRequest));
                 shedDetailsArrayList.add(shedDetails);
             }
         } catch (Exception e) {
@@ -314,10 +328,13 @@ public class FarmServiceImpl implements FarmService {
                     Long transid;
                     SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
                     SugGppsObservationHeader sugGppsObservationHeader = new SugGppsObservationHeader();
-                    sugGppsObservationHeader.setLEDGER_ID(2025L);
+                    sugGppsObservationHeader.setLEDGER_ID((gppsObservationBatchDTO.getLEDGER_ID()));
+                    sugGppsObservationHeader.setTRANS_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
+                    sugGppsObservationHeader.setEMP_CODE(branchRequest.getUserCode());
                     sugGppsObservationHeader.setBRANCH_ID(Long.valueOf(branchRequest.getBranchID()));
                     sugGppsObservationHeader.setBRANCH_CODE(gppsObservationBatchDTO.getBRANCH_CODE());
                     sugGppsObservationHeader.setFLOCK_NO(gppsObservationBatchDTO.getFLOCK_NO());
+                    sugGppsObservationHeader.setBATCH_ID(Long.valueOf(branchRequest.getBatchID()));
                     sugGppsObservationHeader.setBATCH_NO(Long.valueOf(gppsObservationBatchDTO.getBATCH_NO()));
                     sugGppsObservationHeader.setLOCATION_CODE(gppsObservationBatchDTO.getLOCATION_CODE());
                     sugGppsObservationHeader.setCREATION_DATE(new Date());
@@ -333,7 +350,7 @@ public class FarmServiceImpl implements FarmService {
                         sugGppsObservationDetails.setTRANS_ID(transid);
                         sugGppsObservationDetails.setCATEGORY_ID(sugGppsObservationDTO.getCategoryId());
                         sugGppsObservationDetails.setOBSERVATION_ID(sugGppsObservationDTO.getObservationId());
-                        sugGppsObservationDetails.setTRANS_ID(Long.valueOf(1));
+                       // sugGppsObservationDetails.setTRANS_ID(Long.valueOf(1));
                         sugGppsObservationDetails.setCREATION_DATE(new Date());
                         sugGppsObservationDetails.setOBSERVATION_FLAG(value);
                         sugGppsObservationDetailsRepositories.save(sugGppsObservationDetails);
@@ -513,6 +530,7 @@ public class FarmServiceImpl implements FarmService {
                 maiGppsConsumptions.setCREATION_DATE(new Date());
                 maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
                 maiGppsConsumptions.setTXN_TYPE("FEED");
+                maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
                 sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
             }
 
@@ -571,6 +589,7 @@ public class FarmServiceImpl implements FarmService {
                 maiGppsConsumptions.setCREATION_DATE(new Date());
                 maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
                 maiGppsConsumptions.setTXN_TYPE("MORTALITY");
+                maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
                 sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
             }
 
@@ -610,6 +629,7 @@ public class FarmServiceImpl implements FarmService {
                     maiGppsConsumptions.setSTATUS("N");
                     maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
                     maiGppsConsumptions.setTXN_TYPE("EGG COLLECTION");
+                    maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
                     sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
                     if (!sugEggCollectionDetails.getItemID().equalsIgnoreCase("0")) {
                         sugMaiGppsConsumptionsRepositories.updatestatus(sugEggCollectionDetails.getQuantity(), branchRequest.getShedNo(), gppsObservationBatchDTO.getBRANCH_CODE());
@@ -658,6 +678,7 @@ public class FarmServiceImpl implements FarmService {
                     maiGppsConsumptions.setSTATUS("N");
                     maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
                     maiGppsConsumptions.setTXN_TYPE("WEEK");
+                    maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
                     maiGppsConsumptions.setREMARK(sugWeekBirdDetails.getReasonType());
                     sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
 
@@ -745,15 +766,21 @@ public class FarmServiceImpl implements FarmService {
         return shedDetailsArrayList;
     }
 
-    public ArrayList<BranchUser.ObservationCategoryDetails> getObservationCategoryDetails(String categoryID) {
+    public ArrayList<BranchUser.ObservationCategoryDetails> getObservationCategoryDetails(String categoryID, BranchRequest branchRequest) {
         ArrayList<BranchUser.ObservationCategoryDetails> shedDetailsArrayList = new ArrayList<BranchUser.ObservationCategoryDetails>();
         try {
             StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getobservationslist_dtls");
             storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
-            storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(4, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(5, ArrayList.class, ParameterMode.REF_CURSOR);
             storedProcedureQuery.setParameter(1, categoryID);
+            storedProcedureQuery.setParameter(2, branchRequest.getEntryDate());
+            storedProcedureQuery.setParameter(3, branchRequest.getBatchID());
+            storedProcedureQuery.setParameter(4, branchRequest.getShedNo());
             storedProcedureQuery.execute();
-            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(5);
 
             while (resultSet.next()) {
                 BranchUser.ObservationCategoryDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.ObservationCategoryDetails.class);
@@ -800,10 +827,10 @@ public class FarmServiceImpl implements FarmService {
         String sql = "select h.attribute1  as flock_no,\n" +
                 "       h.attribute4  as location_code,\n" +
                 "       c.branch_code,\n" +
-                "       h.BATCH_NO\n" +
-                "  FROM sug_organization_mv c, gme_batch_header h\n" +
+                "       h.BATCH_NO,l.INVENTORY_LOCATION_ID,c.ledger_id\n" +
+                "  FROM sug_organization_mv c, gme_batch_header h,mtl_item_locations l\n" +
                 " where h.organization_id = c.branch_id\n" +
-                "   and h.BATCH_ID = " + batchID + " ";
+                "   and h.BATCH_ID = " + batchID + "  and l.SEGMENT1=h.attribute4";
 
         List<Object[]> results =
                 entityManager.createNativeQuery(sql).getResultList();
@@ -813,7 +840,7 @@ public class FarmServiceImpl implements FarmService {
                         ((String) row[0]),   // LEDGER_ID
                         (String) row[1],                 // DIVISION
                         (String) row[2],                 // CATEGORY
-                        ((String) row[3])   // CATEGORY_ID
+                        ((String) row[3]) , ((BigDecimal) row[4]) , ((BigDecimal) row[5]) // CATEGORY_ID
                         // OBSERVATION_ID
                 ))
                 .collect(Collectors.toList());
@@ -1300,7 +1327,31 @@ public class FarmServiceImpl implements FarmService {
         SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
         if (!data.isEmpty()) {
             for (BranchRequest.SugCullingDetails sugCullingDetails : data) {
-                if(!sugCullingDetails.getFemaleBirdsCount().isEmpty()) {
+                if(sugCullingDetails.getFemaleBirdsCount() != null && !sugCullingDetails.getFemaleBirdsCount().isEmpty() && !sugCullingDetails.getFemaleBirdsCount().equalsIgnoreCase("0")) {
+                    try {
+                        String serverDate = LocalDate.now()
+                                .format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+                        SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
+                        Date date = sdf.parse(serverDate);
+                        SugMaiBreederDailyEntryModel sugMaiBreederDailyEntryModel = new SugMaiBreederDailyEntryModel();
+                        sugMaiBreederDailyEntryModel.setBRANCH_ID(Long.parseLong(branchRequest.getBranchID()));
+                        sugMaiBreederDailyEntryModel.setINVENTORY_LOCATION_ID(Long.parseLong(String.valueOf(gppsObservationBatchDTO.getINVENTORY_LOCATION_ID())));
+                        sugMaiBreederDailyEntryModel.setEMP_CODE(branchRequest.getUserCode());
+                        sugMaiBreederDailyEntryModel.setTXN_TYPE("ADJUSTMENT");
+                        sugMaiBreederDailyEntryModel.setTXN_DATE(date);
+                        sugMaiBreederDailyEntryModel.setBATCH_ID(Long.parseLong(branchRequest.getBatchID()));
+                        sugMaiBreederDailyEntryModel.setBIRD_TYPE("F");
+                        sugMaiBreederDailyEntryModel.setPRIMARY_QTY(Long.parseLong(sugCullingDetails.getFemaleBirdsCount()));
+                        sugMaiBreederDailyEntryModel.setREASON(sugCullingDetails.getReason());
+                        sugMaiBreederDailyEntryModel.setADJ_TYPE(sugCullingDetails.getType());
+                        sugMaiBreederDailyEntryModel.setENTRY_CREATION_DATE(new Date());
+                        sugMaiBreederDailyEntryModel.setTRANS_UOM("EA");
+                        sugMaiBreederDailyEntryRepository.save(sugMaiBreederDailyEntryModel);
+                    } catch (Exception e) {
+
+                    }
+/*
+
                     SugMaiGppsConsumptions maiGppsConsumptions = new SugMaiGppsConsumptions();
                     maiGppsConsumptions.setFARM_CODE(gppsObservationBatchDTO.getBRANCH_CODE());
                     maiGppsConsumptions.setFLOCK_ID(gppsObservationBatchDTO.getFLOCK_NO());
@@ -1315,9 +1366,32 @@ public class FarmServiceImpl implements FarmService {
                     maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
                     maiGppsConsumptions.setTXN_TYPE(sugCullingDetails.getType());
                     sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
+*/
                 }
-                if(!sugCullingDetails.getMaleBirdsCount().isEmpty()) {
-                    SugMaiGppsConsumptions maiGppsConsumptions = new SugMaiGppsConsumptions();
+                if( sugCullingDetails.getMaleBirdsCount() != null && !sugCullingDetails.getMaleBirdsCount().isEmpty() && !sugCullingDetails.getMaleBirdsCount().equalsIgnoreCase("0")) {
+                    try {
+                        String serverDate = LocalDate.now()
+                                .format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+                        SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
+                        Date date = sdf.parse(serverDate);
+                        SugMaiBreederDailyEntryModel sugMaiBreederDailyEntryModel = new SugMaiBreederDailyEntryModel();
+                        sugMaiBreederDailyEntryModel.setBRANCH_ID(Long.parseLong(branchRequest.getBranchID()));
+                        sugMaiBreederDailyEntryModel.setINVENTORY_LOCATION_ID(Long.parseLong(String.valueOf(gppsObservationBatchDTO.getINVENTORY_LOCATION_ID())));
+                        sugMaiBreederDailyEntryModel.setEMP_CODE(branchRequest.getUserCode());
+                        sugMaiBreederDailyEntryModel.setTXN_TYPE("ADJUSTMENT");
+                        sugMaiBreederDailyEntryModel.setTXN_DATE(date);
+                        sugMaiBreederDailyEntryModel.setBATCH_ID(Long.parseLong(branchRequest.getBatchID()));
+                        sugMaiBreederDailyEntryModel.setBIRD_TYPE("M");
+                        sugMaiBreederDailyEntryModel.setPRIMARY_QTY(Long.parseLong(sugCullingDetails.getMaleBirdsCount()));
+                        sugMaiBreederDailyEntryModel.setREASON(sugCullingDetails.getReason());
+                        sugMaiBreederDailyEntryModel.setADJ_TYPE(sugCullingDetails.getType());
+                        sugMaiBreederDailyEntryModel.setENTRY_CREATION_DATE(new Date());
+                        sugMaiBreederDailyEntryModel.setTRANS_UOM("EA");
+                        sugMaiBreederDailyEntryRepository.save(sugMaiBreederDailyEntryModel);
+                    } catch (Exception e) {
+
+                    }
+                   /* SugMaiGppsConsumptions maiGppsConsumptions = new SugMaiGppsConsumptions();
                     maiGppsConsumptions.setFARM_CODE(gppsObservationBatchDTO.getBRANCH_CODE());
                     maiGppsConsumptions.setFLOCK_ID(gppsObservationBatchDTO.getFLOCK_NO());
                     // maiGppsConsumptions.setSHED_CODE(branchRequest.getShedNo());
@@ -1330,7 +1404,7 @@ public class FarmServiceImpl implements FarmService {
                     maiGppsConsumptions.setSEX("Male");
                     maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
                     maiGppsConsumptions.setTXN_TYPE(sugCullingDetails.getType());
-                    sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
+                    sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);*/
                 }
 
             }
@@ -1699,6 +1773,10 @@ public class FarmServiceImpl implements FarmService {
                 BranchUser.StandardDetails standardDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.StandardDetails.class);
                 standardDetailsArrayList.add(standardDetails);
                 Standard=standardDetails.getFemaleWeight()+"~"+standardDetails.getMaleWeight()+"~"+standardDetails.getFemaleFeedPerWeek()+"~"+standardDetails.getMaleFeedPerWeek();
+                if(!standardDetails.getBirdType().equalsIgnoreCase("PS_FM"))
+                {
+                    return Standard;
+                }
             }
         } catch (Exception e) {
 
@@ -2462,7 +2540,7 @@ public class FarmServiceImpl implements FarmService {
                 maiGppsConsumptions.setQTY(Long.valueOf(sugMedicineVaccineDetails.getQty()));
                 maiGppsConsumptions.setBATCH_ID(Long.valueOf(branchRequest.getBatchID()));
                 //maiGppsConsumptions.setSEX(sugMortalityDetails.getBirdType());
-                maiGppsConsumptions.setTXN_FROM(getTxnDateString(branchRequest.getTransDate(),fromdateFormat1));
+                maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getTransDate(),fromdateFormat1));
                 maiGppsConsumptions.setCREATION_DATE(new Date());
                 maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
                 maiGppsConsumptions.setTXN_TYPE(sugMedicineVaccineDetails.getItemType());
@@ -2539,5 +2617,106 @@ public class FarmServiceImpl implements FarmService {
 
         }
         return shedDetailsArrayList;
+    }
+
+    @Override
+    public MasterResultDto getshedready_medicine(String branchId) throws SQLException {
+        MasterResultDto masterResultDto=new MasterResultDto();
+        MasterResultDto.itemmaster appinfo = new MasterResultDto.itemmaster();
+        ArrayList<MasterResultDto.itemmaster> Result = new ArrayList<MasterResultDto.itemmaster>();
+        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gpps_mob_pkg.getshedready_medicine");
+        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+        //storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+        storedProcedureQuery.setParameter(1, branchId);
+
+        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+        storedProcedureQuery.execute();
+        System.out.println(branchId);
+        while (resultSet.next()) {
+            MasterResultDto.itemmaster pojo = null;
+            try {
+                appinfo = ResultSetMapper.mapResultSetToObject(resultSet, MasterResultDto.itemmaster.class);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+            Result.add(appinfo);
+        }
+        masterResultDto.setItemmst(Result);
+        return masterResultDto;
+    }
+
+    @Override
+    public String saveEggWeightCapture(ArrayList<EggWeightCaptureDto> eggWeightCaptureDto) {
+        try {
+            for (EggWeightCaptureDto eggWeightCaptureDto1 : eggWeightCaptureDto) {
+                SugGppsEggUnboxingModels sugGppsEggUnboxingModels = new SugGppsEggUnboxingModels();
+                sugGppsEggUnboxingModels.setBRANCH_ID(eggWeightCaptureDto1.getBranchId());
+                sugGppsEggUnboxingModels.setFLOCK(eggWeightCaptureDto1.getFlock());
+                sugGppsEggUnboxingModels.setUNBOXING_DATE(getTxnDateString(eggWeightCaptureDto1.getDate(), fromdateFormat1));
+                sugGppsEggUnboxingModels.setCRACK_EGGS(eggWeightCaptureDto1.getCrackEggs());
+                sugGppsEggUnboxingModels.setDAMAGE_EGGS(eggWeightCaptureDto1.getDamageEggs());
+                sugGppsEggUnboxingModels.setMISSING_EGGS(eggWeightCaptureDto1.getMissingEggs());
+                sugGppsEggUnboxingModels.setTOTAL_CHECKED(eggWeightCaptureDto1.getTotalChecked());
+                sugGppsEggUnboxingModels.setTOTAL_DEFECTED(eggWeightCaptureDto1.getTotalDefects());
+                sugGppsEggUnboxingModels.setCREATED_BY(eggWeightCaptureDto1.getEmpCode());
+                sugGppsEggUnboxingModels.setREMARKS(eggWeightCaptureDto1.getRemark());
+                sugGppsEggUnboxingModels.setINSPECTOR_NAME(eggWeightCaptureDto1.getInspector());
+                eggWeightCaptureRepository.save(sugGppsEggUnboxingModels);
+            }
+        } catch (Exception e) {
+            return "201";
+        }
+        return "200";
+    }
+
+    @Override
+    public ArrayList<BranchUser.EggWeightCapturePerson> getEggUnboxingPersonDtls(String branchID) {
+        ArrayList<BranchUser.EggWeightCapturePerson> eggWeightCapturePersonArrayList = new ArrayList<BranchUser.EggWeightCapturePerson>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.geteggunboxing_person_details");
+
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchID);
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+
+            while (resultSet.next()) {
+                BranchUser.EggWeightCapturePerson eggWeightCapturePerson = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.EggWeightCapturePerson.class);
+
+                eggWeightCapturePersonArrayList.add(eggWeightCapturePerson);
+            }
+        } catch (Exception e) {
+
+        }
+        return eggWeightCapturePersonArrayList;
+    }
+
+    public BranchUser.DailyEntryCompletedDetails getDailyShedEntryDetails(String branchID,String batchID,String flock) {
+        BranchUser.DailyEntryCompletedDetails standardDetailsArrayList = new BranchUser.DailyEntryCompletedDetails();
+        String Standard="";
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getshedentry_details");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(4, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchID);
+            storedProcedureQuery.setParameter(2, batchID);
+            storedProcedureQuery.setParameter(3, flock);
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(4);
+
+            while (resultSet.next()) {
+                BranchUser.DailyEntryCompletedDetails standardDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.DailyEntryCompletedDetails.class);
+
+              //  Standard=standardDetails.getFemaleWeight()+"~"+standardDetails.getMaleWeight()+"~"+standardDetails.getFemaleFeedPerWeek()+"~"+standardDetails.getMaleFeedPerWeek();
+                return  standardDetails;
+            }
+        } catch (Exception e) {
+
+        }
+        return standardDetailsArrayList;
     }
 }

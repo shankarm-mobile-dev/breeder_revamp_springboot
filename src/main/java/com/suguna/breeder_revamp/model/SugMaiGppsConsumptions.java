@@ -32,7 +32,7 @@ public class SugMaiGppsConsumptions {
 
     String SEX;
 
-    Date TXN_FROM;
+    Date TXN_DATE;
 
     Long AGE;
 

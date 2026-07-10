@@ -34,4 +34,6 @@ public class FeedbackMaster {
     private String question;
     @Column(name = "QUESTION_SEQ")
     private int questionSeq;
+    @Column(name = "INPUT_MANDATORY")
+    private String inputMandatory;
 }

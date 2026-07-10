@@ -14,12 +14,12 @@ import java.util.Date;
 public class SaveSugNaterialConsumptionModel {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "inventory_gpps_hdr_seq")
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "inventory_gpps_item_hdr_seq")
     @SequenceGenerator(
 
             sequenceName = "SUG_GPPS_ITEM_CONSUMPTION_S",
             allocationSize = 1,
-            name = "inventory_gpps_hdr_seq"
+            name = "inventory_gpps_item_hdr_seq"
     )
     @Column(name = "TRANS_ID")
     private BigDecimal TRANS_ID;

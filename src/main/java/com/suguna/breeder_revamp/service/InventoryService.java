@@ -10,4 +10,8 @@ public interface InventoryService {
     String SaveSugMaterialConsumption(ArrayList<SaveSugMaterialConsumptionDto> entry);
 
     ArrayList<IssueReturnDto> GetIssueReturn(String branch_ID ) throws SQLException;
+
+    ArrayList<IssueReturnDto> GetConsumptionItem(String branchId)  throws SQLException;
+
+    String SaveSugIssueReturn(ArrayList<IssueReturnDto> entry);
 }

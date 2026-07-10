@@ -81,5 +81,10 @@ public class MasterResultDto<T> {
         @JsonProperty("seq_NO")
         public String seq_NO;
 
+        @Column(name = "primary_TRANSACTION_QUANTITY", type = String.class)
+        @JsonProperty("STOCK")
+        public String STOCK;
+
+
     }
 }

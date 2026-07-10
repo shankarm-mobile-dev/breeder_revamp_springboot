@@ -1,11 +1,9 @@
 package com.suguna.breeder_revamp.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.suguna.breeder_revamp.dto.BranchRequest;
-import com.suguna.breeder_revamp.dto.PlacementRequest;
-import com.suguna.breeder_revamp.dto.ResponseDto;
-import com.suguna.breeder_revamp.dto.SugCVBodyWeightDto;
+import com.suguna.breeder_revamp.dto.*;
 import com.suguna.breeder_revamp.service.FarmService;
+import org.hibernate.sql.exec.ExecutionException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -76,7 +74,7 @@ public class FarmController {
         responseDto.setMessage("");
         responseDto.setStatusCode(200);
         responseDto.setStatus("Success");
-        responseDto.setResult(farmService.getDailyEntrySchedule(branchRequest.getBranchID()));
+        responseDto.setResult(farmService.getDailyEntrySchedule(branchRequest));
         return responseDto;
     }
 
@@ -88,7 +86,7 @@ public class FarmController {
         responseDto.setStatusCode(200);
         responseDto.setStatus("Success");
         if(branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
-            responseDto.setResult(farmService.getObservationCategory(branchRequest.getBranchID()));
+            responseDto.setResult(farmService.getObservationCategory(branchRequest));
         }
         else if(branchRequest.getActivityName().equalsIgnoreCase("FEED")) {
             responseDto.setResult(farmService.getshedwise_feeddtls(branchRequest));
@@ -139,6 +137,7 @@ public class FarmController {
         else if(branchRequest.getActivityName().equalsIgnoreCase("MEDICINE/VACCINE")) {
             responseDto.setResult(farmService.saveDailyMedicineVaccine(branchRequest,imageFile));
         }
+        responseDto.setResult(farmService.getDailyEntrySchedule(branchRequest));
         return responseDto;
     }
 
@@ -298,13 +297,28 @@ public class FarmController {
     @PostMapping("/savePlacementInfoDetails")
     public ResponseDto savePlacementInfoDetails(@RequestBody ArrayList<PlacementRequest> placementRequest) {
         ResponseDto responseDto = new ResponseDto();
-        responseDto.setMessage("Success");
-        responseDto.setStatusCode(200);
-        responseDto.setStatus("Success");
-        String response = "";
-        // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
-        responseDto.setResult(farmService.savePlacementInfoDetails(placementRequest));
-        //}
+        try {
+            responseDto.setMessage("Placement Successfully");
+            responseDto.setStatusCode(200);
+            responseDto.setStatus("Success");
+            String response = "";
+            // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
+            responseDto.setResult(farmService.savePlacementInfoDetails(placementRequest));
+            //}
+        }
+        catch (ExecutionException e) {
+            responseDto.setMessage("Placement Save Error :"+e.getMessage());
+            responseDto.setStatusCode(500);
+            responseDto.setStatus("Success");
+            responseDto.setResult("500");
+        }
+        catch (Exception e) {
+            responseDto.setMessage("Placement Save Error :"+e.getMessage());
+            responseDto.setStatusCode(500);
+            responseDto.setStatus("Success");
+            responseDto.setResult("500");
+
+        }
         return responseDto;
     }
 
@@ -483,4 +497,34 @@ public class FarmController {
         responseDto.setResult(farmService.getShedDetailsReport(branchRequest.getBranchID()));
         return responseDto;
     }
+
+    @GetMapping("/getshedready_medicine/{branchId}")
+    public MasterResultDto getshedready_medicine(@PathVariable String branchId) throws Exception {
+        return farmService.getshedready_medicine(branchId);
+    }
+
+    @PostMapping("/saveEggWeightCapture")
+    public ResponseDto saveEggWeightCapture(@RequestBody ArrayList<EggWeightCaptureDto> eggWeightCaptureDto) {
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        String response = "";
+        // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
+        responseDto.setResult(farmService.saveEggWeightCapture(eggWeightCaptureDto));
+        //}
+        return responseDto;
+    }
+
+    @PostMapping("/getEggUnboxingPersonDtls")
+    public ResponseDto getEggUnboxingPersonDtls(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getEggUnboxingPersonDtls(branchRequest.getBranchID()));
+        return responseDto;
+    }
+
 }

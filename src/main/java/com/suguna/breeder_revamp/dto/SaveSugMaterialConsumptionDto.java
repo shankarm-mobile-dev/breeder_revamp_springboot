@@ -27,6 +27,9 @@ public class SaveSugMaterialConsumptionDto {
     @JsonProperty("inventory_item_id")
     public String inventory_item_id;
 
+    @JsonProperty("inventory_item_code")
+    public String inventory_item_code;
+
     @JsonProperty("item_description")
     public String item_description;
 

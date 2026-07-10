@@ -135,6 +135,14 @@ public class BranchUser {
         @Column(name = "bodyWeightPercentage", type = String.class)
         @JsonProperty("bodyWeightPercentage")
         String bodyWeightPercentage;
+
+        @JsonProperty("entryDate")
+        String entryDate;
+        @JsonProperty("eggProductionAge")
+        String eggProductionAge;
+        @JsonProperty("entryAllowed")
+        String entryAllowed;
+
     }
 
     @Getter
@@ -227,6 +235,9 @@ public class BranchUser {
         @Column(name = "OBSERVATION_ID", type = String.class)
         @JsonProperty("observationId")
         String categoryId;
+        @Column(name = "OBSERVATION_FLAG", type = String.class)
+        @JsonProperty("observationFlag")
+        String categoryFlag;
     }
     @Getter
     @Setter
@@ -859,6 +870,9 @@ public class BranchUser {
         @Column(name = "TRANS_ID", type = String.class)
         @JsonProperty("transId")
         String transId;
+        @Column(name = "ALLOCATE_STATUS", type = String.class)
+        @JsonProperty("allocateStatus")
+        String allocateStatus;
     }
 
     @Getter
@@ -937,5 +951,55 @@ public class BranchUser {
         @JsonProperty("femaleCount")
         String femaleCount;
     }
+    @Getter
+    @Setter
+    public static class DailyEntryCompletedDetails {
+        @Column(name = "entry_DATE", type = String.class)
+        @JsonProperty("entry_DATE")
+        String entry_DATE;
+        @Column(name = "egg_PRODUCTION_AGE", type = String.class)
+        @JsonProperty("egg_PRODUCTION_AGE")
+        String egg_PRODUCTION_AGE;
+        @Column(name = "entry_allowed", type = String.class)
+        @JsonProperty("entry_allowed")
+        String entry_allowed;
 
-}
+    }
+
+    @Getter
+    @Setter
+    public static class EggWeightCapturePerson {
+        @Column(name = "BRANCH_CODE", type = String.class)
+        @JsonProperty("BRANCH_CODE")
+        String branchCode;
+        @Column(name = "BRANCH_NAME", type = String.class)
+        @JsonProperty("BRANCH_NAME")
+        String branchName;
+        @Column(name = "EMP_NO", type = String.class)
+        @JsonProperty("EMP_NO")
+        String empNo;
+        @Column(name = "NAME", type = String.class)
+        @JsonProperty("NAME")
+        String name;
+
+        @Column(name = "PHONE", type = String.class)
+        @JsonProperty("PHONE")
+        String phone;
+        @Column(name = "EMP_ID", type = String.class)
+        @JsonProperty("EMP_ID")
+        String empId;
+        @Column(name = "JOB", type = String.class)
+        @JsonProperty("JOB")
+        String job;
+        @Column(name = "LOCATION_NAME", type = String.class)
+        @JsonProperty("LOCATION_NAME")
+        String locationName;
+        @Column(name = "LEDGER_ID", type = String.class)
+        @JsonProperty("LEDGER_ID")
+        String ledgerId;
+        @Column(name = "BRANCH_ID", type = String.class)
+        @JsonProperty("BRANCH_ID")
+        String branchId;
+
+    }
+    }

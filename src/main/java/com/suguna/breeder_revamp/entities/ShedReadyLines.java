@@ -42,4 +42,7 @@ public class ShedReadyLines {
     private Float value;
     @Column(name = "UOM")
     private String uom;
+    @Column(name = "ITEM_ID")
+    private Float itemID;
+
 }

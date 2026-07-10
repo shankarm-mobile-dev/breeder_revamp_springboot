@@ -161,6 +161,7 @@ public class CustomerServiceImpl implements CustomerServices {
     @Override
     public String getCustomerMobileNumber(String customerId,String partyId) {
         try {
+
             return (String) entityManager.createNativeQuery("select sug_ar_pkg.customer_mobile(?1,?2) from dual")
                     .setParameter(1,partyId)
                     .setParameter(2,customerId)
