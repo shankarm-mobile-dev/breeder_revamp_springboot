@@ -157,30 +157,81 @@ public class SaleServiceImpl implements SaleServices {
     deliveryHeaderRepository deliveryHeaderRepository;
 
     public String getDeliveryHeader(ArrayList<deliveryHeaderDto> entry){
-        String fromdateFormat = "yyyy/MM/dd hh:mm:ss";
+       // String fromdateFormat = "yyyy/MM/dd hh:mm:ss";
+        String fromdateFormat1 = "dd-MM-yyyy";
      try {
+         long transid=0;
          for(deliveryHeaderDto saledto:entry){
              deliveryHeaderModels headerModels = new deliveryHeaderModels();
              headerModels.setLEDGER_ID(saledto.getLedgerid());
              headerModels.setORG_ID(saledto.getOrgid());
              headerModels.setBRANCH_ID(saledto.getBranchid());
-             int deli_trans_id;
-             deli_trans_id = gettrxid("sug_delivery_header_s");
-             headerModels.setDELV_TRANS_ID(new BigDecimal(deli_trans_id));
-             headerModels.setDELIVERY_DATE(getTxnDateString(saledto.getDeliveryDate(),fromdateFormat));
+             /*int deli_trans_id;
+             deli_trans_id = gettrxid("sug_delivery_header_s");*/
+            // headerModels.setDELV_TRANS_ID((deli_trans_id));
+             headerModels.setDELIVERY_DATE(getTxnDateString(saledto.getDeliveryDate(),fromdateFormat1));
              headerModels.setCUSTOMER_ID(saledto.getCustomerid());
              headerModels.setVEHICLE_NO(saledto.getVehicleno());
              int trans_ref_number;
              trans_ref_number=gettrxid("SUG_TRANS_REF_NUMBER_S");
              headerModels.setTRANS_REF_NUMBER(String.valueOf(trans_ref_number));
              headerModels.setCREATED_BY(saledto.getCreatedby());
-             headerModels.setCREATION_DATE(getTxnDateString(saledto.getCreation_date(),fromdateFormat));
-             headerModels.setLAST_UPDATE_BY(saledto.getLastupdateby());
+             headerModels.setCREATION_DATE(new Date());
+             headerModels.setLAST_UPDATE_BY(saledto.getCreatedby());
              headerModels.setLAST_UPDATE_DATE(new Date());
-             headerModels.setSTATUS(saledto.getStatus());
+             headerModels.setSTATUS("N");
              headerModels.setSOURCE(saledto.getSource());
-             deliveryHeaderRepository.save(headerModels);
-             return "True";
+             deliveryHeaderModels headerResult=deliveryHeaderRepository.save(headerModels);
+             transid=headerResult.getDELV_TRANS_ID();
+             for(deliveryLinesDto saledlines:saledto.getLines()) {
+                 long translineid=0;
+                 deliveryLinesModels linesModels = new deliveryLinesModels();
+                 linesModels.setDELV_TRANS_ID(transid);
+               /*  int delvtranslineid;
+                 delvtranslineid=gettrxid("sug_delivery_lines_s");
+                 linesModels.setDELV_TRANS_LINE_ID(new BigDecimal(delvtranslineid));*/
+                 linesModels.setORDER_NUMBER(saledlines.getOrdernumber());
+                 linesModels.setOE_ORDER_LINE_ID(saledlines.getOeorderlineid());
+                 linesModels.setOE_ORDER_HEADER_ID(saledlines.getOeorderheaderid());
+                 linesModels.setINVENTORY_ITEM_ID(saledlines.getInventoryitemid());
+                 linesModels.setORDER_UOM(saledlines.getOrderuom());
+                 linesModels.setORDERED_QTY(saledlines.getOrderedqty());
+                 linesModels.setORDERED_QTY2(saledlines.getOrderedqty2());
+                 linesModels.setSHIPPED_QTY(saledlines.getShippedqty());
+                 linesModels.setSHIPPED_QTY2(saledlines.getShippedqty2());
+                 linesModels.setCREATED_BY(saledto.getCreatedby());
+                 linesModels.setLAST_UPDATE_BY(saledto.getCreatedby());
+                 linesModels.setCREATION_DATE(new Date());
+                 linesModels.setSTATUS("N");
+                 linesModels.setLAST_UPDATE_DATE(new Date());
+                 linesModels.setINVENTORY_LOCATION_ID(saledlines.getInventorylocationid());
+                 linesModels.setSUBINVENTORY_CODE(saledlines.getSubinventorycode());
+                 deliveryLinesModels linesResult=deliveryLinesRepository.save(linesModels);
+                 translineid=linesResult.getDELV_TRANS_LINE_ID();
+                 for(deliveryLotDetailsDto salelot: saledlines.getLotDetails()){
+                     deliveryLotDetailsModels lotDetailsModels = new deliveryLotDetailsModels();
+                     lotDetailsModels.setDELV_TRANS_ID(transid);
+                     lotDetailsModels.setDELV_TRANS_LINE_ID(translineid);
+                    /* int deltranslotdets_id;
+                     deltranslotdets_id =gettrxid("sug_delivery_lot_details_s");
+                     lotDetailsModels.setDELV_TRANS_LOT_DET_ID(new BigDecimal(deltranslotdets_id));*/
+                     lotDetailsModels.setLOT_NUMBER(salelot.getLotnumber());
+                     lotDetailsModels.setRECEIPT_DATE(new Date());
+                     lotDetailsModels.setONHAND_STK_QTY(salelot.getOnhandstkqty());
+                     lotDetailsModels.setSHIPPED_QTY(salelot.getShippedqty());
+                     lotDetailsModels.setSHIPPED_QTY2(salelot.getShippedqty2());
+                     lotDetailsModels.setCREATED_BY(saledto.getCreatedby());
+                     lotDetailsModels.setCREATION_DATE(new Date());
+                     lotDetailsModels.setLAST_UPDATE_BY(saledto.getCreatedby());
+                     lotDetailsModels.setLAST_UPDATE_DATE(new Date());
+                     lotDetailsModels.setINVENTORY_LOCATION_ID(salelot.getInventorylocationid());
+                     lotDetailsModels.setSTATUS("N");
+                     lotDetailsModels.setSUBINVENTORY_CODE(salelot.getSubinventorycode());
+                     lotDetailsModels.setBRANCH_ID(salelot.getBranchid());
+                     deliveryLotDetailsRepository.save(lotDetailsModels);
+                 }
+             }
+                 return "True";
          }
      }catch (Exception e){
          e.getMessage();
@@ -194,10 +245,10 @@ public class SaleServiceImpl implements SaleServices {
         try {
             for(deliveryLinesDto saledto:entry){
                 deliveryLinesModels linesModels = new deliveryLinesModels();
-                linesModels.setDELV_TRANS_ID(saledto.getDelvtransid());
+             //   linesModels.setDELV_TRANS_ID(saledto.getDelvtransid());
                 int delvtranslineid;
                 delvtranslineid=gettrxid("sug_delivery_lines_s");
-                linesModels.setDELV_TRANS_LINE_ID(new BigDecimal(delvtranslineid));
+               // linesModels.setDELV_TRANS_LINE_ID(new BigDecimal(delvtranslineid));
                 linesModels.setORDER_NUMBER(saledto.getOrdernumber());
                 linesModels.setOE_ORDER_LINE_ID(saledto.getOeorderlineid());
                 linesModels.setOE_ORDER_HEADER_ID(saledto.getOeorderheaderid());
@@ -229,11 +280,11 @@ public class SaleServiceImpl implements SaleServices {
         try {
             for(deliveryLotDetailsDto saledto:entry){
                 deliveryLotDetailsModels lotDetailsModels = new deliveryLotDetailsModels();
-                lotDetailsModels.setDELV_TRANS_ID(saledto.getDelvtransid());
-                lotDetailsModels.setDELV_TRANS_LINE_ID(saledto.getDelvtransid());
+               // lotDetailsModels.setDELV_TRANS_ID(saledto.getDelvtransid());
+               // lotDetailsModels.setDELV_TRANS_LINE_ID(saledto.getDelvtransid());
                 int deltranslotdets_id;
                 deltranslotdets_id =gettrxid("sug_delivery_lot_details_s");
-                lotDetailsModels.setDELV_TRANS_LOT_DET_ID(new BigDecimal(deltranslotdets_id));
+               // lotDetailsModels.setDELV_TRANS_LOT_DET_ID(new BigDecimal(deltranslotdets_id));
                 lotDetailsModels.setLOT_NUMBER(saledto.getLotnumber());
                 lotDetailsModels.setRECEIPT_DATE(new Date());
                 lotDetailsModels.setONHAND_STK_QTY(saledto.getOnhandstkqty());

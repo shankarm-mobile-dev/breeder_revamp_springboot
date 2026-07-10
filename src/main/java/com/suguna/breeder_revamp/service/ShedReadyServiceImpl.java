@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-public class ShedReadyServiceImpl  implements ShedReadyService{
+public class ShedReadyServiceImpl  implements ShedReadyService {
     @Autowired
     FeedMstRepositories feedMstRepositories;
     @Autowired
@@ -39,73 +39,73 @@ public class ShedReadyServiceImpl  implements ShedReadyService{
 
     @Override
     public ResponseEntity<ApiResponseList<ShedReadyDto>> getShedReadyQuestion(String farmCode, String feedbackRef, String language, String shedCode) {
-    // Query the repository (DB/view) using the provided filters
-    List<FeedbackMaster> feedbackMasterList = feedMstRepositories.findByFeedbackRefAndLanguage(feedbackRef, language);
+        // Query the repository (DB/view) using the provided filters
+        List<FeedbackMaster> feedbackMasterList = feedMstRepositories.findByFeedbackRefAndLanguage(feedbackRef, language);
 
-    // Current behavior: 404 if nothing found
+        // Current behavior: 404 if nothing found
         if (feedbackMasterList.isEmpty()) {
-        return Response.buildSingleResponseList("Failure", HttpStatus.NOT_FOUND, "Not Found", null);
-    }
+            return Response.buildSingleResponseList("Failure", HttpStatus.NOT_FOUND, "Not Found", null);
+        }
 
-    // Map entities -> DTOs
-    List<ShedReadyDto> feedbackMstDtoList = new ArrayList<>();
+        // Map entities -> DTOs
+        List<ShedReadyDto> feedbackMstDtoList = new ArrayList<>();
 
-    ShedReadyHeader shedReadyHeaders = shedReadyHeaderRepositories
-            .findByFarmCodeAndFarmerStatusAndShedCode(farmCode, "NO",shedCode);
+        ShedReadyHeader shedReadyHeaders = shedReadyHeaderRepositories
+                .findByFarmCodeAndFarmerStatusAndShedCode(farmCode, "NO", shedCode);
 
         if (shedReadyHeaders == null) {
-        shedReadyHeaders = shedReadyHeaderRepositories.findByFarmCodeAndFarmerStatusAndManagerStatus(farmCode, "YES", "NO");
-        if(shedReadyHeaders == null)
-        {
-            shedReadyHeaders = shedReadyHeaderRepositories.findByFarmCodeAndFarmerStatusAndManagerStatus(farmCode, "YES", "YES");
-        }
-    }
-
-        for (FeedbackMaster feedbackMaster : feedbackMasterList) {
-        boolean isSubmitted = false;
-        Date submittedDate = null;
-        String status = "";
-        String remarks = "";
-        String value="";
-        String uom="";
-        if (shedReadyHeaders != null) {
-            ShedReadyLines shedReadyLines = shedReadyLineRepositories.findByTransIdAndActivityId(shedReadyHeaders.getTransId(), feedbackMaster.getQuestionId());
-            if (shedReadyLines != null) {
-                isSubmitted = true;
-                submittedDate = shedReadyLines.getCreationDate();
-                status = (shedReadyLines.getManagerStatus().equals("NO") ? "PENDING" : (shedReadyLines.getManagerStatus().equals("A") ? "APPROVED" : "REJECTED"));
-                remarks = shedReadyLines.getManagerComments();
-                value= String.valueOf(shedReadyLines.getValue());
-                uom=shedReadyLines.getUom();
+            shedReadyHeaders = shedReadyHeaderRepositories.findByFarmCodeAndFarmerStatusAndManagerStatusAndShedCode(farmCode, "YES", "NO", shedCode);
+            if (shedReadyHeaders == null) {
+                shedReadyHeaders = shedReadyHeaderRepositories.findByFarmCodeAndFarmerStatusAndManagerStatusAndShedCode(farmCode, "YES", "YES", shedCode);
             }
         }
 
-        feedbackMstDtoList.add(
-                ShedReadyDto.builder()
-                        .ledgerId(feedbackMaster.getLedgerId())
-                        .categoryId(feedbackMaster.getCategoryId())
-                        .category(feedbackMaster.getCategory())
-                        .userType(feedbackMaster.getUserType())
-                        .feedbackRef(feedbackMaster.getFeedbackRef())
-                        .question(feedbackMaster.getQuestion())
-                        .questionId(feedbackMaster.getQuestionId())
-                        .questionSeq(feedbackMaster.getQuestionSeq())
-                        .submitted(isSubmitted)
-                        .submittedDate(submittedDate)
-                        .status(status)
-                        .remarks(remarks)
-                        .value(value)
-                        .uom(uom)
-                        .build()
-        );
-    }
+        for (FeedbackMaster feedbackMaster : feedbackMasterList) {
+            boolean isSubmitted = false;
+            Date submittedDate = null;
+            String status = "";
+            String remarks = "";
+            String value = "";
+            String uom = "";
+            if (shedReadyHeaders != null) {
+                ShedReadyLines shedReadyLines = shedReadyLineRepositories.findByTransIdAndActivityId(shedReadyHeaders.getTransId(), feedbackMaster.getQuestionId());
+                if (shedReadyLines != null) {
+                    isSubmitted = true;
+                    submittedDate = shedReadyLines.getCreationDate();
+                    status = (shedReadyLines.getManagerStatus().equals("NO") ? "PENDING" : (shedReadyLines.getManagerStatus().equals("A") ? "APPROVED" : "REJECTED"));
+                    remarks = shedReadyLines.getManagerComments();
+                    value = String.valueOf(shedReadyLines.getValue());
+                    uom = shedReadyLines.getUom();
+                }
+            }
 
-    String message = "Found";
+            feedbackMstDtoList.add(
+                    ShedReadyDto.builder()
+                            .ledgerId(feedbackMaster.getLedgerId())
+                            .categoryId(feedbackMaster.getCategoryId())
+                            .category(feedbackMaster.getCategory())
+                            .userType(feedbackMaster.getUserType())
+                            .feedbackRef(feedbackMaster.getFeedbackRef())
+                            .question(feedbackMaster.getQuestion())
+                            .questionId(feedbackMaster.getQuestionId())
+                            .questionSeq(feedbackMaster.getQuestionSeq())
+                            .submitted(isSubmitted)
+                            .submittedDate(submittedDate)
+                            .status(status)
+                            .remarks(remarks)
+                            .value(value)
+                            .uom(uom)
+                            .inputMandatory(feedbackMaster.getInputMandatory())
+                            .build()
+            );
+        }
+
+        String message = "Found";
         if (shedReadyHeaders != null && shedReadyHeaders.getFarmerStatus().equals("YES") && shedReadyHeaders.getManagerStatus().equals("NO"))
-    message = "Waiting for Manager Confirmation";
-    // Success response with list
+            message = "Waiting for Manager Confirmation";
+        // Success response with list
         return Response.buildSingleResponseList("Success", HttpStatus.OK, message, feedbackMstDtoList);
-}
+    }
 
     @Transactional
     public ResponseEntity<ShedReadyResponseDto<Object>> saveShedReadyLine(ShedReadyLineDto shedReadyLineDto, MultipartFile imageFile) {
@@ -130,7 +130,7 @@ public class ShedReadyServiceImpl  implements ShedReadyService{
         // Check if header exists (your business logic seems to check YES, but your comment says NO)
         // Adjusted based on your code (find by YES)
         ShedReadyHeader shedReadyHeaders = shedReadyHeaderRepositories
-                .findByFarmCodeAndFarmerStatusAndShedCode(shedReadyLineDto.getFarmCode(), "NO",shedReadyLineDto.getShedCode());
+                .findByFarmCodeAndFarmerStatusAndShedCode(shedReadyLineDto.getFarmCode(), "NO", shedReadyLineDto.getShedCode());
 
         Long transId;
         if (shedReadyHeaders != null) {
@@ -167,8 +167,6 @@ public class ShedReadyServiceImpl  implements ShedReadyService{
             }
 
 
-
-
         } catch (IOException | IllegalArgumentException ex) {
             // Decide whether to fail the whole transaction or continue without image
             // Here we fail to keep data consistent
@@ -176,7 +174,9 @@ public class ShedReadyServiceImpl  implements ShedReadyService{
         }
         ShedReadyLines shedReadyLines = shedReadyLineRepositories.findByTransIdAndActivityId(transId, shedReadyLineDto.getActivityId());
         if (shedReadyLines == null) {
-            shedReadyLines = ShedReadyLines.builder()
+
+
+            ShedReadyLines.ShedReadyLinesBuilder builder = ShedReadyLines.builder()
                     .transId(transId)
                     .activityId(shedReadyLineDto.getActivityId())
                     .farmerStatus("YES")
@@ -186,11 +186,34 @@ public class ShedReadyServiceImpl  implements ShedReadyService{
                     .imagePath(imageUrl)
                     .audioPath(voiceUrl)
                     .remarks(shedReadyLineDto.getRemarks())
-                    /*if(shedReadyLineDto.getValue() != null && !shedReadyLineDto.getValue().isEmpty()) {
+                    .uom(shedReadyLineDto.getUom());
+            // .itemID(Float.valueOf(shedReadyLineDto.getItemId()));
+            if (shedReadyLineDto.getItemId() != null && !shedReadyLineDto.getItemId().isEmpty()) {
+                builder.itemID(Float.valueOf(shedReadyLineDto.getItemId()));
+            }
+            if (shedReadyLineDto.getValue() != null && !shedReadyLineDto.getValue().isEmpty()) {
+                builder.value(Float.valueOf(shedReadyLineDto.getValue()));
+            }
+
+            shedReadyLines = builder.build();
+
+
+            /*shedReadyLines = ShedReadyLines.builder()
+                    .transId(transId)
+                    .activityId(shedReadyLineDto.getActivityId())
+                    .farmerStatus("YES")
+                    .managerStatus("NO")
+                    .creationDate(new Date())
+                    .updationDate(new Date())
+                    .imagePath(imageUrl)
+                    .audioPath(voiceUrl)
+                    .remarks(shedReadyLineDto.getRemarks())
+                   //// if(shedReadyLineDto.getValue() != null && !shedReadyLineDto.getValue().isEmpty()) {
                         .value(Float.valueOf(shedReadyLineDto.getValue()))
-                    }*/
+                   // }
                     .uom(shedReadyLineDto.getUom())
-                    .build();
+                    .itemID(Float.valueOf(shedReadyLineDto.getItemId()))
+                    .build();*/
         } else {
             shedReadyLines.setUpdationDate(new Date());
             shedReadyLines.setFarmerStatus("YES");
@@ -234,9 +257,9 @@ public class ShedReadyServiceImpl  implements ShedReadyService{
         Long transId;
         if (shedReadyHeaders == null) {
 
-            shedReadyHeaders = shedReadyHeaderRepositories.findByFarmCodeAndFarmerStatusAndManagerStatus(farmCode, "YES", "NO");
+            shedReadyHeaders = shedReadyHeaderRepositories.findByFarmCodeAndFarmerStatusAndManagerStatusAndShedCode(farmCode, "YES", "NO", shed_code);
             if (shedReadyHeaders == null) {
-                shedReadyHeaders = shedReadyHeaderRepositories.findByFarmCodeAndFarmerStatusAndManagerStatus(farmCode, "YES", "YES");
+                shedReadyHeaders = shedReadyHeaderRepositories.findByFarmCodeAndFarmerStatusAndManagerStatusAndShedCode(farmCode, "YES", "YES", shed_code);
                 if (shedReadyHeaders == null)
                     return Response.buildSingleResponseList("Failure", HttpStatus.NOT_FOUND, "No Entries Found", null);
             }
@@ -260,6 +283,13 @@ public class ShedReadyServiceImpl  implements ShedReadyService{
             );
         }
 
+        return Response.buildSingleResponseList("Success", HttpStatus.OK, "Found", dtoList);
+    }
+
+    @Override
+    public ResponseEntity<ApiResponseList<ShedReadyLineDto>> updateShedAcknowledge(String farmCode, String shed_code) {
+        List<ShedReadyLineDto> dtoList = new ArrayList<>();
+        shedReadyHeaderRepositories.updateFarmerStatus(shed_code,farmCode);
         return Response.buildSingleResponseList("Success", HttpStatus.OK, "Found", dtoList);
     }
 }

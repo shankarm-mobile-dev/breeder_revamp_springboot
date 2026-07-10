@@ -52,6 +52,10 @@ public class ShedReadyDto {
         @JsonProperty("UOM")
         private String uom;
 
+        @Builder.Default
+        @JsonProperty("INPUT_MANDATORY")
+        private String inputMandatory = "N";
+
 
 
 }

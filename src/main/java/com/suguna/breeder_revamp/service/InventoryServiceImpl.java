@@ -3,7 +3,9 @@ package com.suguna.breeder_revamp.service;
 import com.suguna.breeder_revamp.dto.IssueReturnDto;
 import com.suguna.breeder_revamp.dto.SaveSugMaterialConsumptionDto;
 import com.suguna.breeder_revamp.model.SaveSugNaterialConsumptionModel;
+import com.suguna.breeder_revamp.model.SugMaiBreederDailyEntryModel;
 import com.suguna.breeder_revamp.repositories.SaveSugMaterialConsumptionRepository;
+import com.suguna.breeder_revamp.repositories.SugMaiBreederDailyEntryRepository;
 import com.suguna.breeder_revamp.utils.ResultSetMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
@@ -23,15 +25,21 @@ import java.util.Date;
 @Service
 public class InventoryServiceImpl implements  InventoryService{
 
+    String fromdateFormat  = "dd-MMM-yyyy HH:mm:ss";
+    String fromdateFormat1 = "dd-MMM-yyyy";
+
     @Autowired
     EntityManager entityManager;
 
     @Autowired
     SaveSugMaterialConsumptionRepository saveSugMaterialConsumptionRepository;
+
+    @Autowired
+    SugMaiBreederDailyEntryRepository sugMaiBreederDailyEntryRepository;
+
     @Transactional
     public String SaveSugMaterialConsumption(ArrayList<SaveSugMaterialConsumptionDto> entry) {
-        String fromdateFormat  = "dd-MMM-yyyy HH:mm:ss";
-        String fromdateFormat1 = "dd-MMM-yyyy";
+
         try {
             for (SaveSugMaterialConsumptionDto Farmdto : entry) {
 
@@ -53,14 +61,18 @@ public class InventoryServiceImpl implements  InventoryService{
                     model.setQUANTITY(new BigDecimal(Farmdto.quantity));
                     model.setUOM(Farmdto.getUom());
                     model.setPOSTED_FLAG("N");
-                    model.setENTRY_CREATION_DATE(getTxnDateString(Farmdto.getEntry_creation_date(), fromdateFormat));
+                  //  model.setENTRY_CREATION_DATE(getTxnDateString(Farmdto.getEntry_creation_date(), fromdateFormat));
                     model.setINVENTORY_LOCATION_ID(Farmdto.getInventory_location_id());
                     model.setCREATION_DATE(new Date());
                     model.setFOR_LTR_WATER(Farmdto.getFor_ltr_water());
                     model.setADVISED_BY(Farmdto.getAdvised_by());
                     model.setISSUED_BY(Farmdto.getIssued_by());
-
+                    model.setINVENTORY_ITEM_CODE(Farmdto.getInventory_item_code());
                     saveSugMaterialConsumptionRepository.save(model);
+                }
+                else
+                {
+                    return "Duplicate entry";
                 }
             }
             return "True";  // ✅ return after processing all entries
@@ -110,7 +122,7 @@ public class InventoryServiceImpl implements  InventoryService{
         return date;
     }
 
-    public ArrayList<IssueReturnDto> GetIssueReturn(String branch_ID ) throws SQLException {
+    public ArrayList<IssueReturnDto> GetIssueReturn(String branch_ID) throws SQLException {
         IssueReturnDto appinfo = new IssueReturnDto();
         ArrayList<IssueReturnDto> Result = new ArrayList<IssueReturnDto>();
         StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gpps_mob_pkg.getwipconsumptionreturn");
@@ -132,5 +144,67 @@ public class InventoryServiceImpl implements  InventoryService{
         }
 
         return Result;
+    }
+
+    @Override
+    public ArrayList<IssueReturnDto> GetConsumptionItem(String branch_ID) throws SQLException {
+        IssueReturnDto appinfo = new IssueReturnDto();
+        ArrayList<IssueReturnDto> Result = new ArrayList<IssueReturnDto>();
+        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gpps_mob_pkg.getconsumable_consumption");
+        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+        storedProcedureQuery.setParameter(1, branch_ID);
+
+        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+        storedProcedureQuery.execute();
+        System.out.println(branch_ID);
+
+        while (resultSet.next()) {
+            try {
+                appinfo = ResultSetMapper.mapResultSetToObject(resultSet, IssueReturnDto.class);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+            Result.add(appinfo);
+        }
+
+        return Result;
+    }
+
+    @Override
+    public String SaveSugIssueReturn(ArrayList<IssueReturnDto> entry) {
+        try {
+            for(IssueReturnDto issueReturnDto:entry)
+            {
+                SugMaiBreederDailyEntryModel sugMaiBreederDailyEntryModel=new SugMaiBreederDailyEntryModel();
+                sugMaiBreederDailyEntryModel.setTXN_TYPE(issueReturnDto.trans_TYPE);
+                sugMaiBreederDailyEntryModel.setTXN_DATE(getTxnDateString(issueReturnDto.trans_DATE,fromdateFormat1));
+                sugMaiBreederDailyEntryModel.setEMP_CODE(issueReturnDto.empCode);
+                sugMaiBreederDailyEntryModel.setBRANCH_ID(Long.parseLong(issueReturnDto.branch_ID));
+                sugMaiBreederDailyEntryModel.setBRANCH_CODE(issueReturnDto.branch_Code);
+                sugMaiBreederDailyEntryModel.setBATCH_ID(issueReturnDto.batchId);
+                sugMaiBreederDailyEntryModel.setBATCH_NO(issueReturnDto.batchNo);
+                sugMaiBreederDailyEntryModel.setFLOCK_NO(issueReturnDto.flock);
+                sugMaiBreederDailyEntryModel.setINVENTORY_ITEM_ID(Long.parseLong(issueReturnDto.inventory_ITEM_ID));
+                sugMaiBreederDailyEntryModel.setINVENTORY_LOCATION_ID(issueReturnDto.inventoryLocationId);
+                sugMaiBreederDailyEntryModel.setTRANS_UOM(issueReturnDto.uom);
+                sugMaiBreederDailyEntryModel.setSTOCK_QTY(Float.parseFloat(issueReturnDto.trans_QTY));
+                if (issueReturnDto.trans_TYPE.equals("FEED")) {
+                    sugMaiBreederDailyEntryModel.setSECONDARY_QTY(Float.parseFloat(issueReturnDto.quantity));
+                }
+                else
+                {
+                    sugMaiBreederDailyEntryModel.setPRIMARY_QTY(Float.parseFloat(issueReturnDto.quantity));
+                }
+                sugMaiBreederDailyEntryModel.setMTL_REPORT_ID(Long.parseLong(issueReturnDto.report_ID));
+                sugMaiBreederDailyEntryModel.setTXN_CATEGORY("RETURN");
+                sugMaiBreederDailyEntryModel.setINVENTORY_DESC(issueReturnDto.description);
+                sugMaiBreederDailyEntryModel.setLOCATION_CODE(issueReturnDto.location);
+                sugMaiBreederDailyEntryRepository.save(sugMaiBreederDailyEntryModel);
+            }
+        } catch (Exception e) {
+            return "False";
+        }
+        return "True";
     }
 }

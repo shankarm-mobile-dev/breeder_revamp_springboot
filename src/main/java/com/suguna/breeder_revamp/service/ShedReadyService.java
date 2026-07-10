@@ -12,6 +12,6 @@ public interface ShedReadyService {
     ResponseEntity<ApiResponseList<ShedReadyDto>> getShedReadyQuestion(String farmCode, String feedbackRef, String language, String shedCode);
     ResponseEntity<ShedReadyResponseDto<Object>> saveShedReadyLine(ShedReadyLineDto shedReadyLineDto, MultipartFile imageFile);
     ResponseEntity<ApiResponseList<ShedReadyLineDto>> fetchShedReadyLine(String farmCode, String shed_code);
-
+    ResponseEntity<ApiResponseList<ShedReadyLineDto>> updateShedAcknowledge(String farmCode, String shed_code);
 
 }

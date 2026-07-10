@@ -36,7 +36,7 @@ public class SaleControllers {
     public ArrayList<SaleResultDto.despatchtime>DESPATCHTIMES(@PathVariable String regionid)throws Exception{
         return saleService.DESPATCHTIMES(regionid);
     }
-    @PostMapping("/deliveryheader")
+    @PostMapping("/saveEggCullsSalesEntry")
     public String getDeliveryHeader(@RequestBody ArrayList<deliveryHeaderDto> entry) throws Exception{
         return saleService.getDeliveryHeader(entry);
     }

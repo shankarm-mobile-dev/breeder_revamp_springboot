@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.util.Date;
 
 @Getter
@@ -17,7 +18,7 @@ public class SugGppsObservationHeader {
     @SequenceGenerator(sequenceName = "SUG_GPPS_OBSERVATION_HEADER_S", allocationSize = 1, name = "id_seq_gpps_obs_header")
     Long TRANS_ID;
     Date TRANS_DATE;
-    Long LEDGER_ID;
+    BigDecimal LEDGER_ID;
     String EMP_CODE;
     Long DEVICE_ID;
     Long BRANCH_ID;

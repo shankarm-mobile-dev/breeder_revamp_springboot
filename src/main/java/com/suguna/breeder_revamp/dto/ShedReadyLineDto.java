@@ -43,4 +43,6 @@ public class ShedReadyLineDto {
     private String value;
     @JsonProperty("UOM")
     private String uom;
+    @JsonProperty("ITEM_ID")
+    private String itemId;
 }

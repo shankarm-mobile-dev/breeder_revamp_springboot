@@ -3,6 +3,7 @@ package com.suguna.breeder_revamp.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 
 public class deliveryLinesDto {
     @JsonProperty("delvtransid")
@@ -55,6 +56,17 @@ public class deliveryLinesDto {
 
     @JsonProperty("subinventorycode")
     public String subinventorycode;
+
+    @JsonProperty("LotDetails")
+    public ArrayList<deliveryLotDetailsDto> LotDetails;
+
+    public ArrayList<deliveryLotDetailsDto> getLotDetails() {
+        return LotDetails;
+    }
+
+    public void setLotDetails(ArrayList<deliveryLotDetailsDto> lotDetails) {
+        LotDetails = lotDetails;
+    }
 
     public BigDecimal getDelvtransid() {
         return delvtransid;

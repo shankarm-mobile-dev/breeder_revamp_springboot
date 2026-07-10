@@ -3,6 +3,7 @@ package com.suguna.breeder_revamp.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 
 public class deliveryHeaderDto {
     @JsonProperty("ledgerid")
@@ -42,6 +43,17 @@ public class deliveryHeaderDto {
 
     @JsonProperty("source")
     public String source;
+
+    @JsonProperty("Lines")
+    public ArrayList<deliveryLinesDto> lines;
+
+    public ArrayList<deliveryLinesDto> getLines() {
+        return lines;
+    }
+
+    public void setLines(ArrayList<deliveryLinesDto> lines) {
+        this.lines = lines;
+    }
 
     public BigDecimal getLedgerid() {
         return ledgerid;

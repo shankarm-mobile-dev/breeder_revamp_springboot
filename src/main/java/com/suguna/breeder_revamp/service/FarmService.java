@@ -1,11 +1,10 @@
 package com.suguna.breeder_revamp.service;
 
-import com.suguna.breeder_revamp.dto.BranchRequest;
-import com.suguna.breeder_revamp.dto.PlacementRequest;
-import com.suguna.breeder_revamp.dto.SugCVBodyWeightDto;
+import com.suguna.breeder_revamp.dto.*;
 import com.suguna.breeder_revamp.model.BranchUser;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,9 +17,9 @@ public interface FarmService {
 
     ArrayList<BranchUser.ShedLineDetails> getShedLineDetails(String branchID, String shedNo);
 
-    ArrayList<BranchUser.DailyFlockEntryDetails> getDailyEntrySchedule(String branchID);
+    ArrayList<BranchUser.DailyFlockEntryDetails> getDailyEntrySchedule(BranchRequest branchID);
 
-    ArrayList<BranchUser.ObservationCategory> getObservationCategory(String branchID);
+    ArrayList<BranchUser.ObservationCategory> getObservationCategory(BranchRequest branchID);
 
     String saveObservationDetails(BranchRequest branchRequest);
 
@@ -94,4 +93,10 @@ public interface FarmService {
     ArrayList<BranchUser.PlacementInfoShedDetails> getShedReadyshedinfo(String branchID);
 
     ArrayList<BranchUser.ShedDetailsReport>  getShedDetailsReport(String branchID);
+
+    MasterResultDto getshedready_medicine(String branchId) throws SQLException;
+
+    String saveEggWeightCapture(ArrayList<EggWeightCaptureDto> eggWeightCaptureDto);
+
+    ArrayList<BranchUser.EggWeightCapturePerson> getEggUnboxingPersonDtls(String branchID);
 }
