@@ -66,7 +66,7 @@ public class ReportController {
     @Operation(summary = "Laying Report")
     @PostMapping(value = "/laying", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<String>> getLayingReport(
-            @RequestBody LayingReportRequestDto request) {
+            @RequestBody LayingReportRequest request) {
 
         try {
             String html = layingReportService.getLayingReport(request);
