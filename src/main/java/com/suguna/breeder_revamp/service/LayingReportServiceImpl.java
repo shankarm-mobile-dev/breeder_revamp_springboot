@@ -1,6 +1,6 @@
 package com.suguna.breeder_revamp.service;
 
-import com.suguna.breeder_revamp.dto.LayingReportRequestDto;
+import com.suguna.breeder_revamp.dto.LayingReportRequest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
 import jakarta.persistence.StoredProcedureQuery;
@@ -22,15 +22,14 @@ public class LayingReportServiceImpl implements LayingReportService {
 
     @Override
     @Transactional
-    public String getLayingReport(LayingReportRequestDto req) {
+    public String getLayingReport(LayingReportRequest req) {
 
         try {
             // CLEAR OLD TEMP DATA
             jdbcTemplate.execute("TRUNCATE TABLE sug_clob_gtt");
 
             // Step 1: Call procedure
-            // StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sug_rpt_gpps_pkg.sug_flk_lyreg_rpt");
-            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sug_rpt_gpps_pkg.sug_dig_flk_main");
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sug_rpt_gpps_pkg.sug_flk_lyreg_rpt");
 
             query.registerStoredProcedureParameter("errbuf", String.class, ParameterMode.OUT);
             query.registerStoredProcedureParameter("retcode", Integer.class, ParameterMode.OUT);
@@ -39,7 +38,6 @@ public class LayingReportServiceImpl implements LayingReportService {
             query.registerStoredProcedureParameter("p_region_id", Integer.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_plant_code", String.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_flock", String.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter("P_type", String.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_fm_age", Integer.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_to_age", Integer.class, ParameterMode.IN);
 
@@ -47,7 +45,6 @@ public class LayingReportServiceImpl implements LayingReportService {
             query.setParameter("p_region_id", req.getRegionId());
             query.setParameter("p_plant_code", req.getPlantCode());
             query.setParameter("p_flock", req.getFlock());
-            query.setParameter("P_type", "Flock  Laying Register");
             query.setParameter("p_fm_age", req.getFromAge());
             query.setParameter("p_to_age", req.getToAge());
 
