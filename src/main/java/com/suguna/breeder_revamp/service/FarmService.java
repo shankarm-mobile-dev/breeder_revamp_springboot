@@ -47,7 +47,7 @@ public interface FarmService {
 
     String saveDestroyDetails(BranchRequest branchRequest);
 
-    BranchUser.MortalityPmlDetails getMortalityPmlDetails(String branchID);
+    BranchUser.MortalityPmlDetails getMortalityPmlDetails(BranchRequest branchRequest);
 
     BranchUser.ExcessShortageDetails getExcessShortageDetails(String branchID);
 
@@ -99,4 +99,12 @@ public interface FarmService {
     String saveEggWeightCapture(ArrayList<EggWeightCaptureDto> eggWeightCaptureDto);
 
     ArrayList<BranchUser.EggWeightCapturePerson> getEggUnboxingPersonDtls(String branchID);
+
+    String saveEggQualityCapture(ArrayList<BranchRequest.SugEggQualityCaptureDetails> branchRequest);
+
+    ArrayList<BranchUser.IfftApprovalHdrDetails>  getIfftApprovalHdrDetails(String branchID);
+
+    String saveIfftApproval(BranchRequest.SugIfftApprovalDetails branchRequest);
+
+    ArrayList<BranchUser.ReasonMaster> getReasonMasterDetails(String branchID);
 }

@@ -94,7 +94,7 @@ public class FarmController {
         else if(branchRequest.getActivityName().equalsIgnoreCase("MORTALITY")) {
             responseDto.setResult(farmService.getshedwise_birdsdtls(branchRequest));
         }
-        else if(branchRequest.getActivityName().equalsIgnoreCase("WEEK BIRD SEPERATION")) {
+        else if(branchRequest.getActivityName().equalsIgnoreCase("WEAK BIRD SEPARATION")) {
             responseDto.setResult(farmService.getshedwise_birdsdtls(branchRequest));
         }
         else if(branchRequest.getActivityName().equalsIgnoreCase("EGG COLLECTION")) {
@@ -131,7 +131,7 @@ public class FarmController {
         else if(branchRequest.getActivityName().equalsIgnoreCase("EGG COLLECTION")) {
             responseDto.setResult(farmService.saveEggCollectionDetails(branchRequest));
         }
-        else if(branchRequest.getActivityName().equalsIgnoreCase("WEEK BIRD SEPERATION")) {
+        else if(branchRequest.getActivityName().equalsIgnoreCase("WEAK BIRD SEPARATION")) {
             responseDto.setResult(farmService.saveWeekSeperationDetails(branchRequest));
         }
         else if(branchRequest.getActivityName().equalsIgnoreCase("MEDICINE/VACCINE")) {
@@ -219,7 +219,7 @@ public class FarmController {
         responseDto.setMessage("");
         responseDto.setStatusCode(200);
         responseDto.setStatus("Success");
-        responseDto.setResult(farmService.getMortalityPmlDetails(branchRequest.getBranchID()));
+        responseDto.setResult(farmService.getMortalityPmlDetails(branchRequest));
         return responseDto;
     }
     @PostMapping(value = "/saveMortalityPmlDetails",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -526,5 +526,48 @@ public class FarmController {
         responseDto.setResult(farmService.getEggUnboxingPersonDtls(branchRequest.getBranchID()));
         return responseDto;
     }
+    @PostMapping("/saveEggQualityCapture")
+    public ResponseDto saveEggQualityCapture(@RequestBody ArrayList<BranchRequest.SugEggQualityCaptureDetails> branchRequest) {
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        String response = "";
+        // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
+        responseDto.setResult(farmService.saveEggQualityCapture(branchRequest));
+        //}
+        return responseDto;
+    }
+    @PostMapping("/getIfftApprovalHdrDetails")
+    public ResponseDto getIfftApprovalHdrDetails(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getIfftApprovalHdrDetails(branchRequest.getUserCode()));
+        return responseDto;
+    }
 
+    @PostMapping("/saveIfftApproval")
+    public ResponseDto saveIfftApproval(@RequestBody BranchRequest.SugIfftApprovalDetails branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.saveIfftApproval(branchRequest));
+        return responseDto;
+    }
+
+    @PostMapping("/getReasonMasterDetails")
+    public ResponseDto getReasonMasterDetails(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getReasonMasterDetails(branchRequest.getBranchID()));
+        return responseDto;
+    }
 }

@@ -23,6 +23,7 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -79,6 +80,9 @@ public class FarmServiceImpl implements FarmService {
 
     @Autowired
     SugMaiBreederDailyEntryRepository sugMaiBreederDailyEntryRepository;
+
+    @Autowired
+    SugMaiEggQualityCaptureRepository sugMaiEggQualityCaptureRepository;
 
     @Override
     public ArrayList<BranchUser> getBranchUsers(BranchRequest branchRequest) {
@@ -1133,21 +1137,35 @@ public class FarmServiceImpl implements FarmService {
     }
 
     @Override
-    public BranchUser.MortalityPmlDetails getMortalityPmlDetails(String branchID) {
+    public BranchUser.MortalityPmlDetails getMortalityPmlDetails(BranchRequest branchRequest) {
         BranchUser.MortalityPmlDetails details = new BranchUser.MortalityPmlDetails();
         ArrayList<BranchUser.FarmFlockDetails> shedDetailsArrayList = new ArrayList<BranchUser.FarmFlockDetails>();
         try {
-            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getfarmflockddtls");
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getpmlflockddtls");
 
             storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
-            storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
-            storedProcedureQuery.setParameter(1, branchID);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(4, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchRequest.getBranchID());
+            storedProcedureQuery.setParameter(2, branchRequest.getFlockID());
+            storedProcedureQuery.setParameter(3, branchRequest.getShedNo());
             storedProcedureQuery.execute();
-            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(4);
 
             while (resultSet.next()) {
                 BranchUser.FarmFlockDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.FarmFlockDetails.class);
-                String Standard=getFeedStandard(branchID,shedDetails.getAge());
+                String Standard=getFeedStandard(branchRequest.getBranchID(),shedDetails.getAge());
+                DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+                // Parse the string into LocalDateTime
+                LocalDateTime dateTime = LocalDateTime.parse(shedDetails.getTransDate(), inputFormatter);
+
+                // Example: Convert to another format (ISO or custom)
+                DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern("dd-MMM-yyyy");
+                String formattedDate = dateTime.format(outputFormatter);
+                shedDetails.setTransDate(formattedDate);
+                System.out.println("Converted Date: " + formattedDate);
                 System.out.println("age : "+shedDetails.getAge());
                 try {
                     String[] parts = Standard.split("~");
@@ -1164,7 +1182,7 @@ public class FarmServiceImpl implements FarmService {
 
         }
         details.setFarmFlockDetails(shedDetailsArrayList);
-        details.setCullsReasonDetails(getmortalitypmlreason(branchID));
+        details.setCullsReasonDetails(getmortalitypmlreason(branchRequest.getBranchID()));
         return details;
     }
 
@@ -2693,6 +2711,7 @@ public class FarmServiceImpl implements FarmService {
         return eggWeightCapturePersonArrayList;
     }
 
+
     public BranchUser.DailyEntryCompletedDetails getDailyShedEntryDetails(String branchID,String batchID,String flock) {
         BranchUser.DailyEntryCompletedDetails standardDetailsArrayList = new BranchUser.DailyEntryCompletedDetails();
         String Standard="";
@@ -2719,4 +2738,143 @@ public class FarmServiceImpl implements FarmService {
         }
         return standardDetailsArrayList;
     }
+
+
+    @Override
+    public String saveEggQualityCapture(ArrayList<BranchRequest.SugEggQualityCaptureDetails> branchRequest) {
+        try {
+            for (BranchRequest.SugEggQualityCaptureDetails sugEggQualityCaptureDetails : branchRequest) {
+                SugMaiEggQualityCapture sugMaiEggQualityCapture = new SugMaiEggQualityCapture();
+                sugMaiEggQualityCapture.setPARENT_BRANCH_ID(Long.parseLong(sugEggQualityCaptureDetails.getParent_branch_id()));
+                sugMaiEggQualityCapture.setPARENT_BRANCH_NAME(sugEggQualityCaptureDetails.getParent_branch_name());
+                sugMaiEggQualityCapture.setBRANCH_ID(Long.parseLong(sugEggQualityCaptureDetails.getBranch_id()));
+                sugMaiEggQualityCapture.setBRANCH_NAME(sugEggQualityCaptureDetails.getBranch_name());
+                sugMaiEggQualityCapture.setFLOCK(sugEggQualityCaptureDetails.getFlock());
+                sugMaiEggQualityCapture.setBREED(sugEggQualityCaptureDetails.getBreed());
+                sugMaiEggQualityCapture.setTRANSACTION_DATE(getTxnDateString(sugEggQualityCaptureDetails.getTrans_date(),fromdateFormat1));
+                sugMaiEggQualityCapture.setNO_OFSAMPLEEGG(Long.parseLong(sugEggQualityCaptureDetails.getNoofsampleegg()));
+                sugMaiEggQualityCapture.setFERTILE(Long.parseLong(sugEggQualityCaptureDetails.getFertile()));
+                sugMaiEggQualityCapture.setINFERTILE(Long.parseLong(sugEggQualityCaptureDetails.getInfertile()));
+                sugMaiEggQualityCapture.setPRE_INCUBATION(Long.parseLong(sugEggQualityCaptureDetails.getPreincubation()));
+                sugMaiEggQualityCapture.setYOLK_MOTTLING(Long.parseLong(sugEggQualityCaptureDetails.getYolkmottling()));
+                sugMaiEggQualityCapture.setMEAT_SPOT(Long.parseLong(sugEggQualityCaptureDetails.getMeatspot()));
+                sugMaiEggQualityCapture.setBLOOD_SPOT(Long.parseLong(sugEggQualityCaptureDetails.getBloodspot()));
+                sugMaiEggQualityCaptureRepository.save(sugMaiEggQualityCapture);
+            }
+        } catch (Exception e) {
+            return "201";
+        }
+        return "200";
+    }
+
+    @Override
+    public ArrayList<BranchUser.IfftApprovalHdrDetails> getIfftApprovalHdrDetails(String branchID) {
+        ArrayList<BranchUser.IfftApprovalHdrDetails> eggWeightCapturePersonArrayList = new ArrayList<BranchUser.IfftApprovalHdrDetails>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getIfft");
+
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchID);
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+
+            while (resultSet.next()) {
+                BranchUser.IfftApprovalHdrDetails eggWeightCapturePerson = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.IfftApprovalHdrDetails.class);
+                DateTimeFormatter inputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+                // Parse the string into LocalDateTime
+                LocalDateTime dateTime = LocalDateTime.parse(eggWeightCapturePerson.getTXN_DATE(), inputFormatter);
+
+                // Example: Convert to another format (ISO or custom)
+                DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern("dd-MMM-yyyy");
+                String formattedDate = dateTime.format(outputFormatter);
+                eggWeightCapturePerson.setTXN_DATE(formattedDate);
+                eggWeightCapturePerson.setITEMS(getIfftApprovalDtlDetails(eggWeightCapturePerson.getTXN_HEADER_ID(),eggWeightCapturePerson.getDEVICE_ID()));
+                eggWeightCapturePersonArrayList.add(eggWeightCapturePerson);
+            }
+        } catch (Exception e) {
+
+        }
+        return eggWeightCapturePersonArrayList;
+    }
+    public ArrayList<BranchUser.IfftApprovalDtlDetails> getIfftApprovalDtlDetails(String headerId,String deviceId) {
+        ArrayList<BranchUser.IfftApprovalDtlDetails> eggWeightCapturePersonArrayList = new ArrayList<BranchUser.IfftApprovalDtlDetails>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getIfftDtl");
+
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, headerId);
+            storedProcedureQuery.setParameter(2, deviceId);
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(3);
+
+            while (resultSet.next()) {
+                BranchUser.IfftApprovalDtlDetails eggWeightCapturePerson = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.IfftApprovalDtlDetails.class);
+                eggWeightCapturePersonArrayList.add(eggWeightCapturePerson);
+            }
+        } catch (Exception e) {
+
+        }
+        return eggWeightCapturePersonArrayList;
+    }
+    @Override
+    public String saveIfftApproval(BranchRequest.SugIfftApprovalDetails branchRequest) {
+        String fromdateFormat = "DD-MM-YYYY hh:mm:ss";
+        String fromdateFormat1 = "DD-MMM-YYYY";
+        String isvalid="";
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gpps_mob_pkg.ifftstaus");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(4, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(5, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(6, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(7, String.class, ParameterMode.OUT);
+            storedProcedureQuery.setParameter(1, branchRequest.getHeader_id());
+            storedProcedureQuery.setParameter(2, branchRequest.getOutpass_no());
+            storedProcedureQuery.setParameter(3, branchRequest.getDate());
+            storedProcedureQuery.setParameter(4,branchRequest.getStatus());
+            storedProcedureQuery.setParameter(5,branchRequest.getIn_or_out());
+            storedProcedureQuery.setParameter(6,branchRequest.getRemarks());
+            storedProcedureQuery.execute();
+            String output = (String) storedProcedureQuery.getOutputParameterValue(7);
+            if (output.trim().equalsIgnoreCase("1")) {
+                isvalid = "true";
+            } else {
+                isvalid = "false";
+            }
+        } catch (Exception e) {
+
+        }
+        return "200";
+    }
+
+    @Override
+    public ArrayList<BranchUser.ReasonMaster> getReasonMasterDetails(String branchID) {
+        ArrayList<BranchUser.ReasonMaster> eggWeightCapturePersonArrayList = new ArrayList<BranchUser.ReasonMaster>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getreasonmaster");
+
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            //storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchID);
+            //storedProcedureQuery.setParameter(2, deviceId);
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+
+            while (resultSet.next()) {
+                BranchUser.ReasonMaster eggWeightCapturePerson = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.ReasonMaster.class);
+                eggWeightCapturePersonArrayList.add(eggWeightCapturePerson);
+            }
+        } catch (Exception e) {
+
+        }
+        return eggWeightCapturePersonArrayList;
+    }
+
 }

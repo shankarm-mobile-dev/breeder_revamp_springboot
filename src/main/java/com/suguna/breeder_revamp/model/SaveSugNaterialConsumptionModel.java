@@ -6,9 +6,9 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.util.Date;
+
 @Setter
 @Getter
-
 @Entity
 @Table(name = "sug_mai_gpps_item_consumption")
 public class SaveSugNaterialConsumptionModel {

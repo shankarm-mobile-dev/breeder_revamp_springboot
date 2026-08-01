@@ -18,6 +18,8 @@ public class BranchRequest<T> {
     String userType;
     @JsonProperty("branchID")
     String branchID;
+    @JsonProperty("hatcheryID")
+    String hatcheryID;
     @JsonProperty("shedNo")
     String shedNo;
     @JsonProperty("flockID")
@@ -268,5 +270,63 @@ public class BranchRequest<T> {
         @JsonProperty("itemType")
         String itemType;
     }
-
+    @Getter
+    @Setter
+    public static class SugEggQualityCaptureDetails
+    {
+        @JsonProperty("parent_branch_id")
+        String parent_branch_id;
+        @JsonProperty("parent_branch_name")
+        String parent_branch_name;
+        @JsonProperty("branch_id")
+        String branch_id;
+        @JsonProperty("branch_name")
+        String branch_name;
+        @JsonProperty("flock")
+        String flock;
+        @JsonProperty("breed")
+        String breed;
+        @JsonProperty("trans_date")
+        String trans_date;
+        @JsonProperty("noofsampleegg")
+        String noofsampleegg;
+        @JsonProperty("fertile")
+        String fertile;
+        @JsonProperty("infertile")
+        String infertile;
+        @JsonProperty("preincubation")
+        String preincubation;
+        @JsonProperty("yolkmottling")
+        String yolkmottling;
+        @JsonProperty("meatspot")
+        String meatspot;
+        @JsonProperty("bloodspot")
+        String bloodspot;
+    }
+    @Getter
+    @Setter
+    public static class SugIfftApprovalDetails {
+        @JsonProperty("header_id")
+        String header_id;
+        @JsonProperty("outpass_no")
+        String outpass_no;
+        @JsonProperty("date")
+        String date;
+        @JsonProperty("status")
+        String status;
+        @JsonProperty("in_or_out")
+        String in_or_out;
+        @JsonProperty("remarks")
+        String remarks;
+    }
+    @Getter
+    @Setter
+    public static class SugPlanUpdateDetails {
+        @JsonProperty("PLAN_DTL_ID")
+        String PLAN_DTL_ID;
+        @JsonProperty("ACTUAL_ARRIVAL_DATE")
+        String ACTUAL_ARRIVAL_DATE;
+        @JsonProperty("ACTUAL_ARRIVAL_IMAGE")
+        String ACTUAL_ARRIVAL_IMAGE;
+    }
 }

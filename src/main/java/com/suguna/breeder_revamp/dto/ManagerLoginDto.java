@@ -56,5 +56,9 @@ public class ManagerLoginDto {
         @JsonProperty("empName")
         String empName;
 
+        @Column(name = "ledger_ID" , type = String.class)
+        @JsonProperty("ledgerID")
+        String ledgerID;
+
     }
 }

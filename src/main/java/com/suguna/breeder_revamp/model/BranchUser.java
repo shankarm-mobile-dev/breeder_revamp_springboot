@@ -33,6 +33,9 @@ public class BranchUser {
     @JsonProperty("branchUserDetails")
     ArrayList<SupervisorDetails> branchUserDetails;
 
+    @JsonProperty("flockDetails")
+    ArrayList<FarmFlockDetails> flockDetails;
+
     @Getter
     @Setter
     public static class RegisteredBranchUser {
@@ -281,6 +284,10 @@ public class BranchUser {
         @JsonProperty("birdsNo")
         String birdsNo;
 
+        @Column(name = "SHED_NO", type = String.class)
+        @JsonProperty("shedNo")
+        String shedNo;
+
     }
 
     @Getter
@@ -370,12 +377,18 @@ public class BranchUser {
         @Column(name = "end_DATE", type = String.class)
         @JsonProperty("endDate")
         String endDate;
+        @Column(name = "trans_DATE", type = String.class)
+        @JsonProperty("transDATE")
+        String transDate;
         @Column(name = "op_MALE", type = String.class)
         @JsonProperty("opMale")
         String opMale;
         @Column(name = "op_FEMALE", type = String.class)
         @JsonProperty("opFemale")
         String opFemale;
+        @Column(name = "breed", type = String.class)
+        @JsonProperty("breed")
+        String breed;
         //@Column(name = "op_MALE", type = String.class)
         @JsonProperty("opMaleFeedStandard")
         String opMaleFeedStandard;
@@ -390,6 +403,9 @@ public class BranchUser {
 
         @JsonProperty("farmFlockDetails")
         ArrayList<FarmFlockPreviousDetails> farmFlockDetails;
+
+        @JsonProperty("farmShedDetails")
+        ArrayList<ShedBirdsDetails> farmShedDetails;
     }
 
     @Getter
@@ -1002,4 +1018,80 @@ public class BranchUser {
         String branchId;
 
     }
+
+    @Getter
+    @Setter
+    public static class ShedBirdsDetails {
+        @Column(name = "MALE_BIRDS_NO", type = String.class)
+        @JsonProperty("maleBirdsNo")
+        String maleBirdsNo;
+
+        @Column(name = "FEMALE_BIRDS_NO", type = String.class)
+        @JsonProperty("femaleBirdsNo")
+        String femaleBirdsNo;
+
+        @Column(name = "SHED_NO", type = String.class)
+        @JsonProperty("shedNo")
+        String shedNo;
+
     }
+    @Getter
+    @Setter
+    public static class IfftApprovalHdrDetails {
+        @Column(name = "FROM_FARM_NAME", type = String.class)
+        @JsonProperty("FROM_FARM_NAME")
+        String FROM_FARM_NAME;
+        @Column(name = "TXN_DATE", type = String.class)
+        @JsonProperty("TXN_DATE")
+        String TXN_DATE;
+        @Column(name = "TXN_HEADER_ID", type = String.class)
+        @JsonProperty("TXN_HEADER_ID")
+        String TXN_HEADER_ID;
+        @Column(name = "OUT_PASS_NO", type = String.class)
+        @JsonProperty("OUT_PASS_NO")
+        String OUT_PASS_NO;
+        @Column(name = "TRANS_REASON", type = String.class)
+        @JsonProperty("TRANS_REASON")
+        String TRANS_REASON;
+        @Column(name = "DEVICE_ID", type = String.class)
+        @JsonProperty("DEVICE_ID")
+        String DEVICE_ID;
+        @Column(name = "TRANS_TYPE", type = String.class)
+        @JsonProperty("TRANS_TYPE")
+        String TRANS_TYPE;
+        @Column(name = "TO_FARM_NAME", type = String.class)
+        @JsonProperty("TO_FARM_NAME")
+        String TO_FARM_NAME;
+        @Column(name = "RECEIVER_NAME", type = String.class)
+        @JsonProperty("RECEIVER_NAME")
+        String RECEIVER_NAME;
+        @JsonProperty("ITEMS")
+        ArrayList<IfftApprovalDtlDetails> ITEMS;
+    }
+    @Getter
+    @Setter
+    public static class IfftApprovalDtlDetails {
+        @Column(name = "UOM", type = String.class)
+        @JsonProperty("UOM")
+        String UOM;
+        @Column(name = "ITEM_DESC", type = String.class)
+        @JsonProperty("ITEM_DESC")
+        String ITEM_DESC;
+        @Column(name = "QTY", type = String.class)
+        @JsonProperty("QTY")
+        String QTY;
+    }
+    @Getter
+    @Setter
+    public static class ReasonMaster {
+        @Column(name = "type", type = String.class)
+        @JsonProperty("type")
+        String type;
+        @Column(name = "lookup_CODE", type = String.class)
+        @JsonProperty("lookup_CODE")
+        String lookup_CODE;
+        @Column(name = "meaning", type = String.class)
+        @JsonProperty("meaning")
+        String meaning;
+    }
+}
