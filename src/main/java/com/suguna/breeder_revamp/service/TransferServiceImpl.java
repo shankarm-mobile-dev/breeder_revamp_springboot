@@ -710,6 +710,27 @@ public class TransferServiceImpl implements TransferService{
             }
         return "200";
     }
+    @Transactional
+    public String saveGateOutDetails(PlanRequest branchRequest, List<MultipartFile> imageFile) {
 
+
+        try {
+            String mortalityImage = null;
+            if (imageFile != null && !imageFile.isEmpty()) {
+                for (MultipartFile data : imageFile) {
+                    mortalityImage = fileStorageService.saveImage(data, "", Long.valueOf(branchRequest.getPLAN_DTL_ID()), FileStorageCategory.FEED);
+                }
+            }
+
+           int updatedRows= sugEggVehiclePlanDtlRepository.updateActualDeparture(branchRequest.getPLAN_DTL_ID(),getTxnDateString(branchRequest.getACTUAL_DEPATURE_DATE(),fromdateFormat),mortalityImage);
+
+            if (updatedRows > 0) {
+                sugEggVehiclePlanDtlRepository.updateTransferEntryFlag(branchRequest.getPLAN_DTL_ID());
+            }
+        } catch (IOException | IllegalArgumentException ex) {
+            //  return Response.buildSingleResponse("Failed", HttpStatus.BAD_REQUEST, ex.getMessage(), null);
+        }
+        return "200";
+    }
 
 }

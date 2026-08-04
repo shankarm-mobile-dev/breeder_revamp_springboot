@@ -43,4 +43,6 @@ public interface TransferService {
 
 
     String saveGateInDetails(PlanRequest branchRequest, List<MultipartFile> imageFile);
+
+    String saveGateOutDetails(PlanRequest branchRequest, List<MultipartFile> imageFile);
 }

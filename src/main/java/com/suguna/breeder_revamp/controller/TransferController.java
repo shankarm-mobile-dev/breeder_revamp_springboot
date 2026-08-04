@@ -200,4 +200,25 @@ public class TransferController {
         return responseDto;
     }
 
+    @PostMapping(value = "/saveGateOutDetails",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseDto saveGateOutDetails(/*@RequestBody BranchRequest branchRequest*/@RequestParam("entryRequest") String branchRequestJson, @RequestParam(value = "image", required = false) List<MultipartFile> imageFile) {
+        PlanRequest branchRequest = null;
+        try {
+            branchRequest = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(branchRequestJson, PlanRequest.class);
+        } catch (JsonProcessingException e) {
+            System.out.println("Error in parsing " + e.getMessage());
+            throw new RuntimeException(e);
+        }
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        String response = "";
+        // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
+        responseDto.setResult(transferService.saveGateOutDetails(branchRequest,imageFile));
+        //}
+        return responseDto;
+    }
+
 }
