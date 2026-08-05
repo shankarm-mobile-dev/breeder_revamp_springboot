@@ -19,7 +19,9 @@ public class OrderDetailsDto {
     @Column(name="CUSTOMERSITEUSEID")
     private String CUSTOMERSITEUSEID;
     @Column(name="STATUS")
-    private BigDecimal STATUS;
+    private String STATUS;
+    @Column(name="STATUS_CODE")
+    private BigDecimal STATUS_CODE;
 
     @Column(name = "CURRENTSTATUS")
     private String CURRENTSTATUS;
@@ -82,11 +84,11 @@ public class OrderDetailsDto {
         this.CUSTOMERSITEUSEID = CUSTOMERSITEUSEID;
     }
 
-    public BigDecimal getSTATUS() {
+    public String getSTATUS() {
         return STATUS;
     }
 
-    public void setSTATUS(BigDecimal STATUS) {
+    public void setSTATUS(String STATUS) {
         this.STATUS = STATUS;
     }
 
@@ -122,5 +124,11 @@ public class OrderDetailsDto {
         this.CUSTOMERNAME = CUSTOMERNAME;
     }
 
+    public BigDecimal getSTATUS_CODE() {
+        return STATUS_CODE;
+    }
 
+    public void setSTATUS_CODE(BigDecimal STATUS_CODE) {
+        this.STATUS_CODE = STATUS_CODE;
+    }
 }

@@ -340,7 +340,7 @@ public class OrderServiceImpl implements OrderServices {
         OrderDto orderDto = new OrderDto();
         orderDto.setHeaderId(orders.getHeaderId());
         orderDto.setOrderRefNumber(orders.getORDER_REF_NUMBER());
-        orderDto.setStatus(orders.getSTATUS());
+        orderDto.setStatus_code(String.valueOf(orders.getSTATUS()));
         orderDto.setCreatedBy(orders.getCREATED_BY());
         orderDto.setCreationDate(orders.getCREATION_DATE());
         orderDto.setCustomerId(orders.getCUSTOMER_ID());
@@ -349,9 +349,24 @@ public class OrderServiceImpl implements OrderServices {
         orderDto.setOrderLineDtoList(convertOrderLineListToEntityList(orders.getOrderLines()));
         orderDto.setVehicleNumber(orders.getVEHICLE_NUMBER());
         orderDto.setCustomerBillToId(orders.getCUSTOMER_BILL_TO_ID());
+        orderDto.setStatus(get_order_status(String.valueOf(orders.getORDER_REF_NUMBER())));
         return orderDto;
     }
+    public String get_order_status(String ref_numer)
+    {
+        String count ="0";
+        try {
+            count = (String) entityManager.createNativeQuery("select sug_om_cr_hold_pkg.get_manure_ord_status(?1) as CCOUNT from dual")
+                    .setParameter(1, ref_numer)
+                    .getSingleResult();
+        }
+        catch (Exception e)
+        {
+            count ="0";
+        }
+        return count;
 
+    }
     /**
      * Converts an OrderLine entity to an OrderLineDto object.
      *
@@ -404,7 +419,8 @@ public class OrderServiceImpl implements OrderServices {
         orders.setORGN_ID(orderDto.getOrgnId());
         orders.setREMARKS(orderDto.getRemarks());
         orders.setPOSTED_FLAG(orderDto.getPostedFlag());
-        orders.setSTATUS(orderDto.getStatus());
+        orders.setSTATUS(Integer.parseInt(orderDto.getStatus()));
+        //orders.setSTATUS(get_order_status(String.valueOf(orders.getORDER_REF_NUMBER())));
         orders.setSOURCE(orderDto.getSource());
         orders.setSALES_REP_ID(orderDto.getSalesRepId());
         orders.setPRICE_LIST_ID(orderDto.getPriceListId());
@@ -415,6 +431,7 @@ public class OrderServiceImpl implements OrderServices {
     private List<OrderDto> convertEntityListToDtoList(List<Orders> ordersList) {
         List<OrderDto> orderDtoList = new ArrayList<>();
         for (Orders orders : ordersList) {
+
             orderDtoList.add(convertEntityToDto(orders));
         }
         return orderDtoList;
@@ -426,7 +443,7 @@ public class OrderServiceImpl implements OrderServices {
                         "       TO_CHAR(H.ORDER_REF_NUMBER) orderRefNumber,\n" +
                         "       TO_CHAR(H.CUSTOMER_ID) customerId,\n" +
                         "       TO_CHAR(H.CUSTOMER_SITE_USE_ID) customerSiteUseId,\n" +
-                        "       H.status,\n" +
+                        "       sug_om_cr_hold_pkg.get_manure_ord_status(H.ORDER_REF_NUMBER) as status,h.status as status_code,\n" +
                         "       (select sug_wf_pkg.get_wf_notified_to(p_item_type => 'SUGMNRS' , p_item_key => H.HEADER_ID) AS orderstatus from dual) currentStatus,\n" +
                         "       (select a.LOCATION_NAME from sug_organization_mv a where 1 = 1 and a.branch_id = H.ORG_ID) location,\n" +
                         "       (select B.LOCATION from hz_cust_site_uses_all B where B.SITE_USE_ID = H.CUSTOMER_SITE_USE_ID) shipToLocation,\n" +

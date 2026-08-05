@@ -38,7 +38,9 @@ public class OrderDto {
     @JsonProperty("last_updated_date")
     Date lastUpdatedDate;
     @JsonProperty("status")
-    int status;
+    String status;
+    @JsonProperty("status_code")
+    String status_code;
     @JsonProperty("remarks")
     String remarks;
     @JsonProperty("orgn_id")
@@ -56,6 +58,9 @@ public class OrderDto {
 
     @JsonProperty("vehicle_number")
     String vehicleNumber;
+
+    @JsonProperty("status_message")
+    String statusMessage;
 
     public Long getParty_site_id() {
         return party_site_id;
@@ -188,11 +193,11 @@ public class OrderDto {
         this.lastUpdatedDate = lastUpdatedDate;
     }
 
-    public int getStatus() {
+    public String getStatus() {
         return status;
     }
 
-    public void setStatus(int status) {
+    public void setStatus(String status) {
         this.status = status;
     }
 
@@ -250,5 +255,13 @@ public class OrderDto {
 
     public void setDepoBranchId(Long depoBranchId) {
         this.depoBranchId = depoBranchId;
+    }
+
+    public String getStatus_code() {
+        return status_code;
+    }
+
+    public void setStatus_code(String status_code) {
+        this.status_code = status_code;
     }
 }
