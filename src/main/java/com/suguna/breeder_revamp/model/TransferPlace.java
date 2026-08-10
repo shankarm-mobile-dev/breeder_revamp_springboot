@@ -542,6 +542,10 @@ public class TransferPlace {
         @Column(name = "TO_FARM_ID", type = String.class)
         @JsonProperty("TO_FARM_ID")
         String TO_FARM_ID;
+
+        @Column(name = "TO_FARM_NAME", type = String.class)
+        @JsonProperty("TO_FARM_NAME")
+        String TO_FARM_NAME;
         @Column(name = "TXN_HEADER_ID", type = String.class)
         @JsonProperty("TXN_HEADER_ID")
         String TXN_HEADER_ID;
@@ -597,6 +601,19 @@ public class TransferPlace {
         @Column(name = "QTY", type = String.class)
         @JsonProperty("QTY")
         String QTY;
+
+        @Column(name = "FROM_LINE_NAME", type = String.class)
+        @JsonProperty("FROM_LINE_NAME")
+        String FROM_LINE_NAME;
+        @Column(name = "TO_LINE_NAME", type = String.class)
+        @JsonProperty("TO_LINE_NAME")
+        String TO_LINE_NAME;
+        @Column(name = "FROM_SIDE_NAME", type = String.class)
+        @JsonProperty("FROM_SIDE_NAME")
+        String FROM_SIDE_NAME;
+        @Column(name = "TO_SIDE_NAME", type = String.class)
+        @JsonProperty("TO_SIDE_NAME")
+        String TO_SIDE_NAME;
 
     }
     @Getter

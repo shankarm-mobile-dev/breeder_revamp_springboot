@@ -22,6 +22,8 @@ public class BranchRequest<T> {
     String hatcheryID;
     @JsonProperty("shedNo")
     String shedNo;
+    @JsonProperty("lineNo")
+    String lineNo;
     @JsonProperty("flockID")
     String flockID;
     @JsonProperty("batchID")
@@ -44,6 +46,10 @@ public class BranchRequest<T> {
     String pmLevel;
     @JsonProperty("entryDate")
     String entryDate;
+    @JsonProperty("LATITUDE")
+    String latitude;
+    @JsonProperty("LONGITUDE")
+    String longitude;
     @JsonProperty("data")
     T data;
 
@@ -63,6 +69,10 @@ public class BranchRequest<T> {
     @Setter
     public static class SugMortalityDetails
     {
+        @JsonProperty("lineNo")
+        String lineNo;
+        @JsonProperty("sideNo")
+        String sideNo;
         @JsonProperty("birdType")
         String birdType;
         @JsonProperty("totalBirds")
@@ -119,6 +129,10 @@ public class BranchRequest<T> {
         String MaleBirdsWeight;
         @JsonProperty("Type")
         String Type;
+        @JsonProperty("lineNo")
+        public String lineNo;
+        @JsonProperty("sideNo")
+        public String sideNo;
     }
 
     @Getter

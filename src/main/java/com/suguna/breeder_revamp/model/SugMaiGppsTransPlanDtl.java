@@ -26,4 +26,9 @@ public class SugMaiGppsTransPlanDtl {
     String UOM;
     BigDecimal STOCK_QTY;
     BigDecimal QTY;
+    String FROM_LINE_NAME;
+    String TO_LINE_NAME;
+    String FROM_SIDE_NAME;
+    String TO_SIDE_NAME;
+
 }

@@ -47,4 +47,8 @@ public class SugMaiGppsTransDtl {
     String LOCATION_TYPE;
     String TXN_TIME;
     String BREEDNAME;
+    String FROM_LINE_NAME;
+    String TO_LINE_NAME;
+    String FROM_SIDE_NAME;
+    String TO_SIDE_NAME;
 }

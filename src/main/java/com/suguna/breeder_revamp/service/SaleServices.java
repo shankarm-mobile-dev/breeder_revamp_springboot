@@ -17,7 +17,7 @@ public interface SaleServices {
     public ArrayList<SaleResultDto.onhandculleggstock> ONHANDCULLEGGSTOCKS(String branch_ID)throws SQLException;
     public ArrayList<SaleResultDto.despatchtime>DESPATCHTIMES(String regionid )throws SQLException;
 
-    public String getDeliveryHeader(ArrayList<deliveryHeaderDto> entry);
+    public String getDeliveryHeader(deliveryHeaderDto entry);
     public String getDeliveryLines(ArrayList<deliveryLinesDto> entry) ;
     public String getDeliveryLotDetails(ArrayList<deliveryLotDetailsDto> entry);
 }

@@ -107,4 +107,6 @@ public interface FarmService {
     String saveIfftApproval(BranchRequest.SugIfftApprovalDetails branchRequest);
 
     ArrayList<BranchUser.ReasonMaster> getReasonMasterDetails(String branchID);
+
+    String saveOthersEntryDetails(BranchRequest branchRequest);
 }

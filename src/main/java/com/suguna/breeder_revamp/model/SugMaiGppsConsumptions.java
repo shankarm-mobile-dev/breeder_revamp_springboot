@@ -60,4 +60,7 @@ public class SugMaiGppsConsumptions {
     double PM_LEVEL;
     String REMARKS;
     Long BRANCH_ID;
+    float LATITUDE;
+    float LONGITUDE;
+    String SIDE_NO;
 }

@@ -156,12 +156,13 @@ public class SaleServiceImpl implements SaleServices {
     @Autowired
     deliveryHeaderRepository deliveryHeaderRepository;
 
-    public String getDeliveryHeader(ArrayList<deliveryHeaderDto> entry){
+    public String getDeliveryHeader(deliveryHeaderDto saledto){
        // String fromdateFormat = "yyyy/MM/dd hh:mm:ss";
         String fromdateFormat1 = "dd-MM-yyyy";
+        String fromdateFormat2 = "dd-MMM-yyyy";
      try {
          long transid=0;
-         for(deliveryHeaderDto saledto:entry){
+         //for(deliveryHeaderDto saledto:entry){
              deliveryHeaderModels headerModels = new deliveryHeaderModels();
              headerModels.setLEDGER_ID(saledto.getLedgerid());
              headerModels.setORG_ID(saledto.getOrgid());
@@ -169,7 +170,7 @@ public class SaleServiceImpl implements SaleServices {
              /*int deli_trans_id;
              deli_trans_id = gettrxid("sug_delivery_header_s");*/
             // headerModels.setDELV_TRANS_ID((deli_trans_id));
-             headerModels.setDELIVERY_DATE(getTxnDateString(saledto.getDeliveryDate(),fromdateFormat1));
+             headerModels.setDELIVERY_DATE(getTxnDateString(saledto.getDeliveryDate(),fromdateFormat2));
              headerModels.setCUSTOMER_ID(saledto.getCustomerid());
              headerModels.setVEHICLE_NO(saledto.getVehicleno());
              int trans_ref_number;
@@ -231,12 +232,13 @@ public class SaleServiceImpl implements SaleServices {
                      deliveryLotDetailsRepository.save(lotDetailsModels);
                  }
              }
-                 return "True";
-         }
+                 return "200";
+         //}
      }catch (Exception e){
+         System.out.println("errorsale:"+ String.valueOf(e.getMessage()));
          e.getMessage();
      }
-     return "False";
+     return "201";
     }
     @Autowired
     deliveryLinesRepository deliveryLinesRepository;

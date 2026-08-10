@@ -260,6 +260,10 @@ public class TransferServiceImpl implements TransferService{
                             sugMaiGppsTransDtlModels.setLOCATION_TYPE(FarmDto1.getLocation_TYPE());
                             sugMaiGppsTransDtlModels.setTXN_TIME(FarmDto1.getTXN_TIME());
                             sugMaiGppsTransDtlModels.setBREEDNAME(FarmDto1.getBreedname());
+                            sugMaiGppsTransDtlModels.setFROM_LINE_NAME(FarmDto1.getFromLine());
+                            sugMaiGppsTransDtlModels.setTO_LINE_NAME(FarmDto1.getToLine());
+                            sugMaiGppsTransDtlModels.setFROM_SIDE_NAME(FarmDto1.getFromSide());
+                            sugMaiGppsTransDtlModels.setTO_SIDE_NAME(FarmDto1.getToSide());
                             sugMaiGppsTransDtlRepository.save(sugMaiGppsTransDtlModels);
 
                         } else {
@@ -421,6 +425,10 @@ public class TransferServiceImpl implements TransferService{
                 sugMaiGppsTransPlanDtl.setQTY(transferPlanDtlsDto.quantity);
                 sugMaiGppsTransPlanDtl.setFROM_INVENTORY_LOC_DESC(transferPlanDtlsDto.fromFarmLocation);
                 sugMaiGppsTransPlanDtl.setTO_INVENTORY_LOC_DESC(transferPlanDtlsDto.toFarmLocation);
+                sugMaiGppsTransPlanDtl.setFROM_LINE_NAME(transferPlanDtlsDto.fromLine);
+                sugMaiGppsTransPlanDtl.setTO_LINE_NAME(transferPlanDtlsDto.toLine);
+                sugMaiGppsTransPlanDtl.setFROM_SIDE_NAME(transferPlanDtlsDto.fromSide);
+                sugMaiGppsTransPlanDtl.setTO_SIDE_NAME(transferPlanDtlsDto.toSide);
                 sugMaiGppsTransPlanDtlRepository.save(sugMaiGppsTransPlanDtl);
             }
         } catch (Exception e) {
@@ -537,7 +545,7 @@ public class TransferServiceImpl implements TransferService{
                 transferInDetailsArrayList.add(transferInDetails);
             }
         } catch (Exception e) {
-
+              System.out.println("error:"+ e.getMessage());
         }
         return transferInDetailsArrayList;
     }

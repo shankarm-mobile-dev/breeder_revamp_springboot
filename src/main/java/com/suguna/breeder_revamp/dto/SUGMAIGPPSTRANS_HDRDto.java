@@ -173,6 +173,15 @@ public class SUGMAIGPPSTRANS_HDRDto {
         @JsonProperty("transfer_type")
         public String transfer_type;
 
+        @JsonProperty("fromLine")
+        public String fromLine;
+        @JsonProperty("toLine")
+        public String toLine;
+        @JsonProperty("fromSide")
+        public String fromSide;
+        @JsonProperty("toSide")
+        public String toSide;
+
     }
 }
 

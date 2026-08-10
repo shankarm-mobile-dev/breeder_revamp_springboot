@@ -570,4 +570,16 @@ public class FarmController {
         responseDto.setResult(farmService.getReasonMasterDetails(branchRequest.getBranchID()));
         return responseDto;
     }
+    @PostMapping("/saveOthersEntryDetails")
+    public ResponseDto saveOthersEntryDetails(@RequestBody BranchRequest branchRequest) {
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        String response = "";
+        // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
+        responseDto.setResult(farmService.saveOthersEntryDetails(branchRequest));
+        //}
+        return responseDto;
+    }
 }

@@ -1,10 +1,7 @@
 package com.suguna.breeder_revamp.controller;
 
 
-import com.suguna.breeder_revamp.dto.SaleResultDto;
-import com.suguna.breeder_revamp.dto.deliveryHeaderDto;
-import com.suguna.breeder_revamp.dto.deliveryLinesDto;
-import com.suguna.breeder_revamp.dto.deliveryLotDetailsDto;
+import com.suguna.breeder_revamp.dto.*;
 import com.suguna.breeder_revamp.service.SaleServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -37,8 +34,17 @@ public class SaleControllers {
         return saleService.DESPATCHTIMES(regionid);
     }
     @PostMapping("/saveEggCullsSalesEntry")
-    public String getDeliveryHeader(@RequestBody ArrayList<deliveryHeaderDto> entry) throws Exception{
-        return saleService.getDeliveryHeader(entry);
+    public ResponseDto getDeliveryHeader(@RequestBody deliveryHeaderDto entry) throws Exception{
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        String response = "";
+        // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
+        responseDto.setResult(saleService.getDeliveryHeader(entry));
+        //}
+        return responseDto;
+
     }
     @PostMapping("/deliverylines")
     public String getDeliveryLines(@RequestBody ArrayList<deliveryLinesDto> entry) throws Exception{

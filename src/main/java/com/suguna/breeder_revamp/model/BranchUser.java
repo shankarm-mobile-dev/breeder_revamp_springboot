@@ -406,6 +406,14 @@ public class BranchUser {
 
         @JsonProperty("farmShedDetails")
         ArrayList<ShedBirdsDetails> farmShedDetails;
+
+         @Column(name = "LINE_NO", type = String.class)
+        @JsonProperty("lineNo")
+        String lineNo;
+
+         @Column(name = "SIDE_NO", type = String.class)
+        @JsonProperty("sideNo")
+        String sideNo;
     }
 
     @Getter
