@@ -1,5 +1,6 @@
 package com.suguna.breeder_revamp.controller;
 
+import com.suguna.breeder_revamp.dto.FarmResultDto;
 import com.suguna.breeder_revamp.dto.ReportDto;
 import com.suguna.breeder_revamp.dto.ReportResultDto;
 import com.suguna.breeder_revamp.service.ReportService;
@@ -78,5 +79,30 @@ public class ReportControllers {
     @GetMapping("/getgppsperformance/{branch_code}")
     public ReportDto getGppsperformance(@PathVariable String branch_code) throws Exception{
         return reportService.getGppsperformance(branch_code);
+    }
+
+    @GetMapping("/getDailyentryConsumptionData/{branch_ID}")
+    public FarmResultDto DAILYENTRYCONSUMPTIONDATA(@PathVariable String branch_ID) throws Exception {
+        return reportService.DAILYENTRYCONSUMPTIONDATA(branch_ID);
+    }
+
+    @GetMapping("/getDailyentryProductionData/{branch_ID}")
+    public FarmResultDto DAILYENTRYPRODUCTIONDATA(@PathVariable String branch_ID) throws Exception {
+        return reportService.DAILYENTRYPRODUCTIONDATA(branch_ID);
+    }
+
+    @GetMapping("/getDailyentryLiveBirdData/{branch_ID}")
+    public FarmResultDto DAILYENTRYLIVEBIRDDATA(@PathVariable String branch_ID) throws Exception {
+        return reportService.DAILYENTRYLIVEBIRDDATA(branch_ID);
+    }
+
+    @GetMapping("/getDailyEntryTransferIN/{branch_ID}")
+    public FarmResultDto DAILYENTRYTRANSFERINS(@PathVariable String branch_ID) throws Exception {
+        return reportService.DAILYENTRYTRANSFERINS(branch_ID);
+    }
+
+    @GetMapping("/getDailyEntryTransferOUT/{branch_ID}")
+    public FarmResultDto DAILYENTRYTRANSFEROUTS(@PathVariable String branch_ID) throws Exception {
+        return reportService.DAILYENTRYTRANSFEROUTS(branch_ID);
     }
 }

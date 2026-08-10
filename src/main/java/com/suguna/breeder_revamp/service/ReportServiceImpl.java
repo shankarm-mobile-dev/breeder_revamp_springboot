@@ -1,5 +1,6 @@
 package com.suguna.breeder_revamp.service;
 
+import com.suguna.breeder_revamp.dto.FarmResultDto;
 import com.suguna.breeder_revamp.dto.ReportDto;
 import com.suguna.breeder_revamp.dto.ReportResultDto;
 import com.suguna.breeder_revamp.utils.ResultSetMapper;
@@ -233,5 +234,117 @@ public class ReportServiceImpl implements ReportService{
         }
         reportDto.setPerformance(Result);
         return reportDto;
+    }
+
+    public FarmResultDto DAILYENTRYCONSUMPTIONDATA(String branch_ID) throws SQLException {
+        FarmResultDto farmResultDto=new FarmResultDto();
+        FarmResultDto.dailyentrymst appinfo = new FarmResultDto.dailyentrymst();
+        ArrayList<FarmResultDto.dailyentrymst> Result = new ArrayList<FarmResultDto.dailyentrymst>();
+        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gppsmob_pkg.getdailyentryconsumptiondata");
+        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+        storedProcedureQuery.setParameter(1, branch_ID);
+        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+        storedProcedureQuery.execute();
+        while (resultSet.next()) {
+            FarmResultDto.dailyentrymst pojo = null;
+            try {
+                appinfo = ResultSetMapper.mapResultSetToObject(resultSet, FarmResultDto.dailyentrymst.class);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+            Result.add(appinfo);
+        }
+        farmResultDto.setDailyentrymst(Result);
+
+        return farmResultDto;
+    }
+
+    public FarmResultDto DAILYENTRYPRODUCTIONDATA(String branch_ID) throws SQLException {
+        FarmResultDto farmResultDto=new FarmResultDto();
+        FarmResultDto.dailyentrymst appinfo = new FarmResultDto.dailyentrymst();
+        ArrayList<FarmResultDto.dailyentrymst> Result = new ArrayList<FarmResultDto.dailyentrymst>();
+        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gppsmob_pkg.getdailyentryproductiondata");
+        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+        storedProcedureQuery.setParameter(1, branch_ID);
+        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+        storedProcedureQuery.execute();
+        while (resultSet.next()) {
+            try {
+                appinfo = ResultSetMapper.mapResultSetToObject(resultSet, FarmResultDto.dailyentrymst.class);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+            Result.add(appinfo);
+        }
+        farmResultDto.setDailyentrymst(Result);
+        return farmResultDto;
+    }
+
+    public FarmResultDto DAILYENTRYLIVEBIRDDATA(String branch_ID) throws SQLException {
+        FarmResultDto farmResultDto=new FarmResultDto();
+        FarmResultDto.dailyentrymst appinfo = new FarmResultDto.dailyentrymst();
+        ArrayList<FarmResultDto.dailyentrymst> Result = new ArrayList<FarmResultDto.dailyentrymst>();
+        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gppsmob_pkg.getdailyentrylivebirddata");
+        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+        storedProcedureQuery.setParameter(1, branch_ID);
+        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+        storedProcedureQuery.execute();
+        while (resultSet.next()) {
+            try {
+                appinfo = ResultSetMapper.mapResultSetToObject(resultSet, FarmResultDto.dailyentrymst.class);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+            Result.add(appinfo);
+        }
+        farmResultDto.setDailyentrymst(Result);
+        return farmResultDto;
+    }
+
+    public FarmResultDto DAILYENTRYTRANSFERINS(String branch_ID) throws SQLException {
+        FarmResultDto farmResultDto=new FarmResultDto();
+        FarmResultDto.dailyentrymst appinfo = new FarmResultDto.dailyentrymst();
+        ArrayList<FarmResultDto.dailyentrymst> Result = new ArrayList<FarmResultDto.dailyentrymst>();
+        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gppsmob_pkg.getdailyentrytransferin");
+        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+        storedProcedureQuery.setParameter(1, branch_ID);
+        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+        storedProcedureQuery.execute();
+        while (resultSet.next()) {
+            try {
+                appinfo = ResultSetMapper.mapResultSetToObject(resultSet, FarmResultDto.dailyentrymst.class);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+            Result.add(appinfo);
+        }
+        farmResultDto.setDailyentrymst(Result);
+        return farmResultDto;
+    }
+
+    public FarmResultDto DAILYENTRYTRANSFEROUTS(String branch_ID) throws SQLException {
+        FarmResultDto farmResultDto=new FarmResultDto();
+        FarmResultDto.dailyentrymst appinfo = new FarmResultDto.dailyentrymst();
+        ArrayList<FarmResultDto.dailyentrymst> Result = new ArrayList<FarmResultDto.dailyentrymst>();
+        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gppsmob_pkg.getdailyentrytransferout");
+        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+        storedProcedureQuery.setParameter(1, branch_ID);
+        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+        storedProcedureQuery.execute();
+        while (resultSet.next()) {
+            try {
+                appinfo = ResultSetMapper.mapResultSetToObject(resultSet, FarmResultDto.dailyentrymst.class);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+            Result.add(appinfo);
+        }
+        farmResultDto.setDailyentrymst(Result);
+        return farmResultDto;
     }
 }

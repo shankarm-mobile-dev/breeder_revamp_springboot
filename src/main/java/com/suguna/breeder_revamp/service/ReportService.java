@@ -1,5 +1,6 @@
 package com.suguna.breeder_revamp.service;
 
+import com.suguna.breeder_revamp.dto.FarmResultDto;
 import com.suguna.breeder_revamp.dto.ReportDto;
 import com.suguna.breeder_revamp.dto.ReportResultDto;
 
@@ -24,4 +25,12 @@ public interface ReportService {
     ReportResultDto EGGUNBOXINGREPORT(String branchId, String fromMonth, String toMonth) throws SQLException;
 
     ReportDto getGppsperformance(String branch_code) throws SQLException;
+
+    public FarmResultDto DAILYENTRYCONSUMPTIONDATA(String branch_ID) throws SQLException;
+
+    public FarmResultDto DAILYENTRYPRODUCTIONDATA(String branch_ID) throws SQLException;
+
+    public FarmResultDto DAILYENTRYLIVEBIRDDATA(String branch_ID) throws SQLException;
+    public FarmResultDto DAILYENTRYTRANSFERINS(String branch_ID) throws SQLException;
+    public  FarmResultDto DAILYENTRYTRANSFEROUTS(String branch_ID) throws SQLException;
 }
