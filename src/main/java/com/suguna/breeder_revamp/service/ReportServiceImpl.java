@@ -159,27 +159,45 @@ public class ReportServiceImpl implements ReportService{
         return reportResultDto;
     }
 
-    public ArrayList<ReportDto.feedStock> getFeedstock(String branchid)throws SQLException{
-        ReportDto.feedStock api = new ReportDto.feedStock();
-        ArrayList<ReportDto.feedStock> Result = new ArrayList<ReportDto.feedStock>();
-        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("Sug_Mai_Gppsmgr_Pkg.getfeedstock");
-        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
-        storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
-        storedProcedureQuery.setParameter(1,branchid);
-        System.out.println(branchid);
-        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+    public ArrayList<FarmResultDto.feedstock> getFeedstock(String branchid)throws SQLException{
+        FarmResultDto.feedstock api = new FarmResultDto.feedstock();
+        ArrayList<FarmResultDto.feedstock> Result = new ArrayList<FarmResultDto.feedstock>();
+        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gppsmob_pkg.getfeedstock");
+        storedProcedureQuery.registerStoredProcedureParameter(1, Long.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(3, ArrayList.class, ParameterMode.REF_CURSOR);
+        storedProcedureQuery.setParameter(1, "1");
+        storedProcedureQuery.setParameter(2, branchid);
+        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(3);
         storedProcedureQuery.execute();
-
-
         while (resultSet.next()) {
+            FarmResultDto.feedstock pojo = null;
             try {
-                api = ResultSetMapper.mapResultSetToObject(resultSet, ReportDto.feedStock.class);
-            } catch (Exception e) {
-                throw new RuntimeException();
+                api = ResultSetMapper.mapResultSetToObject(resultSet, FarmResultDto.feedstock.class);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
             }
-
             Result.add(api);
         }
+//        ArrayList<ReportDto.feedStock> Result = new ArrayList<ReportDto.feedStock>();
+//        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("Sug_Mai_Gppsmgr_Pkg.getfeedstock");
+//        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+//        storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+//        storedProcedureQuery.setParameter(1,branchid);
+//        System.out.println(branchid);
+//        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+//        storedProcedureQuery.execute();
+//
+//
+//        while (resultSet.next()) {
+//            try {
+//                api = ResultSetMapper.mapResultSetToObject(resultSet, ReportDto.feedStock.class);
+//            } catch (Exception e) {
+//                throw new RuntimeException();
+//            }
+//
+//            Result.add(api);
+//        }
         return Result;
     }
 
@@ -213,15 +231,21 @@ public class ReportServiceImpl implements ReportService{
         return reportResultDto;
     }
 
-    public ReportDto getGppsperformance(String branch_code) throws SQLException {
+    public ReportDto getGppsperformance(String branch_id) throws SQLException {
         ReportDto reportDto=new ReportDto();
         ReportDto.gppsPerformanceResultDto api = new ReportDto.gppsPerformanceResultDto();
         ArrayList<ReportDto.gppsPerformanceResultDto> Result = new ArrayList<ReportDto.gppsPerformanceResultDto>();
-        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("Sug_Mai_Gppsmgr_Pkg.getgppsperformance");
+        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gppsmob_pkg.getgppsperformance");
+
+//        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("Sug_Mai_Gppsmob_Pkg.getgppsperformance");
+//        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+//        storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
         storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
-        storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
-        storedProcedureQuery.setParameter(1, branch_code);
-        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+        storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(3, ArrayList.class, ParameterMode.REF_CURSOR);
+        storedProcedureQuery.setParameter(1, "1");
+        storedProcedureQuery.setParameter(2, branch_id);
+        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(3);
         storedProcedureQuery.execute();
 
         while (resultSet.next()) {

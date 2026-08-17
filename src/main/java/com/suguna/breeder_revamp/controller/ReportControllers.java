@@ -65,7 +65,7 @@ public class ReportControllers {
 
     @Operation(summary = "Get Feed Stock")
     @GetMapping("/feedstock/{branchid}")
-    public ArrayList<ReportDto.feedStock> getFeedstock(@PathVariable String branchid) throws Exception{
+    public ArrayList<FarmResultDto.feedstock> getFeedstock(@PathVariable String branchid) throws Exception{
         return reportService.getFeedstock(branchid);
     }
 
@@ -76,9 +76,9 @@ public class ReportControllers {
     }
 
     @Operation(summary = "Get GPPS Performance")
-    @GetMapping("/getgppsperformance/{branch_code}")
-    public ReportDto getGppsperformance(@PathVariable String branch_code) throws Exception{
-        return reportService.getGppsperformance(branch_code);
+    @GetMapping("/getgppsperformance/{branch_id}")
+    public ReportDto getGppsperformance(@PathVariable String branch_id) throws Exception{
+        return reportService.getGppsperformance(branch_id);
     }
 
     @GetMapping("/getDailyentryConsumptionData/{branch_ID}")
