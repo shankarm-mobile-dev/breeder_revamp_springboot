@@ -291,7 +291,7 @@ public class FarmController {
         responseDto.setMessage("");
         responseDto.setStatusCode(200);
         responseDto.setStatus("Success");
-        responseDto.setResult(farmService.getDashboardInfo(branchRequest.getBranchID()));
+        responseDto.setResult(farmService.getDashboardInfo(branchRequest.getBranchID(),branchRequest.getBranchCode(),branchRequest.getFlockNumber()));
         return responseDto;
     }
     @PostMapping("/savePlacementInfoDetails")

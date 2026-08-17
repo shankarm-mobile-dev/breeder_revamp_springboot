@@ -59,7 +59,7 @@ public interface FarmService {
 
     BranchUser.PlacementInfoDetails getPlacementInfo(String branchID);
 
-    ArrayList<BranchUser.DashboardDetails> getDashboardInfo(String branchID);
+    ArrayList<BranchUser.DashboardDetails> getDashboardInfo(String branchID, String branchCode, String flockNumber);
 
     String savePlacementInfoDetails(ArrayList<PlacementRequest> placementRequest);
 
@@ -109,4 +109,6 @@ public interface FarmService {
     ArrayList<BranchUser.ReasonMaster> getReasonMasterDetails(String branchID);
 
     String saveOthersEntryDetails(BranchRequest branchRequest);
+
+
 }

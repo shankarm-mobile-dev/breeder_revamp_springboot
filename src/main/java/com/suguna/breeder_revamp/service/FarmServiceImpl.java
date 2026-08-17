@@ -1604,7 +1604,7 @@ public class FarmServiceImpl implements FarmService {
     }
 
     @Override
-    public ArrayList<BranchUser.DashboardDetails> getDashboardInfo(String branchID) {
+    public ArrayList<BranchUser.DashboardDetails> getDashboardInfo(String branchID, String branchCode, String flockNumber) {
         //BranchUser.PlacementInfoDetails details = new BranchUser.PlacementInfoDetails();
         ArrayList<BranchUser.DashboardDetails> shedDetailsArrayList = new ArrayList<BranchUser.DashboardDetails>();
         try {
@@ -2310,6 +2310,7 @@ public class FarmServiceImpl implements FarmService {
             maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
             maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
             maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
+        maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
             maiGppsConsumptions.setTXN_TYPE("DAY_CLOSE");
             sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
         //}
@@ -2964,6 +2965,7 @@ public class FarmServiceImpl implements FarmService {
         maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
         maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
         maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
+        maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
         maiGppsConsumptions.setTXN_TYPE("OTHERS");
         sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
         //}

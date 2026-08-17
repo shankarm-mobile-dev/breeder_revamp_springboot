@@ -18,6 +18,10 @@ public class BranchRequest<T> {
     String userType;
     @JsonProperty("branchID")
     String branchID;
+    @JsonProperty("branchCode")
+    String branchCode;
+    @JsonProperty("FLOCK_NUMBER")
+    String flockNumber;
     @JsonProperty("hatcheryID")
     String hatcheryID;
     @JsonProperty("shedNo")
