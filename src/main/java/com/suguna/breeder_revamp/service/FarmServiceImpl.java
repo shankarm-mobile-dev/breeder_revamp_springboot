@@ -1680,28 +1680,28 @@ public class FarmServiceImpl implements FarmService {
         return "200";
     }
 
-    public ArrayList<BranchUser.HenWeekDetails> getHenweekinfo(String branchID,String shedNo) {
-        ArrayList<BranchUser.HenWeekDetails> shedDetailsArrayList = new ArrayList<BranchUser.HenWeekDetails>();
+    public ArrayList<BranchUser.HenWeekDetails> getHenweekinfo(String branchID, String flock) {
+        ArrayList<BranchUser.HenWeekDetails> henWeekDetailsList = new ArrayList<>();
         try {
+            // PROCEDURE getHenweekinfo(p_branch_code NUMBER, p_flock VARCHAR2, resvalue OUT cursvalue)
             StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getHenweekinfo");
 
-            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(1, Integer.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(3, ArrayList.class, ParameterMode.REF_CURSOR);
             storedProcedureQuery.setParameter(1, branchID);
-            storedProcedureQuery.setParameter(2, shedNo);
+            storedProcedureQuery.setParameter(2, flock);
             storedProcedureQuery.execute();
             ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(3);
 
             while (resultSet.next()) {
-                BranchUser.HenWeekDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.HenWeekDetails.class);
-
-                shedDetailsArrayList.add(shedDetails);
+                BranchUser.HenWeekDetails henWeekDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.HenWeekDetails.class);
+                henWeekDetailsList.add(henWeekDetails);
             }
         } catch (Exception e) {
-
+            e.printStackTrace();
         }
-        return shedDetailsArrayList;
+        return henWeekDetailsList;
     }
     public ArrayList<BranchUser.FertilityDetails> getFertilityinfo(String branchID,String shedNo) {
         ArrayList<BranchUser.FertilityDetails> shedDetailsArrayList = new ArrayList<BranchUser.FertilityDetails>();

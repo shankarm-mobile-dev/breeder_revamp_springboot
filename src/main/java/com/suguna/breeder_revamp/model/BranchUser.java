@@ -705,49 +705,32 @@ public class BranchUser {
     @Getter
     @Setter
     public static class HenWeekDetails {
-        @Column(name = "WEEK_NUMBER", type = String.class)
-        @JsonProperty("WEEK_NUMBER")
-        String weekNumber;
-        @Column(name = "WEEK_START_DATE", type = String.class)
-        @JsonProperty("WEEK_START_DATE")
-        String weekStartDate;
-        @Column(name = "WEEK_END_DATE", type = String.class)
-        @JsonProperty("WEEK_END_DATE")
-        String weekEndDate;
-        @Column(name = "HEN_WEEK", type = String.class)
-        @JsonProperty("HEN_WEEK")
-        String henWeek;
+        @Column(name = "AGE", type = String.class)
+        @JsonProperty("AGE")
+        String age;
+        @Column(name = "Hen Week%", type = String.class)
+        @JsonProperty("HEN_WEEK_PCT")
+        String henWeekPct;
     }
 
     @Getter
     @Setter
     public static class FertilityDetails {
-        @Column(name = "WEEK_NUMBER", type = String.class)
-        @JsonProperty("WEEK_NUMBER")
-        String weekNumber;
-        @Column(name = "WEEK_START_DATE", type = String.class)
-        @JsonProperty("WEEK_START_DATE")
-        String weekStartDate;
-        @Column(name = "WEEK_END_DATE", type = String.class)
-        @JsonProperty("WEEK_END_DATE")
-        String weekEndDate;
-        @Column(name = "FERTILITY_WEEK", type = String.class)
-        @JsonProperty("FERTILITY_WEEK")
-        String fertilityWeek;
+        @Column(name = "AGE", type = String.class)
+        @JsonProperty("AGE")
+        String age;
+        @Column(name = "Fertility %", type = String.class)
+        @JsonProperty("FERTILITY_PCT")
+        String fertilityPct;
     }
+
     @Getter
     @Setter
     public static class HatchabilityDetails {
-        @Column(name = "WEEK_NUMBER", type = String.class)
-        @JsonProperty("WEEK_NUMBER")
-        String weekNumber;
-        @Column(name = "WEEK_START_DATE", type = String.class)
-        @JsonProperty("WEEK_START_DATE")
-        String weekStartDate;
-        @Column(name = "WEEK_END_DATE", type = String.class)
-        @JsonProperty("WEEK_END_DATE")
-        String weekEndDate;
-        @Column(name = "HATCHABILITY", type = String.class)
+        @Column(name = "AGE", type = String.class)
+        @JsonProperty("AGE")
+        String age;
+        @Column(name = "Hatchability", type = String.class)
         @JsonProperty("HATCHABILITY")
         String hatchability;
     }
@@ -757,16 +740,13 @@ public class BranchUser {
     public static class MortalityDetails {
         @Column(name = "DAY_NAME", type = String.class)
         @JsonProperty("DAY_NAME")
-        String dayName;
-        @Column(name = "DAY_OF_MONTH", type = String.class)
-        @JsonProperty("DAY_OF_MONTH")
-        String dayOfMonth;
-        @Column(name = "FULL_DATE", type = String.class)
-        @JsonProperty("FULL_DATE")
-        String fullDate;
-        @Column(name = "MORTALITY", type = String.class)
-        @JsonProperty("MORTALITY")
-        String mortality;
+        String age;
+        @Column(name = "Mort Female", type = String.class)
+        @JsonProperty("MORT_FEMALE")
+        String mortFemale;
+        @Column(name = "Mort Male", type = String.class)
+        @JsonProperty("MORT_MALE")
+        String mortMale;
     }
 
     @Getter

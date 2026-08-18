@@ -5,9 +5,17 @@ import lombok.Setter;
 
 @Getter
 @Setter
+
 public class LayingReportRequest {
-    String legder,regionId,plantCode,flock,fromAge,toAge,ledger;
-   /* public Object getLedger() {
+
+        private Integer ledger;
+        private Integer regionId;
+        private String plantCode;
+        private String flock;
+        private Integer fromAge;
+        private Integer toAge;
+
+       /* public Object getLedger() {
     }
 
     public Object getRegionId() {

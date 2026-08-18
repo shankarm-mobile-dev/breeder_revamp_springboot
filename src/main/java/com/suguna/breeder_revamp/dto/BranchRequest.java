@@ -44,6 +44,10 @@ public class BranchRequest<T> {
     String pmLevel;
     @JsonProperty("entryDate")
     String entryDate;
+    @JsonProperty("LATITUDE")
+    String latitude;
+    @JsonProperty("LONGITUDE")
+    String longitude;
     @JsonProperty("data")
     T data;
 

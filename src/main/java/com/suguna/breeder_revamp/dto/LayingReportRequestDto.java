@@ -1,8 +1,12 @@
 package com.suguna.breeder_revamp.dto;
 
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 @Data
+@Getter
+@Setter
 public class LayingReportRequestDto {
 
     private Integer ledger;

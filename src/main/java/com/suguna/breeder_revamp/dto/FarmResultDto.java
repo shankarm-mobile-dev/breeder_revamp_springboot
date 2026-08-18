@@ -31,6 +31,7 @@ public class FarmResultDto {
 
     @JsonProperty("dailyentrymst")
     ArrayList<dailyentrymst> dailyentrymst;
+
     @JsonProperty("servicechargemst")
     ArrayList<farmerservicecharge> servicechargemst;
 
@@ -814,9 +815,13 @@ public class FarmResultDto {
         @JsonProperty("lot_NUMBER")
         public String lot_NUMBER;
 
-        @Column(name = "created_date",type = String.class)
-        @JsonProperty("created_date")
-        public String created_date;
+        @Column(name = "invtransdate",type = String.class)
+        @JsonProperty("invtransdate")
+        public String invtransdate;
+
+//        @Column(name = "created_date",type = String.class)
+//        @JsonProperty("created_date")
+//        public String created_date;
 
 
     }
@@ -1005,6 +1010,10 @@ public class FarmResultDto {
         @Column(name = "invtransuom",type = String.class)
         @JsonProperty("invtransuom")
         public String invtransuom;
+
+        @Column(name = "vehicleNo",type = String.class)
+        @JsonProperty("vehicleNo")
+        public String vehicleNo;
     }
     public static class farmerservicecharge {
         @Column(name = "invoice_ID",type = String.class)
