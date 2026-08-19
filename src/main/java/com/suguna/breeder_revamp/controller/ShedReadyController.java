@@ -28,21 +28,33 @@ public class ShedReadyController {
         return shedReadyServices.getShedReadyQuestion(farmCode,feedbackRef,language,shedCode);
     }
 
-    @PostMapping(value = "/", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ShedReadyResponseDto<Object>> saveShedReadyActivity(
-            @RequestParam("BRANCH_ID") int orgId,
-            @RequestParam("FARM_CODE") String farmCode,
-            @RequestParam("ACTIVITY_ID") Long activityId,
-            @RequestParam("REMARKS") String remarks,
-            @RequestParam(value = "image", required = false) MultipartFile imageFile,
-            @RequestParam("SHED_CODE") String shedCode
-    ) {
+        @PostMapping(value = "/", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+        public ResponseEntity<ShedReadyResponseDto<Object>> saveShedReadyActivity(
+                @RequestParam("BRANCH_ID") int orgId,
+                @RequestParam("FARM_CODE") String farmCode,
+                @RequestParam("ACTIVITY_ID") Long activityId,
+                @RequestParam("REMARKS") String remarks,
+                @RequestParam(value = "image", required = false) MultipartFile imageFile,
+                @RequestParam("SHED_CODE") String shedCode,
+                @RequestParam(value = "ITEM_ID", required = false) String itemId,
+                @RequestParam(value = "ITEM_CODE", required = false) String itemCode,
+                @RequestParam(value = "ITEM_DESCRIPTION", required = false) String itemDescription,
+                @RequestParam(value = "ITEM_TYPE", required = false) String itemType,
+                @RequestParam(value = "UOM", required = false) String uom,
+                @RequestParam(value = "VALUE", required = false) String value
+        ) {
         ShedReadyLineDto shedReadyLineDto = new ShedReadyLineDto();
         shedReadyLineDto.setActivityId(activityId);
         shedReadyLineDto.setOrgId(orgId);
         shedReadyLineDto.setFarmCode(farmCode);
         shedReadyLineDto.setRemarks(remarks);
         shedReadyLineDto.setShedCode(shedCode);
+        shedReadyLineDto.setItemId(itemId);
+        shedReadyLineDto.setItemCode(itemCode);
+        shedReadyLineDto.setItemDescription(itemDescription);
+        shedReadyLineDto.setItemType(itemType);
+        shedReadyLineDto.setUom(uom);
+        shedReadyLineDto.setValue(value);
         return shedReadyServices.saveShedReadyLine(shedReadyLineDto, imageFile);
     }
 

@@ -1,6 +1,7 @@
 package com.suguna.breeder_revamp.service;
 
 import com.suguna.breeder_revamp.components.FileStorageService;
+import com.suguna.breeder_revamp.dto.SaveSugMaterialConsumptionDto;
 import com.suguna.breeder_revamp.dto.ShedReadyDto;
 import com.suguna.breeder_revamp.dto.ShedReadyLineDto;
 import com.suguna.breeder_revamp.dto.ShedReadyResponseDto;
@@ -21,9 +22,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @Service
@@ -36,6 +39,8 @@ public class ShedReadyServiceImpl  implements ShedReadyService {
     ShedReadyLineRepositories shedReadyLineRepositories;
     @Autowired
     FileStorageService fileStorageService;
+    @Autowired
+    InventoryService inventoryService;
 
     @Override
     public ResponseEntity<ApiResponseList<ShedReadyDto>> getShedReadyQuestion(String farmCode, String feedbackRef, String language, String shedCode) {
@@ -219,8 +224,19 @@ public class ShedReadyServiceImpl  implements ShedReadyService {
             shedReadyLines.setFarmerStatus("YES");
             shedReadyLines.setManagerStatus("NO");
             shedReadyLines.setRemarks(shedReadyLineDto.getRemarks());
+            shedReadyLines.setUom(shedReadyLineDto.getUom());
+            if (shedReadyLineDto.getItemId() != null && !shedReadyLineDto.getItemId().isEmpty()) {
+                shedReadyLines.setItemID(Float.valueOf(shedReadyLineDto.getItemId()));
+            }
+            if (shedReadyLineDto.getValue() != null && !shedReadyLineDto.getValue().isEmpty()) {
+                shedReadyLines.setValue(Float.valueOf(shedReadyLineDto.getValue()));
+            }
         }
         ShedReadyLines savedLine = shedReadyLineRepositories.save(shedReadyLines);
+
+        if (shedReadyLineDto.getItemId() != null && !shedReadyLineDto.getItemId().isEmpty()) {
+            saveItemConsumption(shedReadyLineDto);
+        }
 
         // Prepare response DTO
         ShedReadyLineDto responseDto = new ShedReadyLineDto();
@@ -241,6 +257,31 @@ public class ShedReadyServiceImpl  implements ShedReadyService {
 
         return Response.buildSingleResponse("Success", HttpStatus.OK, "Saved", responseDto);
 
+    }
+
+    private void saveItemConsumption(ShedReadyLineDto shedReadyLineDto) {
+        Date now = new Date();
+        SimpleDateFormat transDateFormat = new SimpleDateFormat("dd-MMM-yyyy", Locale.ENGLISH);
+        SimpleDateFormat entryDateFormat = new SimpleDateFormat("dd-MMM-yyyy HH:mm:ss", Locale.ENGLISH);
+
+        SaveSugMaterialConsumptionDto consumptionDto = new SaveSugMaterialConsumptionDto();
+        consumptionDto.setBranch_id(String.valueOf(shedReadyLineDto.getOrgId()));
+        consumptionDto.setInventory_item_id(shedReadyLineDto.getItemId());
+        consumptionDto.setInventory_item_code(shedReadyLineDto.getItemCode());
+        consumptionDto.setItem_description(shedReadyLineDto.getItemDescription());
+        consumptionDto.setTrans_type(shedReadyLineDto.getItemType());
+        consumptionDto.setQuantity(
+                shedReadyLineDto.getValue() != null && !shedReadyLineDto.getValue().isEmpty()
+                        ? shedReadyLineDto.getValue()
+                        : "0"
+        );
+        consumptionDto.setUom(shedReadyLineDto.getUom());
+        consumptionDto.setTransdate(transDateFormat.format(now));
+        consumptionDto.setEntry_creation_date(entryDateFormat.format(now));
+
+        ArrayList<SaveSugMaterialConsumptionDto> entries = new ArrayList<>();
+        entries.add(consumptionDto);
+        inventoryService.SaveSugMaterialConsumption(entries);
     }
 
     @Override
