@@ -10,6 +10,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Date;
+import java.util.List;
+
 @Repository
 public interface SugMaiGppsConsumptionsRepositories extends JpaRepository<SugMaiGppsConsumptions, Long> {
 
@@ -27,4 +30,9 @@ public interface SugMaiGppsConsumptionsRepositories extends JpaRepository<SugMai
     @Modifying
     @Transactional
     int updatestatus(@Param("qty") String qty,@Param("SHED_CODE") String SHED_CODE,@Param("farm_code") String farm_code);
+
+    @Query(value = "SELECT * FROM SUG_MAI_GPPS_CONSUMPTIONS a WHERE a.FLOCK_ID = :flockId AND a.SHED_CODE = :shedCode AND trunc(nvl(a.TXN_DATE, a.CREATION_DATE)) = trunc(:txnDate) AND nvl(a.TXN_TYPE, 'X') <> 'DAY_CLOSE'", nativeQuery = true)
+    List<SugMaiGppsConsumptions> findDayEntriesByFlockAndShedAndTxnDate(@Param("flockId") String flockId,
+                                                                        @Param("shedCode") String shedCode,
+                                                                        @Param("txnDate") Date txnDate);
 }

@@ -727,7 +727,7 @@ public class FarmServiceImpl implements FarmService {
         BranchUser.FeedAllocationDetails details = new BranchUser.FeedAllocationDetails();
         ArrayList<BranchUser.FarmFlockDetails> shedDetailsArrayList = new ArrayList<BranchUser.FarmFlockDetails>();
         try {
-            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getfarmflockddtls");
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getFeedAllocationFlockdtls");
 
             storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
@@ -1611,17 +1611,20 @@ public class FarmServiceImpl implements FarmService {
             StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getdashboardinfo");
 
             storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
-            storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, ArrayList.class, ParameterMode.REF_CURSOR);
             storedProcedureQuery.setParameter(1, branchID);
+            storedProcedureQuery.setParameter(2, flockNumber);
             storedProcedureQuery.execute();
-            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(3);
 
             while (resultSet.next()) {
                 BranchUser.DashboardDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.DashboardDetails.class);
-                shedDetails.setHenWeekDetails(getHenweekinfo(branchID,shedDetails.getFlockNumber()));
-                shedDetails.setFertilityDetails(getFertilityinfo(branchID,shedDetails.getFlockNumber()));
-                shedDetails.setHatchabilityDetails(getHatchabilityinfo(branchID,shedDetails.getFlockNumber()));
-                shedDetails.setMortalityDetails(getMortalityinfo(branchID,shedDetails.getFlockNumber()));
+                shedDetails.setHenWeekDetails(getHenweekinfo(branchCode,shedDetails.getFlockNumber()));
+                shedDetails.setFertilityDetails(getFertilityinfo(branchCode,shedDetails.getFlockNumber()));
+                shedDetails.setHatchabilityDetails(getHatchabilityinfo(branchCode,shedDetails.getFlockNumber()));
+                shedDetails.setMortalityDetails(getMortalityinfo(branchCode,shedDetails.getFlockNumber()));
+                shedDetails.setFeedDetails(getFeedinfo(branchCode,shedDetails.getFlockNumber()));
                 shedDetailsArrayList.add(shedDetails);
             }
         } catch (Exception e) {
@@ -1812,6 +1815,29 @@ public class FarmServiceImpl implements FarmService {
 
             while (resultSet.next()) {
                 BranchUser.MortalityDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.MortalityDetails.class);
+
+                shedDetailsArrayList.add(shedDetails);
+            }
+        } catch (Exception e) {
+
+        }
+        return shedDetailsArrayList;
+    }
+    public ArrayList<BranchUser.FeedDetails> getFeedinfo(String branchID,String shedNo) {
+        ArrayList<BranchUser.FeedDetails> shedDetailsArrayList = new ArrayList<BranchUser.FeedDetails>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getfeedinfo");
+
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchID);
+            storedProcedureQuery.setParameter(2, shedNo);
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(3);
+
+            while (resultSet.next()) {
+                BranchUser.FeedDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.FeedDetails.class);
 
                 shedDetailsArrayList.add(shedDetails);
             }
@@ -2310,12 +2336,166 @@ public class FarmServiceImpl implements FarmService {
             maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
             maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
             maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
-        maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
+        Date txnDate = getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1);
+        maiGppsConsumptions.setTXN_DATE(txnDate);
             maiGppsConsumptions.setTXN_TYPE("DAY_CLOSE");
-            sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
+            long flockAge = getFlockShedAge(gppsObservationBatchDTO.getFLOCK_NO(), branchRequest.getShedNo(), branchRequest);
+            maiGppsConsumptions.setAGE(flockAge);
+            SugMaiGppsConsumptions savedDayClose = sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
+            saveDayEntriesToDailyEntry(branchRequest, gppsObservationBatchDTO, txnDate, savedDayClose.getTRANS_ID(), flockAge);
         //}
 
         return "200";
+    }
+
+    private long getFlockShedAge(String flockId, String shedCode, BranchRequest branchRequest) {
+        if (branchRequest.getAge() != null && !branchRequest.getAge().trim().isEmpty()) {
+            try {
+                return Long.parseLong(branchRequest.getAge().trim());
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        try {
+            Object age = entityManager.createNativeQuery(
+                            "select age from (select age from sug.sug_mai_gpps_housing_shed " +
+                                    "where flock_id = ?1 and shed_no = ?2 " +
+                                    "order by txn_date desc) where rownum = 1")
+                    .setParameter(1, flockId)
+                    .setParameter(2, shedCode)
+                    .getSingleResult();
+            if (age != null) {
+                return ((Number) age).longValue();
+            }
+        } catch (Exception ignored) {
+        }
+        try {
+            BranchUser.DailyEntryCompletedDetails details =
+                    getDailyShedEntryDetails(branchRequest.getBranchID(), branchRequest.getBatchID(), flockId);
+            if (details.getEgg_PRODUCTION_AGE() != null && !details.getEgg_PRODUCTION_AGE().isEmpty()) {
+                return Long.parseLong(details.getEgg_PRODUCTION_AGE());
+            }
+        } catch (Exception ignored) {
+        }
+        return 0L;
+    }
+
+    private void saveDayEntriesToDailyEntry(BranchRequest branchRequest,
+                                            SugGppsObservationBatchDTO batch,
+                                            Date txnDate,
+                                            long dayCloseTransId,
+                                            long flockAge) {
+        List<SugMaiGppsConsumptions> dayEntries = sugMaiGppsConsumptionsRepositories
+                .findDayEntriesByFlockAndShedAndTxnDate(batch.getFLOCK_NO(), branchRequest.getShedNo(), txnDate);
+
+        for (SugMaiGppsConsumptions consumption : dayEntries) {
+            try {
+                sugMaiBreederDailyEntryRepository.save(
+                        mapConsumptionToDailyEntry(consumption, branchRequest, batch, flockAge, dayCloseTransId));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private SugMaiBreederDailyEntryModel mapConsumptionToDailyEntry(SugMaiGppsConsumptions consumption,
+                                                                    BranchRequest branchRequest,
+                                                                    SugGppsObservationBatchDTO batch,
+                                                                    long flockAge,
+                                                                    long dayCloseTransId) {
+        SugMaiBreederDailyEntryModel dailyEntry = new SugMaiBreederDailyEntryModel();
+        if (branchRequest.getBranchID() != null && !branchRequest.getBranchID().isEmpty()) {
+            dailyEntry.setBRANCH_ID(Long.parseLong(branchRequest.getBranchID()));
+        }
+        dailyEntry.setBRANCH_CODE(batch.getBRANCH_CODE());
+        dailyEntry.setLOCATION_CODE(branchRequest.getShedNo());
+        if (batch.getINVENTORY_LOCATION_ID() != null) {
+            dailyEntry.setINVENTORY_LOCATION_ID(batch.getINVENTORY_LOCATION_ID().longValue());
+        }
+        dailyEntry.setEMP_CODE(branchRequest.getUserCode());
+        dailyEntry.setTXN_TYPE(consumption.getTXN_TYPE());
+        dailyEntry.setTXN_DATE(consumption.getTXN_DATE() != null ? consumption.getTXN_DATE() : txnDateOrNow(consumption));
+        dailyEntry.setBATCH_NO(batch.getBATCH_NO());
+        if (consumption.getBATCH_ID() != null) {
+            dailyEntry.setBATCH_ID(consumption.getBATCH_ID());
+        }
+        dailyEntry.setFLOCK_NO(consumption.getFLOCK_ID());
+        dailyEntry.setAGE(consumption.getAGE() != null ? consumption.getAGE() : flockAge);
+        dailyEntry.setBIRD_TYPE(consumption.getSEX());
+        dailyEntry.setREASON(consumption.getREASON());
+        dailyEntry.setREMARKS(consumption.getREMARKS() != null ? consumption.getREMARKS() : consumption.getREMARK());
+        dailyEntry.setENTRY_CREATION_DATE(new Date());
+        dailyEntry.setLATITUDE(consumption.getLATITUDE());
+        dailyEntry.setLONGITUDE(consumption.getLONGITUDE());
+        dailyEntry.setTXN_ID(dayCloseTransId);
+        dailyEntry.setMTL_REPORT_ID(dayCloseTransId);
+        if (consumption.getITEM_ID() != null) {
+            dailyEntry.setINVENTORY_ITEM_ID(consumption.getITEM_ID());
+        }
+
+        String txnType = consumption.getTXN_TYPE() == null ? "" : consumption.getTXN_TYPE().toUpperCase();
+        long qty = consumption.getQTY() == null ? 0L : consumption.getQTY();
+        boolean female = isFemale(consumption.getSEX());
+        boolean male = isMale(consumption.getSEX());
+
+        switch (txnType) {
+            case "FEED":
+                dailyEntry.setSECONDARY_QTY(qty);
+                dailyEntry.setTRANS_UOM(consumption.getUOM() != null ? consumption.getUOM() : "KG");
+                break;
+            case "MORTALITY":
+            case "MORTALITY_PML":
+                dailyEntry.setPRIMARY_QTY(qty);
+                if (female) {
+                    dailyEntry.setMORT_FEMALE(qty);
+                } else if (male) {
+                    dailyEntry.setMORT_MALE(qty);
+                }
+                dailyEntry.setTRANS_UOM("EA");
+                break;
+            case "CULLING":
+            case "DESTROY":
+                dailyEntry.setPRIMARY_QTY(qty);
+                if (female) {
+                    dailyEntry.setCULL_FEMALE(qty);
+                } else if (male) {
+                    dailyEntry.setCULLS_MALE(qty);
+                }
+                dailyEntry.setCULL_REASON(consumption.getREASON());
+                dailyEntry.setTRANS_UOM("EA");
+                break;
+            case "EGG COLLECTION":
+                dailyEntry.setTOTAL_EGG(qty);
+                dailyEntry.setPRIMARY_QTY(qty);
+                dailyEntry.setTRANS_UOM(consumption.getUOM() != null ? consumption.getUOM() : "EA");
+                break;
+            case "OTHERS":
+                dailyEntry.setTEMP_MIN((float) consumption.getTEMP_MIN());
+                dailyEntry.setTEMP_MAX((float) consumption.getTEMP_MAX());
+                dailyEntry.setSTART_TIME(consumption.getLIGTHING_START_HRS());
+                dailyEntry.setEND_TIME(consumption.getLIGTHING_END_HRS());
+                break;
+            case "WATER_SANITIZER":
+                dailyEntry.setPH_LEVEL((float) consumption.getPH_LEVEL());
+                dailyEntry.setPPM_LEVEL((float) consumption.getPM_LEVEL());
+                break;
+            default:
+                dailyEntry.setPRIMARY_QTY(qty);
+                dailyEntry.setTRANS_UOM(consumption.getUOM());
+                break;
+        }
+        return dailyEntry;
+    }
+
+    private Date txnDateOrNow(SugMaiGppsConsumptions consumption) {
+        return consumption.getCREATION_DATE() != null ? consumption.getCREATION_DATE() : new Date();
+    }
+
+    private boolean isFemale(String sex) {
+        return sex != null && (sex.equalsIgnoreCase("F") || sex.equalsIgnoreCase("Female"));
+    }
+
+    private boolean isMale(String sex) {
+        return sex != null && (sex.equalsIgnoreCase("M") || sex.equalsIgnoreCase("Male"));
     }
 
     @Override
@@ -2972,4 +3152,82 @@ public class FarmServiceImpl implements FarmService {
 
         return "200";
     }
+
+    @Override
+    public ArrayList<BranchUser> getTransportBranch(BranchRequest branchRequest) {
+        ArrayList<BranchUser> branchUserArrayList = new ArrayList<BranchUser>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.get_transload_branch_dtls");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            // storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchRequest.getUserCode());
+            //storedProcedureQuery.setParameter(2, branchRequest.getUserType());
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+
+            while (resultSet.next()) {
+                BranchUser branchUser = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.class);
+                // branchUser.setUserDetails(getRegisteredBranchUsers(String.valueOf(branchUser.getBranchID()), branchRequest.getUserType(), branchUser.getBranchName()));
+                // branchUser.setBranchUserDetails(getSupervisorNewDetails(String.valueOf(branchUser.getBranchID()), branchRequest.getUserType()));
+               // branchUser.setFlockDetails(getFlockDetails(String.valueOf(branchUser.getBranchID())));
+                branchUserArrayList.add(branchUser);
+            }
+        } catch (Exception e) {
+
+        }
+        return branchUserArrayList;
+    }
+
+    @Override
+    public ArrayList<BranchUser.FarmFlockVaccineDetails> getVaccineScheduleDetails(String branchID) {
+        ArrayList<BranchUser.FarmFlockVaccineDetails> eggWeightCapturePersonArrayList = new ArrayList<BranchUser.FarmFlockVaccineDetails>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getfarmflockddtls");
+
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            //storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchID);
+            //storedProcedureQuery.setParameter(2, deviceId);
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+
+            while (resultSet.next()) {
+                BranchUser.FarmFlockVaccineDetails eggWeightCapturePerson = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.FarmFlockVaccineDetails.class);
+                eggWeightCapturePerson.setVaccineDetails(getVaccineDetails(branchID,eggWeightCapturePerson.getAge()));
+                eggWeightCapturePersonArrayList.add(eggWeightCapturePerson);
+            }
+        } catch (Exception e) {
+
+        }
+        return eggWeightCapturePersonArrayList;
+    }
+
+    private ArrayList<BranchUser.VaccineDetails> getVaccineDetails(String branchID, String age) {
+        ArrayList<BranchUser.VaccineDetails> branchUserArrayList = new ArrayList<BranchUser.VaccineDetails>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.get_vaccine_branch_dtls");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+             storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchID);
+            storedProcedureQuery.setParameter(2, age);
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(3);
+
+            while (resultSet.next()) {
+                BranchUser.VaccineDetails branchUser = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.VaccineDetails.class);
+                // branchUser.setUserDetails(getRegisteredBranchUsers(String.valueOf(branchUser.getBranchID()), branchRequest.getUserType(), branchUser.getBranchName()));
+                // branchUser.setBranchUserDetails(getSupervisorNewDetails(String.valueOf(branchUser.getBranchID()), branchRequest.getUserType()));
+                // branchUser.setFlockDetails(getFlockDetails(String.valueOf(branchUser.getBranchID())));
+                branchUserArrayList.add(branchUser);
+            }
+        } catch (Exception e) {
+
+        }
+        return branchUserArrayList;
+    }
+
+
 }

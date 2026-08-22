@@ -561,6 +561,13 @@ public class BranchUser {
             @Column(name = "FLOCK_ID", type = String.class)
             @JsonProperty("FLOCK_ID")
             String flockID;
+
+        @Column(name = "COMPLETED_QUESTION_COUNT", type = String.class)
+        @JsonProperty("COMPLETED_QUESTION_COUNT")
+        String completedQuestionCount;
+        @Column(name = "TOTAL_QUESTION_COUNT", type = String.class)
+        @JsonProperty("TOTAL_QUESTION_COUNT")
+        String totalQuestionCount;
         @JsonProperty("PlacementInfoLineDetails")
         ArrayList<PlacementInfoLineDetails> PlacementInfoLineDetails;
     }
@@ -708,12 +715,14 @@ public class BranchUser {
         ArrayList<HatchabilityDetails> HatchabilityDetails;
         @JsonProperty("MortalityDetails")
         ArrayList<MortalityDetails> MortalityDetails;
+        @JsonProperty("FeedDetails")
+        ArrayList<FeedDetails> FeedDetails;
     }
 
     @Getter
     @Setter
     public static class HenWeekDetails {
-        @Column(name = "WEEK_NUMBER", type = String.class)
+       /* @Column(name = "WEEK_NUMBER", type = String.class)
         @JsonProperty("WEEK_NUMBER")
         String weekNumber;
         @Column(name = "WEEK_START_DATE", type = String.class)
@@ -724,13 +733,19 @@ public class BranchUser {
         String weekEndDate;
         @Column(name = "HEN_WEEK", type = String.class)
         @JsonProperty("HEN_WEEK")
-        String henWeek;
+        String henWeek;*/
+       @Column(name = "AGE", type = String.class)
+       @JsonProperty("AGE")
+       String age;
+        @Column(name = "HEN_WEEK_PCT", type = String.class)
+        @JsonProperty("HEN_WEEK_PCT")
+        String henWeekPct;
     }
 
     @Getter
     @Setter
     public static class FertilityDetails {
-        @Column(name = "WEEK_NUMBER", type = String.class)
+        /*@Column(name = "WEEK_NUMBER", type = String.class)
         @JsonProperty("WEEK_NUMBER")
         String weekNumber;
         @Column(name = "WEEK_START_DATE", type = String.class)
@@ -741,12 +756,18 @@ public class BranchUser {
         String weekEndDate;
         @Column(name = "FERTILITY_WEEK", type = String.class)
         @JsonProperty("FERTILITY_WEEK")
-        String fertilityWeek;
+        String fertilityWeek;*/
+        @Column(name = "AGE", type = String.class)
+        @JsonProperty("AGE")
+        String age;
+        @Column(name = "FERTILITY_PCT", type = String.class)
+        @JsonProperty("FERTILITY_PCT")
+        String fertilityPct;
     }
     @Getter
     @Setter
     public static class HatchabilityDetails {
-        @Column(name = "WEEK_NUMBER", type = String.class)
+       /* @Column(name = "WEEK_NUMBER", type = String.class)
         @JsonProperty("WEEK_NUMBER")
         String weekNumber;
         @Column(name = "WEEK_START_DATE", type = String.class)
@@ -757,13 +778,19 @@ public class BranchUser {
         String weekEndDate;
         @Column(name = "HATCHABILITY", type = String.class)
         @JsonProperty("HATCHABILITY")
+        String hatchability;*/
+       @Column(name = "AGE", type = String.class)
+       @JsonProperty("AGE")
+       String age;
+        @Column(name = "HATCHABILITY", type = String.class)
+        @JsonProperty("HATCHABILITY")
         String hatchability;
     }
 
     @Getter
     @Setter
     public static class MortalityDetails {
-        @Column(name = "DAY_NAME", type = String.class)
+       /* @Column(name = "DAY_NAME", type = String.class)
         @JsonProperty("DAY_NAME")
         String dayName;
         @Column(name = "DAY_OF_MONTH", type = String.class)
@@ -774,7 +801,51 @@ public class BranchUser {
         String fullDate;
         @Column(name = "MORTALITY", type = String.class)
         @JsonProperty("MORTALITY")
-        String mortality;
+        String mortality;*/
+       @Column(name = "DAY_NAME", type = String.class)
+       @JsonProperty("DAY_NAME")
+       String age;
+        @Column(name = "Mort Female", type = String.class)
+        @JsonProperty("MORT_FEMALE")
+        String mortFemale;
+        @Column(name = "Mort Male", type = String.class)
+        @JsonProperty("MORT_MALE")
+        String mortMale;
+    }
+    @Getter
+    @Setter
+    public static class FeedDetails {
+        @Column(name = "FEED_DATE", type = String.class)
+        @JsonProperty("FEED_DATE")
+        String feedDate;
+        @Column(name = "DAY_NAME", type = String.class)
+        @JsonProperty("DAY_NAME")
+        String dayName;
+        @Column(name = "FEED_CONS_QTY_KG_F", type = String.class)
+        @JsonProperty("FEED_CONS_QTY_KG_F")
+        String feedConsQtyKgF;
+        @Column(name = "FEED_CONS_QTY_KG_M", type = String.class)
+        @JsonProperty("FEED_CONS_QTY_KG_M")
+        String feedConsQtyKgM;
+        @Column(name = "FEED_SCHEDULE_QTY_F", type = String.class)
+        @JsonProperty("FEED_SCHEDULE_QTY_F")
+        String feedScheduleQtyF;
+        @Column(name = "FEED_SCHEDULE_QTY_M", type = String.class)
+        @JsonProperty("FEED_SCHEDULE_QTY_M")
+        String feedScheduleQtyM;
+        @Column(name = "FEED_ACT_F", type = String.class)
+        @JsonProperty("FEED_ACT_F")
+        String feedActF;
+        @Column(name = "FEED_ACT_M", type = String.class)
+        @JsonProperty("FEED_ACT_M")
+        String feedActM;
+
+        @Column(name = "FEED_STD_F", type = String.class)
+        @JsonProperty("FEED_STD_F")
+        String feedStdF;
+        @Column(name = "FEED_STD_M", type = String.class)
+        @JsonProperty("FEED_STD_M")
+        String feedStdM;
     }
 
     @Getter
@@ -1101,5 +1172,34 @@ public class BranchUser {
         @Column(name = "meaning", type = String.class)
         @JsonProperty("meaning")
         String meaning;
+    }
+
+    @Getter
+    @Setter
+    public static class FarmFlockVaccineDetails {
+        @Column(name = "batch_ID", type = String.class)
+        @JsonProperty("batchID")
+        String batchID;
+        @Column(name = "batch_NO", type = String.class)
+        @JsonProperty("batchNO")
+        String batchNO;
+        @Column(name = "flock", type = String.class)
+        @JsonProperty("flock")
+        String flock;
+        @Column(name = "age", type = String.class)
+        @JsonProperty("age")
+        String age;
+        @JsonProperty("vaccineDetails")
+        ArrayList<VaccineDetails> vaccineDetails;
+    }
+    @Getter
+    @Setter
+    public static class VaccineDetails {
+        @Column(name = "VACCINE", type = String.class)
+        @JsonProperty("VACCINE")
+        String vaccine;
+        @Column(name = "STRAIN", type = String.class)
+        @JsonProperty("STRAIN")
+        String strain;
     }
 }

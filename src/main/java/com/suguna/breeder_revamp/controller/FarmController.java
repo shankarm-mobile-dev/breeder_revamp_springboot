@@ -582,4 +582,25 @@ public class FarmController {
         //}
         return responseDto;
     }
+    @PostMapping("/getTransportFarmDetails")
+    public ResponseDto getTransportFarmDetails(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getTransportBranch(branchRequest));
+        return responseDto;
+    }
+
+    @PostMapping("/getVaccineScheduleDetails")
+    public ResponseDto getVaccineScheduleDetails(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getVaccineScheduleDetails(branchRequest.getBranchID()));
+        return responseDto;
+    }
 }

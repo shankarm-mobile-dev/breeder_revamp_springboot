@@ -110,5 +110,7 @@ public interface FarmService {
 
     String saveOthersEntryDetails(BranchRequest branchRequest);
 
+    ArrayList<BranchUser> getTransportBranch(BranchRequest branchRequest);
 
+    ArrayList<BranchUser.FarmFlockVaccineDetails> getVaccineScheduleDetails(String branchID);
 }
