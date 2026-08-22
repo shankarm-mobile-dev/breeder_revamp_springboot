@@ -42,6 +42,9 @@ public class MasterResultDto<T> {
     @Getter
     @Setter
     public static class itemmaster{
+        @Column(name = "item_TYPE", type = String.class)
+        @JsonProperty("item_TYPE")
+        public String item_TYPE;
         @Column(name = "item_GROUP", type = String.class)
         @JsonProperty("item_GROUP")
         public String item_GROUP;
