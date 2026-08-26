@@ -63,4 +63,6 @@ public class SugMaiGppsConsumptions {
     float LATITUDE;
     float LONGITUDE;
     String SIDE_NO;
+    String BIRD_TYPE;
+    String DEBEAKING;
 }

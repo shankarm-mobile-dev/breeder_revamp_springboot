@@ -249,6 +249,42 @@ public class BranchUser {
         String birdType;
         @JsonProperty("feedDetails")
         ArrayList<ShedWiseFeedDetails> feedDetails;
+        @JsonProperty("feedEntryMadeDetails")
+        ArrayList<ShedWiseFeedMadeDetails> feedEntryMadeDetails;
+    }
+    @Getter
+    @Setter
+    public static class ShedWiseMortalityDetails {
+
+        @JsonProperty("FarmStockDetails")
+        ArrayList<ShedWiseBirdsDetails> farmStockDetails;
+        @JsonProperty("FarmMortEntryMadeDetails")
+        ArrayList<FarmMortEntryMadeDetails> farmEntryMadeDetails;
+    }
+    @Getter
+    @Setter
+    public static class FarmMortEntryMadeDetails {
+        @Column(name = "LINE_NO", type = String.class)
+        @JsonProperty("lineNo")
+        String lineNo;
+        @Column(name = "TXN_TYPE", type = String.class)
+        @JsonProperty("txnType")
+        String txnType;
+        @Column(name = "SEX", type = String.class)
+        @JsonProperty("sex")
+        String sex;
+        @Column(name = "TXN_DATE", type = String.class)
+        @JsonProperty("txnDate")
+        String txnDate;
+        @Column(name = "QTY", type = String.class)
+        @JsonProperty("qty")
+        String qty;
+        @Column(name = "SIDE_NO", type = String.class)
+        @JsonProperty("sideNo")
+        String sideNo;
+        @Column(name = "BIRD_TYPE", type = String.class)
+        @JsonProperty("birdType")
+        String birdType;
     }
     @Getter
     @Setter
@@ -269,8 +305,30 @@ public class BranchUser {
         @JsonProperty("totalFeedAllocated")
         String totalFeedAllocated;
 
-    }
 
+    }
+    @Getter
+    @Setter
+    public static class ShedWiseFeedMadeDetails {
+        @Column(name = "TXN_TYPE", type = String.class)
+        @JsonProperty("txnType")
+        String txnType;
+        @Column(name = "SEX", type = String.class)
+        @JsonProperty("sex")
+        String sex;
+        @Column(name = "GRADE", type = String.class)
+        @JsonProperty("grade")
+        String grade;
+        @Column(name = "QTY", type = String.class)
+        @JsonProperty("qty")
+        String qty;
+        @Column(name = "TXN_DATE", type = String.class)
+        @JsonProperty("txnDate")
+        String txnDate;
+        @Column(name = "BIRD_TYPE", type = String.class)
+        @JsonProperty("birdType")
+        String birdType;
+    }
 
 
     @Getter
@@ -287,6 +345,18 @@ public class BranchUser {
         @Column(name = "SHED_NO", type = String.class)
         @JsonProperty("shedNo")
         String shedNo;
+
+        @Column(name = "birdCategory", type = String.class)
+        @JsonProperty("birdCategory")
+        String birdCategory;
+
+        @Column(name = "reason_id", type = String.class)
+        @JsonProperty("reasonId")
+        String reasonId;
+
+        @Column(name = "reason", type = String.class)
+        @JsonProperty("reason")
+        String reason;
 
     }
 
@@ -371,6 +441,9 @@ public class BranchUser {
         @Column(name = "age", type = String.class)
         @JsonProperty("age")
         String age;
+        @Column(name = "opn_Status", type = String.class)
+        @JsonProperty("opn_Status")
+        String opnStatus;
         @Column(name = "start_DATE", type = String.class)
         @JsonProperty("startDate")
         String startDate;

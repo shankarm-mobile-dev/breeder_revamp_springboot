@@ -411,6 +411,7 @@ public class FarmServiceImpl implements FarmService {
                     }
                 }
                 shedWiseFeedBirdsDetails.setFeedDetails(shedDetailsArray);
+                shedWiseFeedBirdsDetails.setFeedEntryMadeDetails(getShedWiseFeedMadeDetails(branchRequest,shedWiseFeedBirdsDetails.getBirdType()));
                 shedBirsDetailsArrayList.add(shedWiseFeedBirdsDetails);
             }
 
@@ -418,6 +419,33 @@ public class FarmServiceImpl implements FarmService {
 
         }
         return shedBirsDetailsArrayList;
+    }
+
+    private ArrayList<BranchUser.ShedWiseFeedMadeDetails> getShedWiseFeedMadeDetails(BranchRequest branchRequest, String birdType) {
+        ArrayList<BranchUser.ShedWiseFeedMadeDetails> shedDetailsArrayList = new ArrayList<BranchUser.ShedWiseFeedMadeDetails>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getfeeddailymadedtls");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(4, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(5, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchRequest.getEntryDate());
+            storedProcedureQuery.setParameter(2, branchRequest.getBatchID());
+            storedProcedureQuery.setParameter(3, branchRequest.getShedNo());
+            storedProcedureQuery.setParameter(4, birdType);
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(5);
+
+            while (resultSet.next()) {
+                BranchUser.ShedWiseFeedMadeDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.ShedWiseFeedMadeDetails.class);
+
+                shedDetailsArrayList.add(shedDetails);
+            }
+        } catch (Exception e) {
+
+        }
+        return shedDetailsArrayList;
     }
 
     @Override
@@ -535,6 +563,7 @@ public class FarmServiceImpl implements FarmService {
                 maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
                 maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
                 maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
+                maiGppsConsumptions.setBIRD_TYPE(sugFeedDetails.getBirdCategory());
                 maiGppsConsumptions.setTXN_TYPE("FEED");
                 maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
                 sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
@@ -597,6 +626,7 @@ public class FarmServiceImpl implements FarmService {
                 maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
                 maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
                 maiGppsConsumptions.setSIDE_NO(sugMortalityDetails.getSideNo());
+                maiGppsConsumptions.setBIRD_TYPE(sugMortalityDetails.getBirdCategory());
                 maiGppsConsumptions.setTXN_TYPE("MORTALITY");
                 maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
                 sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
@@ -692,7 +722,7 @@ public class FarmServiceImpl implements FarmService {
                     maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
                     maiGppsConsumptions.setTXN_TYPE("WEEK");
                     maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
-                    maiGppsConsumptions.setREMARK(sugWeekBirdDetails.getReasonType());
+                    maiGppsConsumptions.setREASON(sugWeekBirdDetails.getReasonType());
                     sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
 
                 }
@@ -3144,6 +3174,7 @@ public class FarmServiceImpl implements FarmService {
         maiGppsConsumptions.setCREATION_DATE(new Date());
         maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
         maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
+        maiGppsConsumptions.setDEBEAKING(data.getDebeaking());
         maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
         maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
         maiGppsConsumptions.setTXN_TYPE("OTHERS");

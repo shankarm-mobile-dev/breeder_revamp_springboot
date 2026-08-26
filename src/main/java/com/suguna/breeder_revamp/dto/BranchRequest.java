@@ -67,6 +67,8 @@ public class BranchRequest<T> {
         String totalActualFeed;
         @JsonProperty("grade")
         String grade;
+        @JsonProperty("birdCategory")
+        String birdCategory;
     }
 
     @Getter
@@ -81,6 +83,8 @@ public class BranchRequest<T> {
         String birdType;
         @JsonProperty("totalBirds")
         String totalBirds;
+        @JsonProperty("birdCategory")
+        String birdCategory;
     }
 
     @Getter
@@ -272,6 +276,8 @@ public class BranchRequest<T> {
         String sanitizationEndTime;
         @JsonProperty("Remarks")
         String Remarks;
+        @JsonProperty("debeaking")
+        String debeaking;
     }
     @Getter
     @Setter
