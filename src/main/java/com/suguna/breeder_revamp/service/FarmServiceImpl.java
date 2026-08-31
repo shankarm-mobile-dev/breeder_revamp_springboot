@@ -1655,6 +1655,7 @@ public class FarmServiceImpl implements FarmService {
                 shedDetails.setHatchabilityDetails(getHatchabilityinfo(branchCode,shedDetails.getFlockNumber()));
                 shedDetails.setMortalityDetails(getMortalityinfo(branchCode,shedDetails.getFlockNumber()));
                 shedDetails.setFeedDetails(getFeedinfo(branchCode,shedDetails.getFlockNumber()));
+                shedDetails.setBodyWeightUniformity(getBodyWeightUniformity(branchCode,shedDetails.getFlockNumber()));
                 shedDetailsArrayList.add(shedDetails);
             }
         } catch (Exception e) {
@@ -1868,6 +1869,29 @@ public class FarmServiceImpl implements FarmService {
 
             while (resultSet.next()) {
                 BranchUser.FeedDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.FeedDetails.class);
+
+                shedDetailsArrayList.add(shedDetails);
+            }
+        } catch (Exception e) {
+
+        }
+        return shedDetailsArrayList;
+    }
+    public ArrayList<BranchUser.BodyWeightUniformity> getBodyWeightUniformity(String branchID,String shedNo) {
+        ArrayList<BranchUser.BodyWeightUniformity> shedDetailsArrayList = new ArrayList<BranchUser.BodyWeightUniformity>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getuniformityinfo");
+
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchID);
+            storedProcedureQuery.setParameter(2, shedNo);
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(3);
+
+            while (resultSet.next()) {
+                BranchUser.BodyWeightUniformity shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.BodyWeightUniformity.class);
 
                 shedDetailsArrayList.add(shedDetails);
             }
