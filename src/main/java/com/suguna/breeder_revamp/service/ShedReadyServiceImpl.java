@@ -113,7 +113,7 @@ public class ShedReadyServiceImpl  implements ShedReadyService {
     }
 
     @Transactional
-    public ResponseEntity<ShedReadyResponseDto<Object>> saveShedReadyLine(ShedReadyLineDto shedReadyLineDto, MultipartFile imageFile) {
+    public ResponseEntity<ShedReadyResponseDto<Object>> saveShedReadyLine(ShedReadyLineDto shedReadyLineDto, List<MultipartFile> imageFile) {
 
         List<FeedbackMaster> feedbackMasterList = feedMstRepositories.findByFeedbackRefAndLanguage("BREEDER_SHED_ACTIVITY", "en");
         //List<FeedbackMaster> feedbackMaster = feedbackMstRepositories.findByFeedbackRefAndLanguageAndQuestionId("FARMER_SHED_ACTIVITY", "en", Integer.parseInt(String.valueOf(shedReadyLineDto.getActivityId())));
@@ -155,23 +155,22 @@ public class ShedReadyServiceImpl  implements ShedReadyService {
             transId = optHeaders.getTransId();
         }
 
-        // Save image if present
+        // Save images if present
         String imageUrl = null;
-        String imageOriginalName = null;
-        String imageContentType = null;
-        Long imageSizeBytes = null;
-
         String voiceUrl = null;
 
         try {
             if (imageFile != null && !imageFile.isEmpty()) {
-                imageUrl = fileStorageService.saveImage(imageFile, shedReadyLineDto.getFarmCode(), shedReadyLineDto.getActivityId(), FileStorageCategory.SHED_READY);
-                imageOriginalName = imageFile.getOriginalFilename();
-                imageContentType = imageFile.getContentType();
-                imageSizeBytes = imageFile.getSize();
+                List<String> imageUrls = new ArrayList<>();
+                for (MultipartFile file : imageFile) {
+                    if (file != null && !file.isEmpty()) {
+                        imageUrls.add(fileStorageService.saveImage(file, shedReadyLineDto.getFarmCode(), shedReadyLineDto.getActivityId(), FileStorageCategory.SHED_READY));
+                    }
+                }
+                if (!imageUrls.isEmpty()) {
+                    imageUrl = String.join(",", imageUrls);
+                }
             }
-
-
         } catch (IOException | IllegalArgumentException ex) {
             // Decide whether to fail the whole transaction or continue without image
             // Here we fail to keep data consistent
@@ -230,6 +229,9 @@ public class ShedReadyServiceImpl  implements ShedReadyService {
             }
             if (shedReadyLineDto.getValue() != null && !shedReadyLineDto.getValue().isEmpty()) {
                 shedReadyLines.setValue(Float.valueOf(shedReadyLineDto.getValue()));
+            }
+            if (imageUrl != null && !imageUrl.isEmpty()) {
+                shedReadyLines.setImagePath(imageUrl);
             }
         }
         ShedReadyLines savedLine = shedReadyLineRepositories.save(shedReadyLines);

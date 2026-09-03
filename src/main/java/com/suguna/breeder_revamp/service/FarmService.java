@@ -29,7 +29,7 @@ public interface FarmService {
 
     String saveFeedDetails(BranchRequest branchRequest, List<MultipartFile> imageFile);
 
-    String saveMortalityDetails(BranchRequest branchRequest);
+    String saveMortalityDetails(BranchRequest branchRequest, List<MultipartFile> imageFile);
 
     BranchUser.EggDetails getegg_collectiondtls(BranchRequest branchRequest);
 

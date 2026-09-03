@@ -126,7 +126,7 @@ public class FarmController {
             responseDto.setResult(farmService.saveFeedDetails(branchRequest,imageFile));
         }
         else if(branchRequest.getActivityName().equalsIgnoreCase("MORTALITY")) {
-            responseDto.setResult(farmService.saveMortalityDetails(branchRequest));
+            responseDto.setResult(farmService.saveMortalityDetails(branchRequest,imageFile));
         }
         else if(branchRequest.getActivityName().equalsIgnoreCase("EGG COLLECTION")) {
             responseDto.setResult(farmService.saveEggCollectionDetails(branchRequest));

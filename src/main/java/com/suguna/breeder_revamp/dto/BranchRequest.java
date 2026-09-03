@@ -85,6 +85,8 @@ public class BranchRequest<T> {
         String totalBirds;
         @JsonProperty("birdCategory")
         String birdCategory;
+        @JsonProperty("reasonId")
+        String reasonId;
     }
 
     @Getter
@@ -99,7 +101,10 @@ public class BranchRequest<T> {
         String mode;
         @JsonProperty("rowId")
         String rowId;
-
+        @JsonProperty("lineNo")
+        String lineNo;
+        @JsonProperty("sideNo")
+        String sideNo;
     }
 
     @Getter

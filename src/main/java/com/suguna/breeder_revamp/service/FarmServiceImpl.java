@@ -595,7 +595,7 @@ public class FarmServiceImpl implements FarmService {
     }
 
     @Override
-    public String saveMortalityDetails(BranchRequest branchRequest) {
+    public String saveMortalityDetails(BranchRequest branchRequest, List<MultipartFile> imageFile) {
      /*   List<BranchRequest.SugFeedDetails> data=new ArrayList<>();
         data= (List<BranchRequest.SugFeedDetails>) branchRequest.getData();
 */
@@ -627,11 +627,31 @@ public class FarmServiceImpl implements FarmService {
                 maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
                 maiGppsConsumptions.setSIDE_NO(sugMortalityDetails.getSideNo());
                 maiGppsConsumptions.setBIRD_TYPE(sugMortalityDetails.getBirdCategory());
+                maiGppsConsumptions.setREASON(sugMortalityDetails.getReasonId());
                 maiGppsConsumptions.setTXN_TYPE("MORTALITY");
                 maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
                 sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
             }
+            try {String mortalityImage = null;
+                if (imageFile != null && !imageFile.isEmpty()) {
+                    for (MultipartFile data1 : imageFile) {
+                        mortalityImage = fileStorageService.saveImage(data1, gppsObservationBatchDTO.getBRANCH_CODE(), Long.valueOf(branchRequest.getBatchID()), FileStorageCategory.MORTALITY);
+                    /*DailyEntryLines dailyEntryLines = DailyEntryLines.builder()
+                            .transId(saveResult.getTransId())
+                            .hdrType("MORTALITY")
+                            .imagePath(mortalityImage)
+                            .build();*/
+                        /**
+                         * AI Mortality Count
+                         */
 
+
+
+                    }
+                }
+            } catch (IOException | IllegalArgumentException ex) {
+                //  return Response.buildSingleResponse("Failed", HttpStatus.BAD_REQUEST, ex.getMessage(), null);
+            }
         }
         return "200";
     }
@@ -670,6 +690,8 @@ public class FarmServiceImpl implements FarmService {
                     maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
                     maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
                     maiGppsConsumptions.setTXN_TYPE("EGG COLLECTION");
+                    maiGppsConsumptions.setLINE_NO(sugEggCollectionDetails.getLineNo());
+                    maiGppsConsumptions.setSIDE_NO(sugEggCollectionDetails.getSideNo());
                     maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
                     sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
                     if (!sugEggCollectionDetails.getItemID().equalsIgnoreCase("0")) {

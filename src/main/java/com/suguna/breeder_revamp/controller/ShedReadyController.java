@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
+
 @RestController
 @RequestMapping("/api/shedready")
 public class ShedReadyController {
@@ -34,7 +36,7 @@ public class ShedReadyController {
                 @RequestParam("FARM_CODE") String farmCode,
                 @RequestParam("ACTIVITY_ID") Long activityId,
                 @RequestParam("REMARKS") String remarks,
-                @RequestParam(value = "image", required = false) MultipartFile imageFile,
+                @RequestParam(value = "image", required = false) ArrayList<MultipartFile> imageFile,
                 @RequestParam("SHED_CODE") String shedCode,
                 @RequestParam(value = "ITEM_ID", required = false) String itemId,
                 @RequestParam(value = "ITEM_CODE", required = false) String itemCode,
