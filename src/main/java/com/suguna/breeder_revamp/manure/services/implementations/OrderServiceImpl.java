@@ -243,7 +243,7 @@ public class OrderServiceImpl implements OrderServices {
         APIResponseList<OrderDto> apiResponseList = new APIResponseList<>();
 
         // Debugging: Log the page number
-        System.out.println("Page number: " + pageable.getPageNumber());
+//        System.out.println("Page number: " + pageable.getPageNumber());
 
         Page<Orders> ordersPage = orderRepository.findAll(OrderEntitySpecification.getEntities(created_by,orgId, customerId, vehicleNumber, siteUseId, date), PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort));
 
@@ -349,6 +349,7 @@ public class OrderServiceImpl implements OrderServices {
         orderDto.setOrderLineDtoList(convertOrderLineListToEntityList(orders.getOrderLines()));
         orderDto.setVehicleNumber(orders.getVEHICLE_NUMBER());
         orderDto.setCustomerBillToId(orders.getCUSTOMER_BILL_TO_ID());
+        orderDto.setdcNo(orders.getDC_NO());
         orderDto.setStatus(get_order_status(String.valueOf(orders.getORDER_REF_NUMBER())));
         return orderDto;
     }
@@ -425,6 +426,7 @@ public class OrderServiceImpl implements OrderServices {
         orders.setSALES_REP_ID(orderDto.getSalesRepId());
         orders.setPRICE_LIST_ID(orderDto.getPriceListId());
         orders.setVEHICLE_NUMBER(orderDto.getVehicleNumber());
+        orders.setDC_NO(orderDto.getdcNo());
         return orders;
     }
 

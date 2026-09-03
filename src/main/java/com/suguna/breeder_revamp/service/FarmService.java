@@ -113,4 +113,6 @@ public interface FarmService {
     ArrayList<BranchUser> getTransportBranch(BranchRequest branchRequest);
 
     ArrayList<BranchUser.FarmFlockVaccineDetails> getVaccineScheduleDetails(String branchID);
+    public FarmResultDto FARMERSERVICECHARGES(String branch_ID )throws SQLException;
+
 }

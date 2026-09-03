@@ -62,12 +62,22 @@ public class OrderDto {
     @JsonProperty("status_message")
     String statusMessage;
 
+    @JsonProperty("dc_no")
+    String dcNo;
+
     public Long getParty_site_id() {
         return party_site_id;
     }
 
     public void setParty_site_id(Long party_site_id) {
         this.party_site_id = party_site_id;
+    }
+
+    public String getdcNo() {
+        return dcNo;
+    }
+    public void setdcNo(String dcNo) {
+        this.dcNo = dcNo;
     }
 
     public Long getCustomerAcctSiteId() {
