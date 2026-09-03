@@ -603,4 +603,9 @@ public class FarmController {
         responseDto.setResult(farmService.getVaccineScheduleDetails(branchRequest.getBranchID()));
         return responseDto;
     }
+
+    @GetMapping("/FarmerserviceCharge/{branch_ID}")
+    public FarmResultDto FARMERSERVICECHARGES(@PathVariable String branch_ID) throws Exception {
+        return farmService.FARMERSERVICECHARGES(branch_ID);
+    }
 }

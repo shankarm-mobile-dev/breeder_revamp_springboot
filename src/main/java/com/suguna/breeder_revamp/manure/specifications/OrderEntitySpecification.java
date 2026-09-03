@@ -59,6 +59,9 @@ public class OrderEntitySpecification {
             if (siteUseId != null) {
                 predicates.add(criteriaBuilder.equal(root.get("CUSTOMER_SITE_USE_ID"), siteUseId));
             }
+            if (siteUseId != null) {
+                predicates.add(criteriaBuilder.equal(root.get("CUSTOMER_SITE_USE_ID"), siteUseId));
+            }
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
         };
     }

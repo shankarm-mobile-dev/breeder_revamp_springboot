@@ -139,6 +139,14 @@ public class BranchUser {
         @JsonProperty("bodyWeightPercentage")
         String bodyWeightPercentage;
 
+        @Column(name = "bodyWeightTolerance")
+        @JsonProperty("bodyWeightTolerance")
+        String bodyWeightTolerance;
+
+        @Column(name = "placementTolerance")
+        @JsonProperty("placementTolerance")
+        String placementTolerance;
+
         @JsonProperty("entryDate")
         String entryDate;
         @JsonProperty("eggProductionAge")
@@ -581,6 +589,10 @@ public class BranchUser {
         ArrayList<PlacementInfoDetails1> PlacementInfoDetails;
         @JsonProperty("PlacementInfoShedDetails")
         ArrayList<PlacementInfoShedDetails> PlacementInfoShedDetails;
+
+        @JsonProperty("PlacementTolerance")
+        String placementTolerance;
+
     }
     @Getter
     @Setter
@@ -644,6 +656,16 @@ public class BranchUser {
         @JsonProperty("PlacementInfoLineDetails")
         ArrayList<PlacementInfoLineDetails> PlacementInfoLineDetails;
     }
+
+    @Getter
+    @Setter
+    public static class PlacementTolerance {
+        @Column(name = "placementTolerance", type = String.class)
+        @JsonProperty("placementTolerance")
+        String placementTolerance;
+    }
+
+
     @Getter
     @Setter
     public static class ShedDetailsReport {

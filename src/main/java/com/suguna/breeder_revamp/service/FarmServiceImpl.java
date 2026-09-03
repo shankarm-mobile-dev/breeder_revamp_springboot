@@ -183,7 +183,7 @@ public class FarmServiceImpl implements FarmService {
             storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
-            storedProcedureQuery.registerStoredProcedureParameter(4, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.registerStoredProcedureParameter(4, ResultSet.class, ParameterMode.REF_CURSOR);
             storedProcedureQuery.setParameter(1, branchID);
             storedProcedureQuery.setParameter(2, userType);
             storedProcedureQuery.setParameter(3, userCode);
@@ -1605,6 +1605,8 @@ public class FarmServiceImpl implements FarmService {
         }
         details.setPlacementInfoDetails(shedDetailsArrayList);
         details.setPlacementInfoShedDetails(getplacementshedinfo(branchID));
+        String tolerance = getPlacementTolerance(branchID);
+        details.setPlacementTolerance(tolerance);
         //details.setCullsReasonDetails(getexcessshortagereason(branchID));
         return details;
     }
@@ -1653,6 +1655,19 @@ public class FarmServiceImpl implements FarmService {
 
         }
         return shedDetailsArrayList;
+    }
+
+    public String getPlacementTolerance(String age) {
+        try {
+            Object result = entityManager
+                    .createNativeQuery("SELECT SUG_MAI_GPPS_MOB_PKG.getPlacementTolerance(:age) FROM dual")
+                    .setParameter("age", age)
+                    .getSingleResult();
+            return result != null ? result.toString() : "0";
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "0";
+        }
     }
 
     @Override
@@ -3305,6 +3320,26 @@ public class FarmServiceImpl implements FarmService {
         }
         return branchUserArrayList;
     }
-
+    public FarmResultDto FARMERSERVICECHARGES(String branch_ID) throws SQLException {
+        FarmResultDto farmResultDto=new FarmResultDto();
+        FarmResultDto.farmerservicecharge appinfo = new FarmResultDto.farmerservicecharge();
+        ArrayList<FarmResultDto.farmerservicecharge> Result = new ArrayList<FarmResultDto.farmerservicecharge>();
+        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gpps_mob_pkg.farmerservicecharge");
+        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+        storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+        storedProcedureQuery.setParameter(1, branch_ID);
+        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+        storedProcedureQuery.execute();
+        while (resultSet.next()) {
+            try {
+                appinfo = ResultSetMapper.mapResultSetToObject(resultSet, FarmResultDto.farmerservicecharge.class);
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+            Result.add(appinfo);
+        }
+        farmResultDto.setServicechargemst(Result);
+        return farmResultDto;
+    }
 
 }

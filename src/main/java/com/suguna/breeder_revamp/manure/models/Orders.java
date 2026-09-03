@@ -1,11 +1,12 @@
 package com.suguna.breeder_revamp.manure.models;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-
 @Entity
 @Table(name = "SUG_MAI_ORDER_HDR", schema = "SUG")
 public class Orders {
@@ -37,6 +38,8 @@ public class Orders {
     String ORDER_TYPE;
     String ORDER_FROM;
     Long DEPO_BRANCH_ID;
+    String DC_NO;
+
 
 
 //    public Long getOrderRefNumber() {
@@ -232,5 +235,13 @@ public class Orders {
 
     public void setDEPO_BRANCH_ID(Long DEPO_BRANCH_ID) {
         this.DEPO_BRANCH_ID = DEPO_BRANCH_ID;
+    }
+
+    public String getDC_NO() {
+        return DC_NO;
+    }
+
+    public void setDC_NO(String DC_NO) {
+        this.DC_NO = DC_NO;
     }
 }
