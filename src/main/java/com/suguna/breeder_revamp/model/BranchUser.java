@@ -790,6 +790,9 @@ public class BranchUser {
         ArrayList<MortalityDetails> MortalityDetails;
         @JsonProperty("FeedDetails")
         ArrayList<FeedDetails> FeedDetails;
+
+        @JsonProperty("BodyWeightUniformity")
+        ArrayList<BodyWeightUniformity> BodyWeightUniformity;
     }
 
     @Getter
@@ -885,6 +888,55 @@ public class BranchUser {
         @JsonProperty("MORT_MALE")
         String mortMale;
     }
+
+    @Getter
+    @Setter
+    public static class BodyWeightUniformity {
+        /* @Column(name = "DAY_NAME", type = String.class)
+         @JsonProperty("DAY_NAME")
+         String dayName;
+         @Column(name = "DAY_OF_MONTH", type = String.class)
+         @JsonProperty("DAY_OF_MONTH")
+         String dayOfMonth;
+         @Column(name = "FULL_DATE", type = String.class)
+         @JsonProperty("FULL_DATE")
+         String fullDate;
+         @Column(name = "MORTALITY", type = String.class)
+         @JsonProperty("MORTALITY")
+         String mortality;*/
+        @Column(name = "FLOCK_NO", type = String.class)
+        @JsonProperty("FLOCK_NO")
+        String flockNo;
+        @Column(name = "AGE", type = String.class)
+        @JsonProperty("AGE")
+        String age;
+
+        @Column(name = "MOST_ABOVE_STD", type = String.class)
+        @JsonProperty("MOST_ABOVE_STD")
+        String moseAbove;
+
+        @Column(name = "MOST_BELOW_STD", type = String.class)
+        @JsonProperty("MOST_BELOW_STD")
+        String mostBelow;
+
+        @Column(name = "WITHIN_STD", type = String.class)
+        @JsonProperty("WITHIN_STD")
+        String within;
+
+        @Column(name = "BELOW_STD", type = String.class)
+        @JsonProperty("BELOW_STD")
+        String belowStd;
+
+        @Column(name = "ABOVE_STD", type = String.class)
+        @JsonProperty("ABOVE_STD")
+        String aboveStd;
+
+        @Column(name = "BIRD_TYPE", type = String.class)
+        @JsonProperty("BIRD_TYPE")
+        String birdType;
+
+    }
+
     @Getter
     @Setter
     public static class FeedDetails {
