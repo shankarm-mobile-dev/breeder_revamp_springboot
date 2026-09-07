@@ -27,6 +27,8 @@ public interface FarmService {
 
     ArrayList<BranchUser.ShedWiseBirdsDetails> getshedwise_birdsdtls(BranchRequest branchRequest);
 
+    ArrayList<BranchUser.ShedWiseBirdsDetails> getWeekBirdsDetails(GetWeakBirdRequest getWeakBirdRequest);
+
     String saveFeedDetails(BranchRequest branchRequest, List<MultipartFile> imageFile);
 
     String saveMortalityDetails(BranchRequest branchRequest, List<MultipartFile> imageFile);

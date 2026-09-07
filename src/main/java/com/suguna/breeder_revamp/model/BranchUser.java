@@ -358,11 +358,11 @@ public class BranchUser {
         @JsonProperty("birdCategory")
         String birdCategory;
 
-        @Column(name = "reason_id", type = String.class)
+        @Column(name = "REASON_ID", type = String.class)
         @JsonProperty("reasonId")
         String reasonId;
 
-        @Column(name = "reason", type = String.class)
+        @Column(name = "REASON", type = String.class)
         @JsonProperty("reason")
         String reason;
 

@@ -78,6 +78,17 @@ public class FarmController {
         return responseDto;
     }
 
+    @PostMapping("/getWeekBirdsDetails")
+    public ResponseDto getWeekBirdsDetails(@RequestBody GetWeakBirdRequest getWeakBirdRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getWeekBirdsDetails(getWeakBirdRequest));
+        return responseDto;
+    }
+
     @PostMapping("/getDailyEntryScheduleDetails")
     public ResponseDto getDailyEntryScheduleDetails(@RequestBody BranchRequest branchRequest)
     {

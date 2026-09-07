@@ -448,6 +448,30 @@ public class FarmServiceImpl implements FarmService {
         return shedDetailsArrayList;
     }
 
+    public ArrayList<BranchUser.ShedWiseBirdsDetails> getWeekBirdsDetails(GetWeakBirdRequest getWeakBirdRequest) {
+        ArrayList<BranchUser.ShedWiseBirdsDetails> shedDetailsArrayList = new ArrayList<BranchUser.ShedWiseBirdsDetails>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getWeakBirdDetails");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(4, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, getWeakBirdRequest.getBranchID());
+            storedProcedureQuery.setParameter(2, getWeakBirdRequest.getShedNo());
+            storedProcedureQuery.setParameter(3, getWeakBirdRequest.getFlockNo());
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(4);
+
+            while (resultSet.next()) {
+                BranchUser.ShedWiseBirdsDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.ShedWiseBirdsDetails.class);
+                shedDetailsArrayList.add(shedDetails);
+            }
+        } catch (Exception e) {
+
+        }
+        return shedDetailsArrayList;
+    }
+
     @Override
     public ArrayList<BranchUser.ShedWiseBirdsDetails> getshedwise_birdsdtls(BranchRequest branchRequest) {
         ArrayList<BranchUser.ShedWiseBirdsDetails> shedDetailsArrayList = new ArrayList<BranchUser.ShedWiseBirdsDetails>();
