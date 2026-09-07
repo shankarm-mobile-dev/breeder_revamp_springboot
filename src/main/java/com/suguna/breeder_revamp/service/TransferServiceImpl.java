@@ -740,5 +740,41 @@ public class TransferServiceImpl implements TransferService{
         }
         return "200";
     }
+    @Override
+    public String changeTransPlan(TransferPlanDto entry) {
+        String fromdateFormat = "DD-MM-YYYY hh:mm:ss";
+        String fromdateFormat1 = "DD-MMM-YYYY";
+        try {
+            SugMaiGppsTransPlanHdr sugMaiGppsTransPlanHdr=new SugMaiGppsTransPlanHdr();
+            sugMaiGppsTransPlanHdr.setFROM_FARM_ID(BigDecimal.valueOf(entry.getFromOrgId()));
+            sugMaiGppsTransPlanHdr.setFROM_FARM_NAME(entry.getFromFarmName());
+            sugMaiGppsTransPlanHdr.setTO_FARM_ID(BigDecimal.valueOf(entry.getToOrgId()));
+            sugMaiGppsTransPlanHdr.setEMPCODE(entry.getUserCode());
+            sugMaiGppsTransPlanHdr.setTRANS_TYPE(entry.getTransType());
+            sugMaiGppsTransPlanHdr.setTRANS_REASON(entry.getTransReason());
+            sugMaiGppsTransPlanHdr.setFLOCK_ID(entry.flockId);
+            sugMaiGppsTransPlanHdr.setTXN_DATE(getTxnDateString(entry.getTransDate(),fromdateFormat1));
+            SugMaiGppsTransPlanHdr sugMaiGppsTransPlanHdr1=sugMaiGppsTransPlanHdrRepository.save(sugMaiGppsTransPlanHdr);
+            sugMaiGppsTransPlanHdrRepository.updateentry(String.valueOf(entry.getTxnHeaderId()),"I");
+            for(TransferPlanDto.TransferPlanDtlsDto transferPlanDtlsDto:entry.getTransferPlanDtls())
+            {
+                SugMaiGppsTransPlanDtl sugMaiGppsTransPlanDtl=new SugMaiGppsTransPlanDtl();
+                sugMaiGppsTransPlanDtl.setTXN_HEADER_ID(sugMaiGppsTransPlanHdr1.getTXN_HEADER_ID());
+                sugMaiGppsTransPlanDtl.setTXN_TYPE(entry.getTransType());
+                sugMaiGppsTransPlanDtl.setBIRD_TYPE(transferPlanDtlsDto.itemType);
+                sugMaiGppsTransPlanDtl.setQTY(transferPlanDtlsDto.quantity);
+                sugMaiGppsTransPlanDtl.setFROM_INVENTORY_LOC_DESC(transferPlanDtlsDto.fromFarmLocation);
+                sugMaiGppsTransPlanDtl.setTO_INVENTORY_LOC_DESC(transferPlanDtlsDto.toFarmLocation);
+                sugMaiGppsTransPlanDtl.setFROM_LINE_NAME(transferPlanDtlsDto.fromLine);
+                sugMaiGppsTransPlanDtl.setTO_LINE_NAME(transferPlanDtlsDto.toLine);
+                sugMaiGppsTransPlanDtl.setFROM_SIDE_NAME(transferPlanDtlsDto.fromSide);
+                sugMaiGppsTransPlanDtl.setTO_SIDE_NAME(transferPlanDtlsDto.toSide);
+                sugMaiGppsTransPlanDtlRepository.save(sugMaiGppsTransPlanDtl);
+            }
+        } catch (Exception e) {
+
+        }
+        return "200";
+    }
 
 }

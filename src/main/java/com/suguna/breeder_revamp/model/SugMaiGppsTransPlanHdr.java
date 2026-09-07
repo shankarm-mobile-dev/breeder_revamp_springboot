@@ -28,4 +28,5 @@ public class SugMaiGppsTransPlanHdr {
     String TRANS_REASON;
     Date UPDATION_DATE;
     String UPDATION_BY;
+    String STATUS;
 }

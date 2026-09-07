@@ -1,10 +1,7 @@
 package com.suguna.breeder_revamp.service;
 
 import com.suguna.breeder_revamp.components.FileStorageService;
-import com.suguna.breeder_revamp.dto.SaveSugMaterialConsumptionDto;
-import com.suguna.breeder_revamp.dto.ShedReadyDto;
-import com.suguna.breeder_revamp.dto.ShedReadyLineDto;
-import com.suguna.breeder_revamp.dto.ShedReadyResponseDto;
+import com.suguna.breeder_revamp.dto.*;
 import com.suguna.breeder_revamp.entities.FeedbackMaster;
 import com.suguna.breeder_revamp.entities.ShedReadyHeader;
 import com.suguna.breeder_revamp.entities.ShedReadyLines;
@@ -14,6 +11,10 @@ import com.suguna.breeder_revamp.repositories.ShedReadyHeaderRepositories;
 import com.suguna.breeder_revamp.repositories.ShedReadyLineRepositories;
 import com.suguna.breeder_revamp.response.ApiResponseList;
 import com.suguna.breeder_revamp.response.Response;
+import com.suguna.breeder_revamp.utils.ResultSetMapper;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.ParameterMode;
+import jakarta.persistence.StoredProcedureQuery;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -22,6 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -41,6 +44,9 @@ public class ShedReadyServiceImpl  implements ShedReadyService {
     FileStorageService fileStorageService;
     @Autowired
     InventoryService inventoryService;
+
+    @Autowired
+    EntityManager entityManager;
 
     @Override
     public ResponseEntity<ApiResponseList<ShedReadyDto>> getShedReadyQuestion(String farmCode, String feedbackRef, String language, String shedCode) {
@@ -101,6 +107,7 @@ public class ShedReadyServiceImpl  implements ShedReadyService {
                             .value(value)
                             .uom(uom)
                             .inputMandatory(feedbackMaster.getInputMandatory())
+                            .medicine_details(getshedready_question_medicine(farmCode, String.valueOf(feedbackMaster.getQuestionId())))
                             .build()
             );
         }
@@ -335,4 +342,35 @@ public class ShedReadyServiceImpl  implements ShedReadyService {
         shedReadyHeaderRepositories.updateFarmerStatus(shed_code,farmCode);
         return Response.buildSingleResponseList("Success", HttpStatus.OK, "Found", dtoList);
     }
+
+    public ArrayList<ShedReadyDto.itemmaster> getshedready_question_medicine(String branchId,String questionId) {
+
+            ShedReadyDto.itemmaster appinfo = new ShedReadyDto.itemmaster();
+            ArrayList<ShedReadyDto.itemmaster> Result = new ArrayList<ShedReadyDto.itemmaster>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gpps_mob_pkg.getshedready_question_medicine");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchId);
+            storedProcedureQuery.setParameter(2, questionId);
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(3);
+            storedProcedureQuery.execute();
+            System.out.println(branchId);
+            while (resultSet.next()) {
+                MasterResultDto.itemmaster pojo = null;
+                try {
+                    appinfo = ResultSetMapper.mapResultSetToObject(resultSet, ShedReadyDto.itemmaster.class);
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+                Result.add(appinfo);
+            }
+        } catch (Exception e) {
+
+        }
+
+        return Result;
+    }
+
 }

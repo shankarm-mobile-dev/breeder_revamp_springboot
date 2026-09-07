@@ -26,6 +26,8 @@ public class TransferPlanDto {
     public String transReason;
     @JsonProperty("flockId")
     public String flockId;
+    @JsonProperty("txnHeaderId")
+    public long txnHeaderId;
     @JsonProperty("transferPlanDtls")
     public ArrayList<TransferPlanDtlsDto> transferPlanDtls;
 

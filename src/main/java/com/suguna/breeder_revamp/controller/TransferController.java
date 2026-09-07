@@ -102,6 +102,19 @@ public class TransferController {
         return responseDto;
     }
 
+    @PostMapping("/changeTransPlan")
+    public ResponseDto  changeTransPlan(@RequestBody TransferPlanDto entry) throws Exception{
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        String response = "";
+        // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
+        responseDto.setResult(transferService.changeTransPlan(entry));
+        //}
+        return responseDto;
+    }
+
     @PostMapping("/getTransferPlanPlace")
     public ResponseDto getTransferPlanPlace(@RequestBody BranchRequest branchRequest)
     {
