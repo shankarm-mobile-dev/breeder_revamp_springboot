@@ -51,7 +51,7 @@ public class InventoryServiceImpl implements  InventoryService{
                 if (Material.equals("0")) {
                     SaveSugNaterialConsumptionModel model = new SaveSugNaterialConsumptionModel();
 
-
+                    model.setDEVICE_ID(123456L);
                     model.setTRANS_DATE(getTxnDateString(Farmdto.transdate, fromdateFormat1));
                     model.setBRANCH_ID(new BigDecimal(Farmdto.getBranch_id()));
                     model.setINVENTORY_ITEM_ID(new BigDecimal(Farmdto.inventory_item_id));
@@ -200,6 +200,7 @@ public class InventoryServiceImpl implements  InventoryService{
                 sugMaiBreederDailyEntryModel.setTXN_CATEGORY("RETURN");
                 sugMaiBreederDailyEntryModel.setINVENTORY_DESC(issueReturnDto.description);
                 sugMaiBreederDailyEntryModel.setLOCATION_CODE(issueReturnDto.location);
+                sugMaiBreederDailyEntryModel.setPOSTED_FLAG("P");
                 sugMaiBreederDailyEntryRepository.save(sugMaiBreederDailyEntryModel);
             }
         } catch (Exception e) {

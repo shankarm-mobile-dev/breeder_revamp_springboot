@@ -84,6 +84,8 @@ public interface FarmService {
 
     String saveCloseEntryDetails(BranchRequest branchRequest);
 
+    String postTodaySavedDayCloseEntries();
+
     String SugCVBodyWeight(ArrayList<SugCVBodyWeightDto> entry);
 
     ArrayList<BranchUser.BodyWeightDeviationDetails> getBodyWeightRange(String branchID);
@@ -117,4 +119,9 @@ public interface FarmService {
     ArrayList<BranchUser.FarmFlockVaccineDetails> getVaccineScheduleDetails(String branchID);
     public FarmResultDto FARMERSERVICECHARGES(String branch_ID )throws SQLException;
 
+    ArrayList<BranchUser.VaccineGivenDetails> getVaccineGivendtls(String branchID,String flockID);
+
+    ArrayList<BranchUser.IssueReturnDetails>  getIssueReturndtls(String branchId);
+
+    String saveIssueReturnApproval(BranchRequest branchRequest);
 }

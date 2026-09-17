@@ -766,7 +766,7 @@ public class FarmServiceImpl implements FarmService {
                     maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
                     maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
                     maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
-                    maiGppsConsumptions.setTXN_TYPE("WEEK");
+                    maiGppsConsumptions.setTXN_TYPE("WEAK");
                     maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
                     maiGppsConsumptions.setREASON(sugWeekBirdDetails.getReasonType());
                     sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
@@ -787,7 +787,7 @@ public class FarmServiceImpl implements FarmService {
                     maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
                     maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
                     maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
-                    maiGppsConsumptions.setTXN_TYPE("WEEK");
+                    maiGppsConsumptions.setTXN_TYPE("WEAK");
                     maiGppsConsumptions.setREMARK(sugWeekBirdDetails.getReasonType());
                     sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
 
@@ -1392,6 +1392,8 @@ public class FarmServiceImpl implements FarmService {
                     maiGppsConsumptions.setTXN_TYPE("MORTALITY_PML");
                     maiGppsConsumptions.setLINE_NO(sugCullingDetails.getLineNo());
                     maiGppsConsumptions.setSIDE_NO(sugCullingDetails.getSideNo());
+                    maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
+                    maiGppsConsumptions.setSHED_CODE(branchRequest.getShedNo());
                     //sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
                     try {
                         sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
@@ -1417,6 +1419,8 @@ public class FarmServiceImpl implements FarmService {
                     maiGppsConsumptions.setTXN_TYPE("MORTALITY_PML");
                     maiGppsConsumptions.setLINE_NO(sugCullingDetails.getLineNo());
                     maiGppsConsumptions.setSIDE_NO(sugCullingDetails.getSideNo());
+                    maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
+                    maiGppsConsumptions.setSHED_CODE(branchRequest.getShedNo());
                     try {
                         sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
                     } catch (StaleObjectStateException e) {
@@ -2251,9 +2255,10 @@ public class FarmServiceImpl implements FarmService {
 
 
                 SugMaiGppsItemConsumption sugMaiGppsItemConsumption = new SugMaiGppsItemConsumption();
+                sugMaiGppsItemConsumption.setDEVICE_ID(123456);
                 sugMaiGppsItemConsumption.setTRANS_DATE(new Date());
                 sugMaiGppsItemConsumption.setTRANS_TYPE(sanitizationEntryDetails.getItemType());
-                sugMaiGppsItemConsumption.setINVENTORY_ITEM_ID(0);
+                //sugMaiGppsItemConsumption.setINVENTORY_ITEM_ID(0);
                 sugMaiGppsItemConsumption.setINVENTORY_ITEM_CODE(sanitizationEntryDetails.getItemCode());
                 sugMaiGppsItemConsumption.setITEM_DESCRIPTION(sanitizationEntryDetails.getItemName());
                 sugMaiGppsItemConsumption.setSTK_QTY(0);
@@ -2269,6 +2274,17 @@ public class FarmServiceImpl implements FarmService {
                 sugMaiGppsItemConsumption.setBRANCH_ID(Long.valueOf(branchRequest.getBranchID()));
                 sugMaiGppsItemConsumption.setISSUED_BY(branchRequest.getUserCode());
                 sugMaiGppsItemConsumptionRepository.save(sugMaiGppsItemConsumption);
+                try {
+
+                    Thread.sleep(2000); // 2 seconds delay
+
+                } catch (InterruptedException e) {
+
+                    Thread.currentThread().interrupt();
+
+                    throw new RuntimeException("Thread interrupted", e);
+
+                }
             }
 
 
@@ -2417,7 +2433,15 @@ public class FarmServiceImpl implements FarmService {
 */
         Object rawData = branchRequest.getData();
         BranchRequest.SugCloseDetails data = new BranchRequest.SugCloseDetails();
-        List<SugGppsObservationBatchDTO> batchDTOS = getBatchDetails(branchRequest.getBatchID());
+        List<SugGppsObservationBatchDTO> batchDTOS = new ArrayList<>();
+        if (branchRequest.getBatchID() != null && !branchRequest.getBatchID().isEmpty()
+                && !"null".equalsIgnoreCase(branchRequest.getBatchID())) {
+            try {
+                batchDTOS = getBatchDetails(branchRequest.getBatchID());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
         /*if (rawData instanceof List<?>) {
             for (Object item : (List<?>) rawData) {
                 // Convert each LinkedHashMap into SugFeedDetails
@@ -2429,38 +2453,263 @@ public class FarmServiceImpl implements FarmService {
         if (rawData != null) {
             data = mapper.convertValue(rawData, BranchRequest.SugCloseDetails.class);
         }
-        SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
-        //if (!data.()) {
+        SugGppsObservationBatchDTO gppsObservationBatchDTO;
+        if (batchDTOS == null || batchDTOS.isEmpty()) {
+            gppsObservationBatchDTO = new SugGppsObservationBatchDTO(
+                    branchRequest.getFlockID(),
+                    branchRequest.getShedNo(),
+                    null,
+                    null,
+                    BigDecimal.ZERO,
+                    BigDecimal.ZERO);
+        } else {
+            gppsObservationBatchDTO = batchDTOS.get(0);
+        }
+        if (gppsObservationBatchDTO.getFLOCK_NO() == null || gppsObservationBatchDTO.getFLOCK_NO().isEmpty()) {
+            gppsObservationBatchDTO.setFLOCK_NO(branchRequest.getFlockID());
+        }
 
             SugMaiGppsConsumptions maiGppsConsumptions = new SugMaiGppsConsumptions();
             maiGppsConsumptions.setFARM_CODE(gppsObservationBatchDTO.getBRANCH_CODE());
             maiGppsConsumptions.setFLOCK_ID(gppsObservationBatchDTO.getFLOCK_NO());
              maiGppsConsumptions.setSHED_CODE(branchRequest.getShedNo());
 
-            // maiGppsConsumptions.setQTY(Long.valueOf(sugCullingDetails.getMaleBirdsCount()));
-            //maiGppsConsumptions.setWEIGHT(BigDecimal.valueOf(Double.parseDouble(sugCullingDetails.getMaleBirdsWeight())));
-            maiGppsConsumptions.setBATCH_ID(Long.valueOf(branchRequest.getBatchID()));
-            /*maiGppsConsumptions.setREMARKS(data.getRemarks());
-            maiGppsConsumptions.setLIGTHING_START_HRS(data.getLightStartTime());
-            maiGppsConsumptions.setLIGTHING_END_HRS(data.getLightEndTime());
-            maiGppsConsumptions.setSANITIZATION_START_HRS(data.getSanitizationStartTime());
-            maiGppsConsumptions.setSANITIZATION_END_HRS(data.getSanitizationEndTime());
-            maiGppsConsumptions.setTEMP_MAX(Double.parseDouble(data.getTempMax()));
-             maiGppsConsumptions.setTEMP_MIN(Double.parseDouble(data.getTempMin()));*/
+            if (branchRequest.getBatchID() != null && !branchRequest.getBatchID().isEmpty()) {
+                try {
+                    maiGppsConsumptions.setBATCH_ID(Long.valueOf(branchRequest.getBatchID()));
+                } catch (NumberFormatException ignored) {
+                }
+            }
             maiGppsConsumptions.setCREATION_DATE(new Date());
-            maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
-            maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
+            if (branchRequest.getLatitude() != null && !branchRequest.getLatitude().isEmpty()) {
+                try {
+                    maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
+                } catch (NumberFormatException ignored) {
+                }
+            }
+            if (branchRequest.getLongitude() != null && !branchRequest.getLongitude().isEmpty()) {
+                try {
+                    maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
+                } catch (NumberFormatException ignored) {
+                }
+            }
             maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
+            if (branchRequest.getBranchID() != null && !branchRequest.getBranchID().isEmpty()) {
+                try {
+                    maiGppsConsumptions.setBRANCH_ID(Long.valueOf(branchRequest.getBranchID()));
+                } catch (NumberFormatException ignored) {
+                }
+            }
         Date txnDate = getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1);
+        if (txnDate == null) {
+            txnDate = new Date();
+        }
         maiGppsConsumptions.setTXN_DATE(txnDate);
             maiGppsConsumptions.setTXN_TYPE("DAY_CLOSE");
+            maiGppsConsumptions.setSTATUS("N");
             long flockAge = getFlockShedAge(gppsObservationBatchDTO.getFLOCK_NO(), branchRequest.getShedNo(), branchRequest);
             maiGppsConsumptions.setAGE(flockAge);
             SugMaiGppsConsumptions savedDayClose = sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
-            saveDayEntriesToDailyEntry(branchRequest, gppsObservationBatchDTO, txnDate, savedDayClose.getTRANS_ID(), flockAge);
-        //}
+            try {
+                postSavedDayCloseToDailyEntry(savedDayClose, branchRequest, gppsObservationBatchDTO, txnDate, flockAge);
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw new RuntimeException("DAY_CLOSE saved but daily entry was not posted: " + e.getMessage(), e);
+            }
 
         return "200";
+    }
+
+    @Override
+    public String postTodaySavedDayCloseEntries() {
+        List<SugMaiGppsConsumptions> dayCloses = findDayCloseCreatedTwoDaysBack();
+        if (dayCloses == null || dayCloses.isEmpty()) {
+            return "No DAY_CLOSE entry with creation date today or two days back";
+        }
+        int posted = 0;
+        int skipped = 0;
+        StringBuilder skipReasons = new StringBuilder();
+        for (SugMaiGppsConsumptions dayClose : dayCloses) {
+            try {
+                BranchRequest branchRequest = new BranchRequest();
+                if (dayClose.getBATCH_ID() != null) {
+                    branchRequest.setBatchID(String.valueOf(dayClose.getBATCH_ID()));
+                }
+                branchRequest.setShedNo(dayClose.getSHED_CODE());
+                branchRequest.setFlockID(dayClose.getFLOCK_ID());
+                branchRequest.setUserCode(dayClose.getCREATED_BY());
+                branchRequest.setDeviceID("123456");
+                if (dayClose.getAGE() != null) {
+                    branchRequest.setAge(String.valueOf(dayClose.getAGE()));
+                }
+                if (dayClose.getBRANCH_ID() != null) {
+                    branchRequest.setBranchID(String.valueOf(dayClose.getBRANCH_ID()));
+                } else if (dayClose.getFARM_CODE() != null) {
+                    branchRequest.setBranchID(get_branch_id(dayClose.getFARM_CODE()));
+                }
+                SugGppsObservationBatchDTO batch = buildBatchFromDayClose(dayClose, branchRequest);
+                Date txnDate = dayClose.getTXN_DATE() != null ? dayClose.getTXN_DATE()
+                        : (dayClose.getCREATION_DATE() != null ? dayClose.getCREATION_DATE() : new Date());
+                long flockAge = dayClose.getAGE() != null ? dayClose.getAGE()
+                        : getFlockShedAge(dayClose.getFLOCK_ID(), dayClose.getSHED_CODE(), branchRequest);
+                if (postSavedDayCloseToDailyEntry(dayClose, branchRequest, batch, txnDate, flockAge)) {
+                    posted++;
+                } else {
+                    skipped++;
+                    skipReasons.append(" TRANS_ID ").append(dayClose.getTRANS_ID()).append(" already posted;");
+                }
+            } catch (Exception e) {
+                skipped++;
+                skipReasons.append(" TRANS_ID ").append(dayClose.getTRANS_ID()).append(" error: ").append(e.getMessage()).append(";");
+                e.printStackTrace();
+            }
+        }
+        return posted + " DAY_CLOSE entries posted for creation date today and two days back"
+                + (skipped > 0 ? " (" + skipped + " skipped:" + skipReasons + ")" : "");
+    }
+
+    private List<SugMaiGppsConsumptions> findDayCloseCreatedTwoDaysBack() {
+        List<SugMaiGppsConsumptions> dayCloses = sugMaiGppsConsumptionsRepositories.findTodayDayCloseEntries();
+        if (dayCloses != null && !dayCloses.isEmpty()) {
+            return dayCloses;
+        }
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object[]> rows = entityManager.createNativeQuery(
+                            "select a.trans_id, a.batch_id, a.flock_id, a.shed_code, a.farm_code, a.txn_date, a.creation_date, a.age, a.created_by, a.branch_id " +
+                                    "from sug.sug_mai_gpps_consumptions a " +
+                                    "where upper(trim(nvl(a.txn_type,' '))) = 'DAY_CLOSE' " +
+                                    "and trunc(a.creation_date) in (trunc(sysdate), trunc(sysdate) - 2) " +
+                                    "and nvl(a.status,'N') <> 'Y'")
+                    .getResultList();
+            List<SugMaiGppsConsumptions> mapped = new ArrayList<>();
+            for (Object[] row : rows) {
+                SugMaiGppsConsumptions dayClose = new SugMaiGppsConsumptions();
+                if (row[0] != null) {
+                    dayClose.setTRANS_ID(((Number) row[0]).longValue());
+                }
+                if (row[1] != null) {
+                    dayClose.setBATCH_ID(((Number) row[1]).longValue());
+                }
+                dayClose.setFLOCK_ID(row[2] == null ? null : String.valueOf(row[2]));
+                dayClose.setSHED_CODE(row[3] == null ? null : String.valueOf(row[3]));
+                dayClose.setFARM_CODE(row[4] == null ? null : String.valueOf(row[4]));
+                if (row[5] instanceof Date) {
+                    dayClose.setTXN_DATE((Date) row[5]);
+                }
+                if (row[6] instanceof Date) {
+                    dayClose.setCREATION_DATE((Date) row[6]);
+                }
+                if (row[7] != null) {
+                    dayClose.setAGE(((Number) row[7]).longValue());
+                }
+                dayClose.setCREATED_BY(row[8] == null ? null : String.valueOf(row[8]));
+                if (row[9] != null) {
+                    dayClose.setBRANCH_ID(((Number) row[9]).longValue());
+                }
+                mapped.add(dayClose);
+            }
+            return mapped;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return dayCloses == null ? new ArrayList<>() : dayCloses;
+        }
+    }
+
+    private SugGppsObservationBatchDTO buildBatchFromDayClose(SugMaiGppsConsumptions dayClose, BranchRequest branchRequest) {
+        if (branchRequest.getBatchID() != null && !branchRequest.getBatchID().isEmpty()
+                && !"null".equalsIgnoreCase(branchRequest.getBatchID())) {
+            try {
+                List<SugGppsObservationBatchDTO> batchDTOS = getBatchDetails(branchRequest.getBatchID());
+                if (batchDTOS != null && !batchDTOS.isEmpty()) {
+                    SugGppsObservationBatchDTO batch = batchDTOS.get(0);
+                    if (batch.getFLOCK_NO() == null || batch.getFLOCK_NO().isEmpty()) {
+                        batch.setFLOCK_NO(dayClose.getFLOCK_ID());
+                    }
+                    if (batch.getBRANCH_CODE() == null || batch.getBRANCH_CODE().isEmpty()) {
+                        batch.setBRANCH_CODE(dayClose.getFARM_CODE());
+                    }
+                    return batch;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return new SugGppsObservationBatchDTO(
+                dayClose.getFLOCK_ID(),
+                dayClose.getSHED_CODE(),
+                dayClose.getFARM_CODE(),
+                null,
+                BigDecimal.ZERO,
+                BigDecimal.ZERO
+        );
+    }
+
+    private boolean postSavedDayCloseToDailyEntry(SugMaiGppsConsumptions dayClose,
+                                                  BranchRequest branchRequest,
+                                                  SugGppsObservationBatchDTO batch,
+                                                  Date txnDate,
+                                                  long flockAge) {
+        if (dayClose == null) {
+            return false;
+        }
+        Date postDate = txnDate != null ? txnDate
+                : (dayClose.getTXN_DATE() != null ? dayClose.getTXN_DATE() : dayClose.getCREATION_DATE());
+        if (dayClose.getTRANS_ID() != 0 && dailyEntryAlreadyPosted(dayClose.getTRANS_ID(), postDate)) {
+            markDayClosePosted(dayClose.getTRANS_ID());
+            return false;
+        }
+        saveDayEntriesToDailyEntry(branchRequest, batch, postDate, dayClose.getTRANS_ID(), flockAge);
+        markDayClosePosted(dayClose.getTRANS_ID());
+        return true;
+    }
+
+    private void markDayClosePosted(long transId) {
+        if (transId == 0) {
+            return;
+        }
+        try {
+            sugMaiGppsConsumptionsRepositories.markDayClosePosted(transId);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String flockIdForDailyEntry(SugGppsObservationBatchDTO batch, BranchRequest branchRequest) {
+        if (batch != null && batch.getFLOCK_NO() != null && !batch.getFLOCK_NO().isEmpty()) {
+            return batch.getFLOCK_NO();
+        }
+        return branchRequest.getFlockID();
+    }
+
+    private boolean dailyEntryAlreadyPosted(long dayCloseTransId, Date txnDate) {
+        if (txnDate == null) {
+            return false;
+        }
+        try {
+            Number count = (Number) entityManager.createNativeQuery(
+                            "select count(1) from sug.sug_mai_breeder_daily_entry a " +
+                                    "where a.txn_id = ?1 and a.txn_type = 'HEADER' " +
+                                    "and trunc(a.txn_date) = trunc(?2)")
+                    .setParameter(1, dayCloseTransId)
+                    .setParameter(2, txnDate)
+                    .getSingleResult();
+            return count != null && count.longValue() > 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private String get_branch_id(String branchCode) {
+        try {
+            Object id = entityManager.createNativeQuery(
+                            "select a.branch_id from sug_organization_mv a where a.branch_code = ?1")
+                    .setParameter(1, branchCode)
+                    .getSingleResult();
+            return id == null ? null : String.valueOf(((Number) id).longValue());
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private long getFlockShedAge(String flockId, String shedCode, BranchRequest branchRequest) {
@@ -2499,110 +2748,350 @@ public class FarmServiceImpl implements FarmService {
                                             Date txnDate,
                                             long dayCloseTransId,
                                             long flockAge) {
+        Long batchId = null;
+        try {
+            if (branchRequest.getBatchID() != null && !branchRequest.getBatchID().isEmpty()) {
+                batchId = Long.valueOf(branchRequest.getBatchID());
+            }
+        } catch (Exception ignored) {
+        }
+        String flockId = flockIdForDailyEntry(batch, branchRequest);
         List<SugMaiGppsConsumptions> dayEntries = sugMaiGppsConsumptionsRepositories
-                .findDayEntriesByFlockAndShedAndTxnDate(batch.getFLOCK_NO(), branchRequest.getShedNo(), txnDate);
+                .findDayEntriesByFlockAndShedAndTxnDate(
+                        flockId,
+                        branchRequest.getShedNo(),
+                        txnDate,
+                        batchId);
+        if (dayEntries == null || dayEntries.isEmpty()) {
+            dayEntries = sugMaiGppsConsumptionsRepositories
+                    .findTodaySavedEntriesByFlockAndShed(
+                            flockId,
+                            branchRequest.getShedNo(),
+                            batchId);
+        }
+        if (dayEntries == null) {
+            dayEntries = new ArrayList<>();
+        }
+
+        SugMaiGppsConsumptions othersEntry = null;
+        SugMaiGppsConsumptions sanitizerEntry = null;
+        long mortMale = 0;
+        long mortFemale = 0;
+        long cullMale = 0;
+        long cullFemale = 0;
+        long exshMale = 0;
+        long exshFemale = 0;
+        long totalEgg = 0;
+        String lightStart = null;
+        String lightEnd = null;
+
+        for (SugMaiGppsConsumptions consumption : dayEntries) {
+            String txnType = txnTypeOf(consumption);
+            long qty = qtyOf(consumption);
+            boolean female = isFemale(consumption.getSEX()) || isFemale(consumption.getBIRD_TYPE());
+            boolean male = isMale(consumption.getSEX()) || isMale(consumption.getBIRD_TYPE());
+            switch (txnType) {
+                case "MORTALITY":
+                case "MORTALITY_PML":
+                    if (female) {
+                        mortFemale += qty;
+                    } else if (male) {
+                        mortMale += qty;
+                    }
+                    break;
+                case "CULLING":
+                case "DESTROY":
+                    if (female) {
+                        cullFemale += qty;
+                    } else if (male) {
+                        cullMale += qty;
+                    }
+                    break;
+                case "ADJUSTMENT":
+                case "EXCESS":
+                case "SHORTAGE":
+                    if (female) {
+                        exshFemale += qty;
+                    } else if (male) {
+                        exshMale += qty;
+                    }
+                    break;
+                case "EGG COLLECTION":
+                    if (consumption.getITEM_ID() == null || consumption.getITEM_ID() != 0L) {
+                        totalEgg += qty;
+                    }
+                    break;
+                case "OTHERS":
+                    othersEntry = consumption;
+                    lightStart = consumption.getLIGTHING_START_HRS();
+                    lightEnd = consumption.getLIGTHING_END_HRS();
+                    break;
+                case "WATER_SANITIZER":
+                    sanitizerEntry = consumption;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        long[] opening = getOpeningBirds(flockIdForDailyEntry(batch, branchRequest), branchRequest.getShedNo());
+        long opMale = opening[0];
+        long opFemale = opening[1];
+        long clMale = opMale - mortMale - cullMale - exshMale;
+        long clFemale = opFemale - mortFemale - cullFemale - exshFemale;
+        if (clMale < 0) {
+            clMale = 0;
+        }
+        if (clFemale < 0) {
+            clFemale = 0;
+        }
+
+        Date now = new Date();
+        if (dayCloseTransId == 0 || !dailyEntryAlreadyPosted(dayCloseTransId, txnDate)) {
+            sugMaiBreederDailyEntryRepository.save(buildHeaderDailyEntry(
+                    branchRequest, batch, txnDate, dayCloseTransId, flockAge, now,
+                    opMale, opFemale, mortMale, mortFemale, cullMale, cullFemale,
+                    exshMale, exshFemale, clMale, clFemale, totalEgg,
+                    othersEntry, sanitizerEntry));
+        }
 
         for (SugMaiGppsConsumptions consumption : dayEntries) {
             try {
-                sugMaiBreederDailyEntryRepository.save(
-                        mapConsumptionToDailyEntry(consumption, branchRequest, batch, flockAge, dayCloseTransId));
+                String txnType = txnTypeOf(consumption);
+                if ("FEED".equals(txnType)) {
+                    sugMaiBreederDailyEntryRepository.save(
+                            buildFeedDailyEntry(consumption, branchRequest, batch, txnDate, dayCloseTransId, now, lightStart, lightEnd));
+                } else if ("MORTALITY".equals(txnType) || "MORTALITY_PML".equals(txnType)) {
+                    sugMaiBreederDailyEntryRepository.save(
+                            buildMortalityDailyEntry(consumption, branchRequest, batch, txnDate, dayCloseTransId, now));
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
     }
 
-    private SugMaiBreederDailyEntryModel mapConsumptionToDailyEntry(SugMaiGppsConsumptions consumption,
-                                                                    BranchRequest branchRequest,
-                                                                    SugGppsObservationBatchDTO batch,
-                                                                    long flockAge,
-                                                                    long dayCloseTransId) {
+    private SugMaiBreederDailyEntryModel buildBaseDailyEntry(BranchRequest branchRequest,
+                                                              SugGppsObservationBatchDTO batch,
+                                                              Date txnDate,
+                                                              long dayCloseTransId,
+                                                              Date now) {
         SugMaiBreederDailyEntryModel dailyEntry = new SugMaiBreederDailyEntryModel();
-        if (branchRequest.getBranchID() != null && !branchRequest.getBranchID().isEmpty()) {
-            dailyEntry.setBRANCH_ID(Long.parseLong(branchRequest.getBranchID()));
-        }
-        dailyEntry.setBRANCH_CODE(batch.getBRANCH_CODE());
-        dailyEntry.setLOCATION_CODE(branchRequest.getShedNo());
-        if (batch.getINVENTORY_LOCATION_ID() != null) {
-            dailyEntry.setINVENTORY_LOCATION_ID(batch.getINVENTORY_LOCATION_ID().longValue());
-        }
-        dailyEntry.setEMP_CODE(branchRequest.getUserCode());
-        dailyEntry.setTXN_TYPE(consumption.getTXN_TYPE());
-        dailyEntry.setTXN_DATE(consumption.getTXN_DATE() != null ? consumption.getTXN_DATE() : txnDateOrNow(consumption));
-        dailyEntry.setBATCH_NO(batch.getBATCH_NO());
-        if (consumption.getBATCH_ID() != null) {
-            dailyEntry.setBATCH_ID(consumption.getBATCH_ID());
-        }
-        dailyEntry.setFLOCK_NO(consumption.getFLOCK_ID());
-        dailyEntry.setAGE(consumption.getAGE() != null ? consumption.getAGE() : flockAge);
-        dailyEntry.setBIRD_TYPE(consumption.getSEX());
-        dailyEntry.setREASON(consumption.getREASON());
-        dailyEntry.setREMARKS(consumption.getREMARKS() != null ? consumption.getREMARKS() : consumption.getREMARK());
-        dailyEntry.setENTRY_CREATION_DATE(new Date());
-        dailyEntry.setLATITUDE(consumption.getLATITUDE());
-        dailyEntry.setLONGITUDE(consumption.getLONGITUDE());
         dailyEntry.setTXN_ID(dayCloseTransId);
         dailyEntry.setMTL_REPORT_ID(dayCloseTransId);
-        if (consumption.getITEM_ID() != null) {
-            dailyEntry.setINVENTORY_ITEM_ID(consumption.getITEM_ID());
+        dailyEntry.setDEVICE_ID(123456L);
+        if (branchRequest.getBranchID() != null && !branchRequest.getBranchID().trim().isEmpty()) {
+            try {
+                dailyEntry.setBRANCH_ID(Long.parseLong(branchRequest.getBranchID().trim()));
+            } catch (NumberFormatException ignored) {
+            }
         }
-
-        String txnType = consumption.getTXN_TYPE() == null ? "" : consumption.getTXN_TYPE().toUpperCase();
-        long qty = consumption.getQTY() == null ? 0L : consumption.getQTY();
-        boolean female = isFemale(consumption.getSEX());
-        boolean male = isMale(consumption.getSEX());
-
-        switch (txnType) {
-            case "FEED":
-                dailyEntry.setSECONDARY_QTY(qty);
-                dailyEntry.setTRANS_UOM(consumption.getUOM() != null ? consumption.getUOM() : "KG");
-                break;
-            case "MORTALITY":
-            case "MORTALITY_PML":
-                dailyEntry.setPRIMARY_QTY(qty);
-                if (female) {
-                    dailyEntry.setMORT_FEMALE(qty);
-                } else if (male) {
-                    dailyEntry.setMORT_MALE(qty);
-                }
-                dailyEntry.setTRANS_UOM("EA");
-                break;
-            case "CULLING":
-            case "DESTROY":
-                dailyEntry.setPRIMARY_QTY(qty);
-                if (female) {
-                    dailyEntry.setCULL_FEMALE(qty);
-                } else if (male) {
-                    dailyEntry.setCULLS_MALE(qty);
-                }
-                dailyEntry.setCULL_REASON(consumption.getREASON());
-                dailyEntry.setTRANS_UOM("EA");
-                break;
-            case "EGG COLLECTION":
-                dailyEntry.setTOTAL_EGG(qty);
-                dailyEntry.setPRIMARY_QTY(qty);
-                dailyEntry.setTRANS_UOM(consumption.getUOM() != null ? consumption.getUOM() : "EA");
-                break;
-            case "OTHERS":
-                dailyEntry.setTEMP_MIN((float) consumption.getTEMP_MIN());
-                dailyEntry.setTEMP_MAX((float) consumption.getTEMP_MAX());
-                dailyEntry.setSTART_TIME(consumption.getLIGTHING_START_HRS());
-                dailyEntry.setEND_TIME(consumption.getLIGTHING_END_HRS());
-                break;
-            case "WATER_SANITIZER":
-                dailyEntry.setPH_LEVEL((float) consumption.getPH_LEVEL());
-                dailyEntry.setPPM_LEVEL((float) consumption.getPM_LEVEL());
-                break;
-            default:
-                dailyEntry.setPRIMARY_QTY(qty);
-                dailyEntry.setTRANS_UOM(consumption.getUOM());
-                break;
+        long locId = 0;
+        if (batch != null && batch.getINVENTORY_LOCATION_ID() != null) {
+            locId = batch.getINVENTORY_LOCATION_ID().longValue();
         }
+        if (locId == 0 && branchRequest.getShedNo() != null) {
+            BigDecimal loc = get_inventory_loc_id(branchRequest.getShedNo(), branchRequest.getBranchID());
+            if (loc != null) {
+                locId = loc.longValue();
+            }
+        }
+        dailyEntry.setINVENTORY_LOCATION_ID(locId);
+        dailyEntry.setEMP_CODE(branchRequest.getUserCode());
+        dailyEntry.setTXN_DATE(txnDate);
+        if (branchRequest.getBatchID() != null && !branchRequest.getBatchID().trim().isEmpty()) {
+            try {
+                dailyEntry.setBATCH_ID(Long.parseLong(branchRequest.getBatchID().trim()));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        dailyEntry.setENTRY_CREATION_DATE(now);
+        dailyEntry.setCREATED_DATE(now);
+        dailyEntry.setPOSTED_FLAG("N");
         return dailyEntry;
     }
 
-    private Date txnDateOrNow(SugMaiGppsConsumptions consumption) {
-        return consumption.getCREATION_DATE() != null ? consumption.getCREATION_DATE() : new Date();
+    private SugMaiBreederDailyEntryModel buildHeaderDailyEntry(BranchRequest branchRequest,
+                                                              SugGppsObservationBatchDTO batch,
+                                                              Date txnDate,
+                                                              long dayCloseTransId,
+                                                              long flockAge,
+                                                              Date now,
+                                                              long opMale,
+                                                              long opFemale,
+                                                              long mortMale,
+                                                              long mortFemale,
+                                                              long cullMale,
+                                                              long cullFemale,
+                                                              long exshMale,
+                                                              long exshFemale,
+                                                              long clMale,
+                                                              long clFemale,
+                                                              long totalEgg,
+                                                              SugMaiGppsConsumptions othersEntry,
+                                                              SugMaiGppsConsumptions sanitizerEntry) {
+        SugMaiBreederDailyEntryModel header = buildBaseDailyEntry(branchRequest, batch, txnDate, dayCloseTransId, now);
+        header.setTXN_TYPE("HEADER");
+        if (batch != null) {
+            header.setBRANCH_CODE(batch.getBRANCH_CODE());
+            header.setBATCH_NO(batch.getBATCH_NO());
+        }
+        header.setLOCATION_CODE(branchRequest.getShedNo());
+        header.setFLOCK_NO(flockIdForDailyEntry(batch, branchRequest));
+        header.setAGE(flockAge);
+        header.setHH("Y");
+        header.setOP_MALE(opMale);
+        header.setOP_FEMALE(opFemale);
+        header.setMORT_MALE(mortMale);
+        header.setMORT_FEMALE(mortFemale);
+        header.setCULLS_MALE(cullMale);
+        header.setCULL_FEMALE(cullFemale);
+        header.setEXSH_MALE(exshMale);
+        header.setEXSH_FEMALE(exshFemale);
+        header.setCL_MALE(clMale);
+        header.setCL_FEMALE(clFemale);
+        header.setTOTAL_EGG(totalEgg);
+        header.setFLOCK_LIQUID("N");
+        if (othersEntry != null) {
+            header.setTEMP_MIN((float) othersEntry.getTEMP_MIN());
+            header.setTEMP_MAX((float) othersEntry.getTEMP_MAX());
+            header.setSTART_TIME(othersEntry.getLIGTHING_START_HRS());
+            header.setEND_TIME(othersEntry.getLIGTHING_END_HRS());
+            header.setLIGTHING_HRS(lightingHours(othersEntry.getLIGTHING_START_HRS(), othersEntry.getLIGTHING_END_HRS()));
+            header.setREMARKS(othersEntry.getREMARKS());
+        }
+        if (sanitizerEntry != null) {
+            header.setPH_LEVEL((float) sanitizerEntry.getPH_LEVEL());
+            header.setPPM_LEVEL((float) sanitizerEntry.getPM_LEVEL());
+        }
+        if (branchRequest.getLatitude() != null && !branchRequest.getLatitude().isEmpty()) {
+            header.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
+        }
+        if (branchRequest.getLongitude() != null && !branchRequest.getLongitude().isEmpty()) {
+            header.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
+        }
+        return header;
+    }
+
+    private SugMaiBreederDailyEntryModel buildFeedDailyEntry(SugMaiGppsConsumptions consumption,
+                                                             BranchRequest branchRequest,
+                                                             SugGppsObservationBatchDTO batch,
+                                                             Date txnDate,
+                                                             long dayCloseTransId,
+                                                             Date now,
+                                                             String lightStart,
+                                                             String lightEnd) {
+        SugMaiBreederDailyEntryModel feed = buildBaseDailyEntry(branchRequest, batch, txnDate, dayCloseTransId, now);
+        feed.setTXN_TYPE("FEED");
+        feed.setBIRD_TYPE(toFmCode(consumption.getSEX(), consumption.getBIRD_TYPE()));
+        feed.setTRANS_UOM(consumption.getUOM() != null && !consumption.getUOM().isEmpty() ? consumption.getUOM() : "KG");
+        feed.setSECONDARY_QTY(qtyOf(consumption));
+        feed.setTXN_CATEGORY("ISSUE");
+        feed.setSTART_TIME(lightStart);
+        feed.setEND_TIME(lightEnd);
+        if (consumption.getITEM_ID() != null) {
+            feed.setINVENTORY_ITEM_ID(consumption.getITEM_ID());
+            feed.setINVENTORY_DESC(getItemDescription(consumption.getITEM_ID(), branchRequest.getBranchID()));
+        } else if (consumption.getGRADE() != null) {
+            feed.setINVENTORY_DESC(consumption.getGRADE());
+        }
+        return feed;
+    }
+
+    private SugMaiBreederDailyEntryModel buildMortalityDailyEntry(SugMaiGppsConsumptions consumption,
+                                                                  BranchRequest branchRequest,
+                                                                  SugGppsObservationBatchDTO batch,
+                                                                  Date txnDate,
+                                                                  long dayCloseTransId,
+                                                                  Date now) {
+        SugMaiBreederDailyEntryModel mortality = buildBaseDailyEntry(branchRequest, batch, txnDate, dayCloseTransId, now);
+        mortality.setTXN_TYPE("MORTALITY");
+        mortality.setBIRD_TYPE(toFmCode(consumption.getSEX(), consumption.getBIRD_TYPE()));
+        mortality.setTRANS_UOM("EA");
+        mortality.setPRIMARY_QTY(qtyOf(consumption));
+        mortality.setREASON(consumption.getREASON());
+        mortality.setADJ_TYPE("NA");
+        return mortality;
+    }
+
+    private long[] getOpeningBirds(String flockId, String shedCode) {
+        long[] opening = new long[]{0L, 0L};
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object[]> rows = entityManager.createNativeQuery(
+                            "select sex, nvl(cl_qty, nvl(op_qty, 0)) qty from (" +
+                                    " select sex, cl_qty, op_qty, row_number() over (partition by sex order by txn_date desc) rn" +
+                                    " from sug.sug_mai_gpps_housing_shed where flock_id = ?1 and shed_no = ?2) where rn = 1")
+                    .setParameter(1, flockId)
+                    .setParameter(2, shedCode)
+                    .getResultList();
+            for (Object[] row : rows) {
+                String sex = row[0] == null ? "" : String.valueOf(row[0]);
+                long qty = row[1] == null ? 0L : ((Number) row[1]).longValue();
+                if (isFemale(sex)) {
+                    opening[1] = qty;
+                } else if (isMale(sex)) {
+                    opening[0] = qty;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return opening;
+    }
+
+    private String getItemDescription(Long itemId, String branchId) {
+        if (itemId == null || branchId == null || branchId.isEmpty()) {
+            return null;
+        }
+        try {
+            Object desc = entityManager.createNativeQuery(
+                            "select t.description from mtl_system_items_b t where t.inventory_item_id = ?1 and t.organization_id = ?2")
+                    .setParameter(1, itemId)
+                    .setParameter(2, branchId)
+                    .getSingleResult();
+            return desc == null ? null : String.valueOf(desc);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private float lightingHours(String startTime, String endTime) {
+        if (startTime == null || endTime == null || startTime.isEmpty() || endTime.isEmpty()) {
+            return 0f;
+        }
+        String[] patterns = {"hh:mm a", "h:mm a", "HH:mm", "hh:mma"};
+        for (String pattern : patterns) {
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat(pattern, Locale.ENGLISH);
+                Date start = sdf.parse(startTime.trim());
+                Date end = sdf.parse(endTime.trim());
+                long diff = end.getTime() - start.getTime();
+                if (diff < 0) {
+                    diff += 24L * 60 * 60 * 1000;
+                }
+                return (float) (diff / (1000f * 60 * 60));
+            } catch (ParseException ignored) {
+            }
+        }
+        return 0f;
+    }
+
+    private String txnTypeOf(SugMaiGppsConsumptions consumption) {
+        return consumption.getTXN_TYPE() == null ? "" : consumption.getTXN_TYPE().toUpperCase();
+    }
+
+    private long qtyOf(SugMaiGppsConsumptions consumption) {
+        return consumption.getQTY() == null ? 0L : consumption.getQTY();
+    }
+
+    private String toFmCode(String sex, String birdType) {
+        if (isFemale(sex) || isFemale(birdType)) {
+            return "F";
+        }
+        if (isMale(sex) || isMale(birdType)) {
+            return "M";
+        }
+        return birdType != null ? birdType : sex;
     }
 
     private boolean isFemale(String sex) {
@@ -3364,6 +3853,66 @@ public class FarmServiceImpl implements FarmService {
         }
         farmResultDto.setServicechargemst(Result);
         return farmResultDto;
+    }
+
+    @Override
+    public ArrayList<BranchUser.VaccineGivenDetails> getVaccineGivendtls(String branchID,String flockID) {
+        ArrayList<BranchUser.VaccineGivenDetails> branchUserArrayList = new ArrayList<BranchUser.VaccineGivenDetails>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getVaccineGivendtls");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchID);
+            storedProcedureQuery.setParameter(2, flockID);
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(3);
+
+            while (resultSet.next()) {
+                BranchUser.VaccineGivenDetails branchUser = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.VaccineGivenDetails.class);
+                // branchUser.setUserDetails(getRegisteredBranchUsers(String.valueOf(branchUser.getBranchID()), branchRequest.getUserType(), branchUser.getBranchName()));
+                // branchUser.setBranchUserDetails(getSupervisorNewDetails(String.valueOf(branchUser.getBranchID()), branchRequest.getUserType()));
+                // branchUser.setFlockDetails(getFlockDetails(String.valueOf(branchUser.getBranchID())));
+                branchUserArrayList.add(branchUser);
+            }
+        } catch (Exception e) {
+
+        }
+        return branchUserArrayList;
+    }
+
+    @Override
+    public ArrayList<BranchUser.IssueReturnDetails> getIssueReturndtls(String branchId) {
+        ArrayList<BranchUser.IssueReturnDetails> eggWeightCapturePersonArrayList = new ArrayList<BranchUser.IssueReturnDetails>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getIssueReturndtls");
+
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+           // storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchId);
+
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+
+            while (resultSet.next()) {
+                BranchUser.IssueReturnDetails eggWeightCapturePerson = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.IssueReturnDetails.class);
+                eggWeightCapturePersonArrayList.add(eggWeightCapturePerson);
+            }
+        } catch (Exception e) {
+
+        }
+        return eggWeightCapturePersonArrayList;
+    }
+
+    @Override
+    public String saveIssueReturnApproval(BranchRequest branchRequest) {
+        try {
+            sugMaiBreederDailyEntryRepository.updateApprovalEntry(branchRequest.getReportId(),branchRequest.getStatus(),branchRequest.getRemarks()+" - "+branchRequest.getUserCode());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return "200";
     }
 
 }

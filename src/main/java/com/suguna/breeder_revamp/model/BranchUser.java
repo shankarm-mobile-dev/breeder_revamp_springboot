@@ -1349,4 +1349,76 @@ public class BranchUser {
         @JsonProperty("STRAIN")
         String strain;
     }
+
+    @Getter
+    @Setter
+    public static class VaccineGivenDetails {
+        @Column(name = "TRANSACTION_DATE", type = String.class)
+        @JsonProperty("transactionDate")
+        String transactionDate;
+        @Column(name = "PLANT_CODE", type = String.class)
+        @JsonProperty("plantCode")
+        String plantCode;
+        @Column(name = "TRANSACTION_TYPE", type = String.class)
+        @JsonProperty("transactionType")
+        String transactionType;
+        @Column(name = "BATCH_NO", type = String.class)
+        @JsonProperty("batchNo")
+        String batchNo;
+        @Column(name = "TRANS_QTY", type = String.class)
+        @JsonProperty("transQty")
+        String transQty;
+
+        @Column(name = "TRANS_UM", type = String.class)
+        @JsonProperty("transUom")
+        String transUom;
+        @Column(name = "AGE", type = String.class)
+        @JsonProperty("age")
+        String age;
+        @Column(name = "SEGMENT1", type = String.class)
+        @JsonProperty("itemCode")
+        String itemCode;
+        @Column(name = "DESCRIPTION", type = String.class)
+        @JsonProperty("itemName")
+        String itemName;
+        @Column(name = "FARM_NAME", type = String.class)
+        @JsonProperty("farmName")
+        String farmName;
+    }
+
+    @Getter
+    @Setter
+    public static class IssueReturnDetails {
+        @Column(name = "REPORT_ID", type = String.class)
+        @JsonProperty("reportId")
+        String reportId;
+        @Column(name = "BRANCH_CODE", type = String.class)
+        @JsonProperty("branchCode")
+        String branchCode;
+        @Column(name = "LOCATION_CODE", type = String.class)
+        @JsonProperty("locationCode")
+        String locationCode;
+        @Column(name = "TXN_TYPE", type = String.class)
+        @JsonProperty("txnType")
+        String txnType;
+        @Column(name = "TXN_DATE", type = String.class)
+        @JsonProperty("txnDate")
+        String txnDate;
+        @Column(name = "BATCH_NO", type = String.class)
+        @JsonProperty("batchNo")
+        String batchNo;
+        @Column(name = "FLOCK_NO", type = String.class)
+        @JsonProperty("flockNo")
+        String flockNo;
+        @Column(name = "INVENTORY_DESC", type = String.class)
+        @JsonProperty("inventoryDesc")
+        String inventoryDesc;
+        @Column(name = "TRANS_UOM", type = String.class)
+        @JsonProperty("transUom")
+        String transUom;
+        @Column(name = "QUANTITY", type = String.class)
+        @JsonProperty("quantity")
+        String quantity;
+
+    }
 }

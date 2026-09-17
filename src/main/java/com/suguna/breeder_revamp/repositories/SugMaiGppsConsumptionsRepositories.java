@@ -31,8 +31,22 @@ public interface SugMaiGppsConsumptionsRepositories extends JpaRepository<SugMai
     @Transactional
     int updatestatus(@Param("qty") String qty,@Param("SHED_CODE") String SHED_CODE,@Param("farm_code") String farm_code);
 
-    @Query(value = "SELECT * FROM SUG_MAI_GPPS_CONSUMPTIONS a WHERE a.FLOCK_ID = :flockId AND a.SHED_CODE = :shedCode AND trunc(nvl(a.TXN_DATE, a.CREATION_DATE)) = trunc(:txnDate) AND nvl(a.TXN_TYPE, 'X') <> 'DAY_CLOSE'", nativeQuery = true)
+    @Query(value = "SELECT * FROM SUG.SUG_MAI_GPPS_CONSUMPTIONS a WHERE a.FLOCK_ID = :flockId AND trunc(nvl(a.TXN_DATE, a.CREATION_DATE)) = trunc(:txnDate) AND nvl(a.TXN_TYPE, 'X') <> 'DAY_CLOSE' AND (a.SHED_CODE = :shedCode OR a.SHED_CODE IS NULL) AND (a.BATCH_ID = :batchId OR :batchId IS NULL)", nativeQuery = true)
     List<SugMaiGppsConsumptions> findDayEntriesByFlockAndShedAndTxnDate(@Param("flockId") String flockId,
                                                                         @Param("shedCode") String shedCode,
-                                                                        @Param("txnDate") Date txnDate);
+                                                                        @Param("txnDate") Date txnDate,
+                                                                        @Param("batchId") Long batchId);
+
+    @Query(value = "SELECT * FROM SUG.SUG_MAI_GPPS_CONSUMPTIONS a WHERE a.FLOCK_ID = :flockId AND trunc(a.CREATION_DATE) in (trunc(sysdate), trunc(sysdate) - 2) AND nvl(a.TXN_TYPE, 'X') <> 'DAY_CLOSE' AND (a.SHED_CODE = :shedCode OR a.SHED_CODE IS NULL) AND (a.BATCH_ID = :batchId OR :batchId IS NULL)", nativeQuery = true)
+    List<SugMaiGppsConsumptions> findTodaySavedEntriesByFlockAndShed(@Param("flockId") String flockId,
+                                                                       @Param("shedCode") String shedCode,
+                                                                       @Param("batchId") Long batchId);
+
+    @Query(value = "SELECT * FROM SUG.SUG_MAI_GPPS_CONSUMPTIONS a WHERE upper(trim(nvl(a.TXN_TYPE, ' '))) = 'DAY_CLOSE' AND trunc(a.CREATION_DATE) in (trunc(sysdate), trunc(sysdate) - 2) AND nvl(a.STATUS, 'N') <> 'Y'", nativeQuery = true)
+    List<SugMaiGppsConsumptions> findTodayDayCloseEntries();
+
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE SUG.SUG_MAI_GPPS_CONSUMPTIONS a SET a.STATUS = 'Y' WHERE a.TRANS_ID = :transId AND upper(trim(a.TXN_TYPE)) = 'DAY_CLOSE'", nativeQuery = true)
+    int markDayClosePosted(@Param("transId") Long transId);
 }

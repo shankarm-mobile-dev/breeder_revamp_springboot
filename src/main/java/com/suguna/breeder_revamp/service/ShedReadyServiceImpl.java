@@ -274,6 +274,7 @@ public class ShedReadyServiceImpl  implements ShedReadyService {
         SimpleDateFormat entryDateFormat = new SimpleDateFormat("dd-MMM-yyyy HH:mm:ss", Locale.ENGLISH);
 
         SaveSugMaterialConsumptionDto consumptionDto = new SaveSugMaterialConsumptionDto();
+        consumptionDto.setDevice_id(String.valueOf(123456));
         consumptionDto.setBranch_id(String.valueOf(shedReadyLineDto.getOrgId()));
         consumptionDto.setInventory_item_id(shedReadyLineDto.getItemId());
         consumptionDto.setInventory_item_code(shedReadyLineDto.getItemCode());

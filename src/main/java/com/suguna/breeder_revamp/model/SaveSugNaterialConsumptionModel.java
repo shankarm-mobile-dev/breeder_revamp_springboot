@@ -12,7 +12,8 @@ import java.util.Date;
 @Entity
 @Table(name = "sug_mai_gpps_item_consumption")
 public class SaveSugNaterialConsumptionModel {
-
+    @Column(name = "DEVICE_ID")
+    private Long DEVICE_ID;
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "inventory_gpps_item_hdr_seq")
     @SequenceGenerator(

@@ -430,6 +430,16 @@ public class FarmController {
         //}
         return responseDto;
     }
+
+    @PostMapping("/postTodayDailyEntry")
+    public ResponseDto postTodayDailyEntry() {
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.postTodaySavedDayCloseEntries());
+        return responseDto;
+    }
     @PostMapping("/saveCVBodyWeight")
     public ResponseDto saveCVBodyWeight(@RequestBody ArrayList<SugCVBodyWeightDto> branchRequest) {
         ResponseDto responseDto = new ResponseDto();
@@ -618,5 +628,40 @@ public class FarmController {
     @GetMapping("/FarmerserviceCharge/{branch_ID}")
     public FarmResultDto FARMERSERVICECHARGES(@PathVariable String branch_ID) throws Exception {
         return farmService.FARMERSERVICECHARGES(branch_ID);
+    }
+
+    @PostMapping("/getVaccineGivendtls")
+    public ResponseDto getVaccineGivendtls(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getVaccineGivendtls(branchRequest.getBranchID(),branchRequest.getFlockID()));
+        return responseDto;
+    }
+
+    @PostMapping("/getIssueReturndtls")
+    public ResponseDto getIssueReturndtls(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getIssueReturndtls(branchRequest.getBranchID()));
+        return responseDto;
+    }
+
+    @PostMapping("/saveIssueReturnApproval")
+    public ResponseDto saveIssueReturnApproval(@RequestBody BranchRequest branchRequest) {
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        String response = "";
+        // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
+        responseDto.setResult(farmService.saveIssueReturnApproval(branchRequest));
+        //}
+        return responseDto;
     }
 }

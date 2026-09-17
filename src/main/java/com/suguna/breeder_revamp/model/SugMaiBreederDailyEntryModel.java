@@ -78,4 +78,6 @@ public class SugMaiBreederDailyEntryModel {
     String FLOCK_LIQUID;
     String CULL_REASON;
     String ARTIFICIAL_INSEMINATION;
+    String POSTED_FLAG;
+    Date CREATED_DATE;
 }

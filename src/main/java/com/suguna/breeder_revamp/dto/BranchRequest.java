@@ -54,6 +54,12 @@ public class BranchRequest<T> {
     String latitude;
     @JsonProperty("LONGITUDE")
     String longitude;
+    @JsonProperty("status")
+    String status;
+    @JsonProperty("reportId")
+    String reportId;
+    @JsonProperty("remarks")
+    String remarks;
     @JsonProperty("data")
     T data;
 
