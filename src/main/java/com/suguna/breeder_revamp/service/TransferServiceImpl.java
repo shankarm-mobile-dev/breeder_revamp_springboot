@@ -28,6 +28,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class TransferServiceImpl implements TransferService{
@@ -50,6 +51,9 @@ public class TransferServiceImpl implements TransferService{
 
     @Autowired
     SugEggVehiclePlanDtlRepository sugEggVehiclePlanDtlRepository;
+
+    @Autowired
+    BreederVehicleGateInOutRepository breederVehicleGateInOutRepository;
 
     @Autowired
     private ObjectMapper mapper;
@@ -454,10 +458,22 @@ public class TransferServiceImpl implements TransferService{
 
             while (resultSet.next()) {
                 TransferPlace.VehicleGateInDetails transferInDetails = ResultSetMapper.mapResultSetToObject(resultSet, TransferPlace.VehicleGateInDetails.class);
+                if (transferInDetails.getENTRY_TYPE() == null || transferInDetails.getENTRY_TYPE().isBlank()) {
+                    transferInDetails.setENTRY_TYPE("EGG");
+                }
                 transferInDetailsArrayList.add(transferInDetails);
             }
         } catch (Exception e) {
 
+        }
+        try {
+            Long branchId = Long.valueOf(branchRequest.getBranchID());
+            List<BreederVehicleGateInOut> records = breederVehicleGateInOutRepository.findByBranchIdOrderByGateInDateDesc(branchId);
+            for (BreederVehicleGateInOut record : records) {
+                transferInDetailsArrayList.add(mapManualToGateInDetails(record));
+            }
+        } catch (Exception e) {
+            System.out.println("Error in getEggGateInDetails manual union: " + e.getMessage());
         }
         return transferInDetailsArrayList;
     }
@@ -479,10 +495,22 @@ public class TransferServiceImpl implements TransferService{
 
             while (resultSet.next()) {
                 TransferPlace.VehicleGateOutDetails transferInDetails = ResultSetMapper.mapResultSetToObject(resultSet, TransferPlace.VehicleGateOutDetails.class);
+                if (transferInDetails.getENTRY_TYPE() == null || transferInDetails.getENTRY_TYPE().isBlank()) {
+                    transferInDetails.setENTRY_TYPE("EGG");
+                }
                 transferInDetailsArrayList.add(transferInDetails);
             }
         } catch (Exception e) {
 
+        }
+        try {
+            Long branchId = Long.valueOf(branchRequest.getBranchID());
+            List<BreederVehicleGateInOut> records = breederVehicleGateInOutRepository.findByBranchIdAndGateOutDateIsNullOrderByGateInDateDesc(branchId);
+            for (BreederVehicleGateInOut record : records) {
+                transferInDetailsArrayList.add(mapManualToGateOutDetails(record));
+            }
+        } catch (Exception e) {
+            System.out.println("Error in getEggGateOutDetails manual union: " + e.getMessage());
         }
         return transferInDetailsArrayList;
     }
@@ -777,6 +805,183 @@ public class TransferServiceImpl implements TransferService{
 
         }
         return "200";
+    }
+
+    @Override
+    @Transactional
+    public String saveManualGateInDetails(VehicleGateInOutDto entry, List<MultipartFile> imageFile) {
+        try {
+            BreederVehicleGateInOut gateInOut = new BreederVehicleGateInOut();
+            gateInOut.setBranchId(entry.getBRANCH_ID());
+            gateInOut.setVehicleNo(entry.getVEHICLE_NO());
+            gateInOut.setDriverName(entry.getDRIVER_NAME());
+            gateInOut.setDriverMobileNo(entry.getDRIVER_MOBILE_NO());
+            gateInOut.setPurpose(entry.getPURPOSE());
+            Date gateInDate = parseGateDate(entry.getGATE_IN_DATE());
+            gateInOut.setGateInDate(gateInDate != null ? gateInDate : new Date());
+            gateInOut.setCreatedBy(entry.getCREATED_BY());
+            gateInOut.setCreatedDate(new Date());
+
+            BreederVehicleGateInOut saved = breederVehicleGateInOutRepository.save(gateInOut);
+
+            String gateInImage = saveGateImage(imageFile, saved.getGateInId());
+            if (gateInImage != null) {
+                saved.setGateInImage(gateInImage);
+                breederVehicleGateInOutRepository.save(saved);
+            }
+        } catch (Exception e) {
+            System.out.println("Error in saveManualGateInDetails: " + e.getMessage());
+        }
+        return "200";
+    }
+
+    @Override
+    @Transactional
+    public String saveManualGateOutDetails(VehicleGateInOutDto entry, List<MultipartFile> imageFile) {
+        try {
+            if (entry.getGATE_IN_ID() == null) {
+                return "GATE_IN_ID is required";
+            }
+            BreederVehicleGateInOut gateInOut = breederVehicleGateInOutRepository.findById(entry.getGATE_IN_ID()).orElse(null);
+            if (gateInOut == null) {
+                return "Gate in record not found";
+            }
+            Date gateOutDate = parseGateDate(entry.getGATE_OUT_DATE());
+            gateInOut.setGateOutDate(gateOutDate != null ? gateOutDate : new Date());
+            gateInOut.setUpdatedBy(entry.getUPDATED_BY());
+            gateInOut.setUpdatedDate(new Date());
+
+            String gateOutImage = saveGateImage(imageFile, gateInOut.getGateInId());
+            if (gateOutImage != null) {
+                gateInOut.setGateOutImage(gateOutImage);
+            }
+            breederVehicleGateInOutRepository.save(gateInOut);
+        } catch (Exception e) {
+            System.out.println("Error in saveManualGateOutDetails: " + e.getMessage());
+        }
+        return "200";
+    }
+
+    @Override
+    public ArrayList<VehicleGateInOutDto> getManualGateInDetails(BranchRequest branchRequest) {
+        ArrayList<VehicleGateInOutDto> result = new ArrayList<>();
+        try {
+            Long branchId = Long.valueOf(branchRequest.getBranchID());
+            List<BreederVehicleGateInOut> records = breederVehicleGateInOutRepository.findByBranchIdOrderByGateInDateDesc(branchId);
+            for (BreederVehicleGateInOut record : records) {
+                result.add(mapToVehicleGateInOutDto(record));
+            }
+        } catch (Exception e) {
+            System.out.println("Error in getManualGateInDetails: " + e.getMessage());
+        }
+        return result;
+    }
+
+    @Override
+    public ArrayList<VehicleGateInOutDto> getManualGateOutDetails(BranchRequest branchRequest) {
+        ArrayList<VehicleGateInOutDto> result = new ArrayList<>();
+        try {
+            Long branchId = Long.valueOf(branchRequest.getBranchID());
+            List<BreederVehicleGateInOut> records = breederVehicleGateInOutRepository.findByBranchIdAndGateOutDateIsNullOrderByGateInDateDesc(branchId);
+            for (BreederVehicleGateInOut record : records) {
+                result.add(mapToVehicleGateInOutDto(record));
+            }
+        } catch (Exception e) {
+            System.out.println("Error in getManualGateOutDetails: " + e.getMessage());
+        }
+        return result;
+    }
+
+    private String saveGateImage(List<MultipartFile> imageFile, Long gateInId) throws IOException {
+        String imagePath = null;
+        if (imageFile != null && !imageFile.isEmpty()) {
+            for (MultipartFile data : imageFile) {
+                if (data != null && !data.isEmpty()) {
+                    imagePath = fileStorageService.saveImage(data, "", gateInId, FileStorageCategory.GATE_IN_OUT);
+                }
+            }
+        }
+        return imagePath;
+    }
+
+    private VehicleGateInOutDto mapToVehicleGateInOutDto(BreederVehicleGateInOut record) {
+        VehicleGateInOutDto dto = new VehicleGateInOutDto();
+        dto.setGATE_IN_ID(record.getGateInId());
+        dto.setBRANCH_ID(record.getBranchId());
+        dto.setVEHICLE_NO(record.getVehicleNo());
+        dto.setDRIVER_NAME(record.getDriverName());
+        dto.setDRIVER_MOBILE_NO(record.getDriverMobileNo());
+        dto.setPURPOSE(record.getPurpose());
+        dto.setGATE_IN_DATE(formatDate(record.getGateInDate()));
+        dto.setGATE_OUT_DATE(formatDate(record.getGateOutDate()));
+        dto.setGATE_IN_IMAGE(record.getGateInImage());
+        dto.setGATE_OUT_IMAGE(record.getGateOutImage());
+        dto.setCREATED_BY(record.getCreatedBy());
+        dto.setCREATED_DATE(formatDate(record.getCreatedDate()));
+        dto.setUPDATED_BY(record.getUpdatedBy());
+        dto.setUPDATED_DATE(formatDate(record.getUpdatedDate()));
+        return dto;
+    }
+
+    private Date parseGateDate(String dateValue) {
+        if (dateValue == null || dateValue.isBlank()) {
+            return null;
+        }
+        Date parsedDate = getTxnDateString(dateValue, fromdateFormat);
+        if (parsedDate == null) {
+            parsedDate = getTxnDateString(dateValue, fromdateFormat1);
+        }
+        return parsedDate;
+    }
+
+    private String formatDate(Date date) {
+        if (date == null) {
+            return null;
+        }
+        return new SimpleDateFormat(fromdateFormat).format(date);
+    }
+
+    private TransferPlace.VehicleGateInDetails mapManualToGateInDetails(BreederVehicleGateInOut record) {
+        TransferPlace.VehicleGateInDetails dto = new TransferPlace.VehicleGateInDetails();
+        dto.setGATE_IN_ID(record.getGateInId() == null ? null : String.valueOf(record.getGateInId()));
+        dto.setVEHICLE_NO(record.getVehicleNo());
+        dto.setTRANSPORTER_NAME(record.getDriverName());
+        dto.setTRANSPORTER_TYPE(record.getPurpose());
+        dto.setARRIVAL_DATE(formatArrivalDate(record.getGateInDate()));
+        dto.setDRIVER_NAME(record.getDriverName());
+        dto.setDRIVER_MOBILE_NO(record.getDriverMobileNo());
+        dto.setPURPOSE(record.getPurpose());
+        dto.setGATE_IN_DATE(formatArrivalDate(record.getGateInDate()));
+        dto.setGATE_OUT_DATE(formatArrivalDate(record.getGateOutDate()));
+        dto.setGATE_IN_IMAGE(record.getGateInImage());
+        dto.setGATE_OUT_IMAGE(record.getGateOutImage());
+        dto.setENTRY_TYPE("MANUAL");
+        return dto;
+    }
+
+    private TransferPlace.VehicleGateOutDetails mapManualToGateOutDetails(BreederVehicleGateInOut record) {
+        TransferPlace.VehicleGateOutDetails dto = new TransferPlace.VehicleGateOutDetails();
+        dto.setGATE_IN_ID(record.getGateInId() == null ? null : String.valueOf(record.getGateInId()));
+        dto.setVEHICLE_NO(record.getVehicleNo());
+        dto.setTRANSPORTER_NAME(record.getDriverName());
+        dto.setTRANSPORTER_TYPE(record.getPurpose());
+        dto.setARRIVAL_DATE(formatArrivalDate(record.getGateInDate()));
+        dto.setDRIVER_NAME(record.getDriverName());
+        dto.setDRIVER_MOBILE_NO(record.getDriverMobileNo());
+        dto.setPURPOSE(record.getPurpose());
+        dto.setGATE_IN_DATE(formatArrivalDate(record.getGateInDate()));
+        dto.setGATE_OUT_DATE(formatArrivalDate(record.getGateOutDate()));
+        dto.setGATE_IN_IMAGE(record.getGateInImage());
+        dto.setGATE_OUT_IMAGE(record.getGateOutImage());
+        dto.setENTRY_TYPE("MANUAL");
+        return dto;
+    }
+
+    private String formatArrivalDate(Date date) {
+        if (date == null) {
+            return null;
+        }
+        return new SimpleDateFormat("dd-MM-yyyy hh:mm a", Locale.ENGLISH).format(date);
     }
 
 }

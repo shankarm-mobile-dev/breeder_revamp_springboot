@@ -4,7 +4,8 @@ public enum FileStorageCategory {
     FEED("feed"),
     MORTALITY("mortality"),
     SHED_READY("shed_ready"),
-    MEDICINE("medicine");
+    MEDICINE("medicine"),
+    GATE_IN_OUT("gate_in_out");
 
 
     private final String folder;
