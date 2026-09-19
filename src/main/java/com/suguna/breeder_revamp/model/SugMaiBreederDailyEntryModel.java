@@ -3,29 +3,32 @@ package com.suguna.breeder_revamp.model;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.DynamicInsert;
+import org.springframework.data.domain.Persistable;
 
 import java.util.Date;
 
 @Getter
 @Setter
 @Entity
+@DynamicInsert
 @Table(name = "SUG_MAI_BREEDER_DAILY_ENTRY", schema = "SUG")
-public class SugMaiBreederDailyEntryModel {
+public class SugMaiBreederDailyEntryModel implements Persistable<Long> {
     long TXN_ID;
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "id_seq_SugMaiBreederDailyEntry")
-    @SequenceGenerator(sequenceName = "SUG_MAI_BREEDER_DAILY_ENTRY_S", allocationSize = 1, name = "id_seq_SugMaiBreederDailyEntry")
-    long REPORT_ID;
+    Long REPORT_ID;
+    @Transient
+    private boolean newEntity = true;
     long DEVICE_ID;
     long BRANCH_ID;
     String BRANCH_CODE;
     String LOCATION_CODE;
-    long INVENTORY_LOCATION_ID;
+    Long INVENTORY_LOCATION_ID;
     String EMP_CODE;
     String TXN_TYPE;
     Date TXN_DATE;
     String BATCH_NO;
-    long BATCH_ID;
+    Long BATCH_ID;
     String FLOCK_NO;
     long AGE;
     String HH;
@@ -47,7 +50,7 @@ public class SugMaiBreederDailyEntryModel {
     float TEMP_MIN;
     float TEMP_MAX;
     String BIRD_TYPE;
-    long INVENTORY_ITEM_ID;
+    Long INVENTORY_ITEM_ID;
     String INVENTORY_DESC;
     String TRANS_UOM;
     float STOCK_QTY;
@@ -56,7 +59,7 @@ public class SugMaiBreederDailyEntryModel {
     String REASON;
     String ADJ_TYPE;
     String VACC_METHOD;
-    long COLLECTION_NO;
+    Long COLLECTION_NO;
     float EGG_WT;
     float BODY_WT;
     float BIRD_CV;
@@ -80,4 +83,20 @@ public class SugMaiBreederDailyEntryModel {
     String ARTIFICIAL_INSEMINATION;
     String POSTED_FLAG;
     Date CREATED_DATE;
+
+    @Override
+    public Long getId() {
+        return REPORT_ID;
+    }
+
+    @Override
+    public boolean isNew() {
+        return newEntity;
+    }
+
+    @PostPersist
+    @PostLoad
+    void markNotNew() {
+        this.newEntity = false;
+    }
 }

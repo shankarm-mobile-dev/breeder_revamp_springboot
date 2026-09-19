@@ -495,6 +495,13 @@ public class BranchUser {
          @Column(name = "SIDE_NO", type = String.class)
         @JsonProperty("sideNo")
         String sideNo;
+
+        @Column(name = "entry_DATE", type = String.class)
+        @JsonProperty("entryDate")
+        String entryDate;
+
+        @JsonProperty("farmDayCloseShedDetails")
+        ArrayList<DayCloseShedDetails> farmDayCloseShedDetails;
     }
 
     @Getter
@@ -1244,7 +1251,17 @@ public class BranchUser {
         String branchId;
 
     }
+    @Getter
+    @Setter
+    public static class DayCloseShedDetails {
+        @Column(name = "SHED_NO", type = String.class)
+        @JsonProperty("shedNo")
+        String shedNo;
 
+        @Column(name = "STATUS", type = String.class)
+        @JsonProperty("status")
+        String status;
+    }
     @Getter
     @Setter
     public static class ShedBirdsDetails {

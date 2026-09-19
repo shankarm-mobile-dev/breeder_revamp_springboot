@@ -201,6 +201,10 @@ public class InventoryServiceImpl implements  InventoryService{
                 sugMaiBreederDailyEntryModel.setINVENTORY_DESC(issueReturnDto.description);
                 sugMaiBreederDailyEntryModel.setLOCATION_CODE(issueReturnDto.location);
                 sugMaiBreederDailyEntryModel.setPOSTED_FLAG("P");
+                Number nextId = (Number) entityManager.createNativeQuery(
+                                "select sug_mai_breeder_daily_entry_s.nextval from dual")
+                        .getSingleResult();
+                sugMaiBreederDailyEntryModel.setREPORT_ID(nextId.longValue());
                 sugMaiBreederDailyEntryRepository.save(sugMaiBreederDailyEntryModel);
             }
         } catch (Exception e) {

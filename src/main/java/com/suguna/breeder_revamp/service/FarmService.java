@@ -124,4 +124,8 @@ public interface FarmService {
     ArrayList<BranchUser.IssueReturnDetails>  getIssueReturndtls(String branchId);
 
     String saveIssueReturnApproval(BranchRequest branchRequest);
+
+    ArrayList<BranchUser.FarmFlockDetails> getDayCloseFlockDetails(String branchID);
+
+    String saveDayCloseConfirm(BranchRequest branchRequest);
 }

@@ -664,4 +664,28 @@ public class FarmController {
         //}
         return responseDto;
     }
+
+    @PostMapping("/getDayCloseFlockDetails")
+    public ResponseDto getDayCloseFlockDetails(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getDayCloseFlockDetails(branchRequest.getBranchID()));
+        return responseDto;
+    }
+
+    @PostMapping("/saveDayCloseConfirm")
+    public ResponseDto saveDayCloseConfirm(@RequestBody BranchRequest branchRequest) {
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        String response = "";
+        // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
+        responseDto.setResult(farmService.saveDayCloseConfirm(branchRequest));
+        //}
+        return responseDto;
+    }
 }

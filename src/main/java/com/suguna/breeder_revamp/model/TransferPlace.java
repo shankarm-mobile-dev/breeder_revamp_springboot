@@ -525,6 +525,10 @@ public class TransferPlace {
         @Column(name = "HATCHERY_ID", type = String.class)
         @JsonProperty("HATCHERY_ID")
         String HATCHERY_ID;
+
+        @Column(name = "LOCATION", type = String.class)
+        @JsonProperty("LOCATION")
+        String LOCATION;
     }
 
     @Getter

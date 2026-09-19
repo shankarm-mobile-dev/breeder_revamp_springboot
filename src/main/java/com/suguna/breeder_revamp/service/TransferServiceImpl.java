@@ -188,6 +188,46 @@ public class TransferServiceImpl implements TransferService{
         return date;
     }
 
+    private Object[] getFromInventoryLocation(BigDecimal fromBatchId, BigDecimal fromFarmId) {
+        if (fromBatchId == null || fromFarmId == null) {
+            return null;
+        }
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object[]> rows = entityManager.createNativeQuery(
+                            "select a.inventory_location_id, a.segment1 as inventory_loc_desc " +
+                                    "  from mtl_item_locations a," +
+                                    "       gme_batch_header b," +
+                                    "       sug_organization_mv c," +
+                                    "       hr_locations_all e" +
+                                    " where b.organization_id = a.organization_id" +
+                                    "   and nvl(b.attribute4, a.segment1) = a.segment1" +
+                                    "   and b.batch_status = 2" +
+                                    "   and a.organization_id = c.branch_id" +
+                                    "   and b.organization_id = c.branch_id" +
+                                    "   and b.attribute_category <> 'None'" +
+                                    "   and a.organization_id = e.inventory_organization_id" +
+                                    "   and e.location_id = c.hr_location_id" +
+                                    "   and not exists (select 1 from fm_form_mst x" +
+                                    "                    where x.formula_no like '%CONVERSION%'" +
+                                    "                      and x.formula_id = b.formula_id)" +
+                                    "   and nvl(a.attribute4, 1) = 1" +
+                                    "   and b.batch_id = ?1" +
+                                    "   and b.organization_id = ?2" +
+                                    "   and rownum = 1")
+                    .setParameter(1, fromBatchId)
+                    .setParameter(2, fromFarmId)
+                    .getResultList();
+            if (rows == null || rows.isEmpty()) {
+                return null;
+            }
+            return rows.get(0);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     @Override
     public String saveTransOut(ArrayList<SUGMAIGPPSTRANS_HDRDto> entry) {
         String fromdateFormat = "DD-MM-YYYY hh:mm:ss";
@@ -197,7 +237,7 @@ public class TransferServiceImpl implements TransferService{
                 String HDR = "0";//getSUGMAIGPPSTRANS_HDR(FarmDto.DEVICEID, FarmDto.txn_header_id, FarmDto.entry_creation_date);
                 if (HDR.equals("0")) {
                     SugMaiGppsTransHdr sugmaigppstransHdrModels = new SugMaiGppsTransHdr();
-                    sugmaigppstransHdrModels.setDEVICE_ID(new BigDecimal(FarmDto.DEVICEID));
+                    sugmaigppstransHdrModels.setDEVICE_ID(new BigDecimal("123456"));
                     sugmaigppstransHdrModels.setEMPCODE(FarmDto.getEmpcode());
                     sugmaigppstransHdrModels.setFROM_FARM_ID(FarmDto.getFrom_farm_id());
                     sugmaigppstransHdrModels.setFROM_FARM_NAME(FarmDto.getFrom_farm_name());
@@ -228,13 +268,25 @@ public class TransferServiceImpl implements TransferService{
                         String Dtl = "0";//getTransferoutDtl(FarmDto.DEVICEID, FarmDto.txn_header_id, FarmDto.txn_line_id, FarmDto.entry_creation_date);
                         if (Dtl.equals("0")) {
                             SugMaiGppsTransDtl sugMaiGppsTransDtlModels = new SugMaiGppsTransDtl();
-                            sugMaiGppsTransDtlModels.setDEVICE_ID(new BigDecimal(FarmDto1.DEVICEID));
+                            sugMaiGppsTransDtlModels.setDEVICE_ID(new BigDecimal("123456"));
                             sugMaiGppsTransDtlModels.setTXN_HEADER_ID(txn_id);
                             //sugMaiGppsTransDtlModels.setTXN_LINE_ID(new BigDecimal(FarmDto1.txn_line_id));
                             sugMaiGppsTransDtlModels.setFROM_FARM_ID(FarmDto1.getFrom_farm_id());
                             sugMaiGppsTransDtlModels.setTO_FARM_ID(FarmDto1.getTo_farm_id());
-                            sugMaiGppsTransDtlModels.setFROM_INVENTORY_LOCATION_ID(FarmDto1.getFrom_inventory_location_id());
-                            sugMaiGppsTransDtlModels.setFROM_INVENTORY_LOC_DESC(FarmDto1.getFrom_inventory_loc_desc());
+                            BigDecimal fromFarmId = FarmDto1.getFrom_farm_id() != null
+                                    ? FarmDto1.getFrom_farm_id() : FarmDto.getFrom_farm_id();
+                            Object[] fromLocation = getFromInventoryLocation(FarmDto1.getFrom_batch_id(), fromFarmId);
+                            if (fromLocation != null) {
+                                if (fromLocation[0] instanceof Number) {
+                                    sugMaiGppsTransDtlModels.setFROM_INVENTORY_LOCATION_ID(
+                                            BigDecimal.valueOf(((Number) fromLocation[0]).longValue()));
+                                }
+                                sugMaiGppsTransDtlModels.setFROM_INVENTORY_LOC_DESC(
+                                        fromLocation[1] == null ? null : String.valueOf(fromLocation[1]));
+                            } else {
+                                sugMaiGppsTransDtlModels.setFROM_INVENTORY_LOCATION_ID(FarmDto1.getFrom_inventory_location_id());
+                                sugMaiGppsTransDtlModels.setFROM_INVENTORY_LOC_DESC(FarmDto1.getFrom_inventory_loc_desc());
+                            }
                             sugMaiGppsTransDtlModels.setFROM_BATCH_ID(FarmDto1.getFrom_batch_id());
                             sugMaiGppsTransDtlModels.setTO_BATCH_ID(FarmDto1.getTo_batch_id());
                             sugMaiGppsTransDtlModels.setTXN_TYPE(FarmDto1.getTxn_type());
