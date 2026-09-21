@@ -56,4 +56,8 @@ public interface TransferService {
     ArrayList<VehicleGateInOutDto> getManualGateInDetails(BranchRequest branchRequest);
 
     ArrayList<VehicleGateInOutDto> getManualGateOutDetails(BranchRequest branchRequest);
+
+    ArrayList<VehicleGateInOutDto> getVehicleGateInOutDetails(VehicleGateInOutDto entry);
+
+    String editVehicleGateInOutDetails(VehicleGateInOutDto entry, List<MultipartFile> imageFile);
 }

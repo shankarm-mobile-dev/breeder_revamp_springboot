@@ -424,33 +424,6 @@ public class TransferPlace {
         @Column(name = "PLAN_DTL_ID", type = String.class)
         @JsonProperty("PLAN_DTL_ID")
         String PLAN_DTL_ID;
-        @Column(name = "GATE_IN_ID", type = String.class)
-        @JsonProperty("GATE_IN_ID")
-        String GATE_IN_ID;
-        @Column(name = "DRIVER_NAME", type = String.class)
-        @JsonProperty("DRIVER_NAME")
-        String DRIVER_NAME;
-        @Column(name = "DRIVER_MOBILE_NO", type = String.class)
-        @JsonProperty("DRIVER_MOBILE_NO")
-        String DRIVER_MOBILE_NO;
-        @Column(name = "PURPOSE", type = String.class)
-        @JsonProperty("PURPOSE")
-        String PURPOSE;
-        @Column(name = "GATE_IN_DATE", type = String.class)
-        @JsonProperty("GATE_IN_DATE")
-        String GATE_IN_DATE;
-        @Column(name = "GATE_OUT_DATE", type = String.class)
-        @JsonProperty("GATE_OUT_DATE")
-        String GATE_OUT_DATE;
-        @Column(name = "GATE_IN_IMAGE", type = String.class)
-        @JsonProperty("GATE_IN_IMAGE")
-        String GATE_IN_IMAGE;
-        @Column(name = "GATE_OUT_IMAGE", type = String.class)
-        @JsonProperty("GATE_OUT_IMAGE")
-        String GATE_OUT_IMAGE;
-        @Column(name = "ENTRY_TYPE", type = String.class)
-        @JsonProperty("ENTRY_TYPE")
-        String ENTRY_TYPE;
     }
     @Getter
     @Setter
@@ -488,33 +461,6 @@ public class TransferPlace {
         @Column(name = "PLAN_DTL_ID", type = String.class)
         @JsonProperty("PLAN_DTL_ID")
         String PLAN_DTL_ID;
-        @Column(name = "GATE_IN_ID", type = String.class)
-        @JsonProperty("GATE_IN_ID")
-        String GATE_IN_ID;
-        @Column(name = "DRIVER_NAME", type = String.class)
-        @JsonProperty("DRIVER_NAME")
-        String DRIVER_NAME;
-        @Column(name = "DRIVER_MOBILE_NO", type = String.class)
-        @JsonProperty("DRIVER_MOBILE_NO")
-        String DRIVER_MOBILE_NO;
-        @Column(name = "PURPOSE", type = String.class)
-        @JsonProperty("PURPOSE")
-        String PURPOSE;
-        @Column(name = "GATE_IN_DATE", type = String.class)
-        @JsonProperty("GATE_IN_DATE")
-        String GATE_IN_DATE;
-        @Column(name = "GATE_OUT_DATE", type = String.class)
-        @JsonProperty("GATE_OUT_DATE")
-        String GATE_OUT_DATE;
-        @Column(name = "GATE_IN_IMAGE", type = String.class)
-        @JsonProperty("GATE_IN_IMAGE")
-        String GATE_IN_IMAGE;
-        @Column(name = "GATE_OUT_IMAGE", type = String.class)
-        @JsonProperty("GATE_OUT_IMAGE")
-        String GATE_OUT_IMAGE;
-        @Column(name = "ENTRY_TYPE", type = String.class)
-        @JsonProperty("ENTRY_TYPE")
-        String ENTRY_TYPE;
     }
     @Getter
     @Setter

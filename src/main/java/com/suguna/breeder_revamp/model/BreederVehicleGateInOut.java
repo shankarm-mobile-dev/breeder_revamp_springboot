@@ -3,12 +3,16 @@ package com.suguna.breeder_revamp.model;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.DynamicInsert;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.util.Date;
 
 @Getter
 @Setter
 @Entity
+@DynamicInsert
+@DynamicUpdate
 @Table(name = "BREEDER_VEHICLE_GATE_IN_OUT", schema = "SUG")
 public class BreederVehicleGateInOut {
 
@@ -38,10 +42,10 @@ public class BreederVehicleGateInOut {
     @Column(name = "GATE_OUT_DATE")
     private Date gateOutDate;
 
-    @Column(name = "GATE_IN_IMAGE", length = 500)
+    @Transient
     private String gateInImage;
 
-    @Column(name = "GATE_OUT_IMAGE", length = 500)
+    @Transient
     private String gateOutImage;
 
     @Column(name = "CREATED_BY", length = 50)
