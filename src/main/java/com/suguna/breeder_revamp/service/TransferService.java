@@ -4,6 +4,7 @@ import com.suguna.breeder_revamp.dto.BranchRequest;
 import com.suguna.breeder_revamp.dto.PlanRequest;
 import com.suguna.breeder_revamp.dto.SUGMAIGPPSTRANS_HDRDto;
 import com.suguna.breeder_revamp.dto.TransferPlanDto;
+import com.suguna.breeder_revamp.dto.VehicleGateInOutDto;
 import com.suguna.breeder_revamp.model.BranchUser;
 import com.suguna.breeder_revamp.model.TransferPlace;
 import org.springframework.web.multipart.MultipartFile;
@@ -47,4 +48,16 @@ public interface TransferService {
     String saveGateOutDetails(PlanRequest branchRequest, List<MultipartFile> imageFile);
 
     String changeTransPlan(TransferPlanDto entry);
+
+    String saveManualGateInDetails(VehicleGateInOutDto entry, List<MultipartFile> imageFile);
+
+    String saveManualGateOutDetails(VehicleGateInOutDto entry, List<MultipartFile> imageFile);
+
+    ArrayList<VehicleGateInOutDto> getManualGateInDetails(BranchRequest branchRequest);
+
+    ArrayList<VehicleGateInOutDto> getManualGateOutDetails(BranchRequest branchRequest);
+
+    ArrayList<VehicleGateInOutDto> getVehicleGateInOutDetails(VehicleGateInOutDto entry);
+
+    String editVehicleGateInOutDetails(VehicleGateInOutDto entry, List<MultipartFile> imageFile);
 }

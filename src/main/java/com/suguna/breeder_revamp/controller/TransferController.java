@@ -234,4 +234,91 @@ public class TransferController {
         return responseDto;
     }
 
+    @PostMapping("/getManualGateInDetails")
+    public ResponseDto getManualGateInDetails(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(transferService.getManualGateInDetails(branchRequest));
+        return responseDto;
+    }
+
+    @PostMapping("/getManualGateOutDetails")
+    public ResponseDto getManualGateOutDetails(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(transferService.getManualGateOutDetails(branchRequest));
+        return responseDto;
+    }
+
+    @PostMapping(value = "/saveManualGateInDetails", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseDto saveManualGateInDetails(@RequestParam("entryRequest") String branchRequestJson, @RequestParam(value = "image", required = false) List<MultipartFile> imageFile) {
+        VehicleGateInOutDto entry = null;
+        try {
+            entry = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(branchRequestJson, VehicleGateInOutDto.class);
+        } catch (JsonProcessingException e) {
+            System.out.println("Error in parsing " + e.getMessage());
+            throw new RuntimeException(e);
+        }
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(transferService.saveManualGateInDetails(entry, imageFile));
+        return responseDto;
+    }
+
+    @PostMapping(value = "/saveManualGateOutDetails", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseDto saveManualGateOutDetails(@RequestParam("entryRequest") String branchRequestJson, @RequestParam(value = "image", required = false) List<MultipartFile> imageFile) {
+        VehicleGateInOutDto entry = null;
+        try {
+            entry = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(branchRequestJson, VehicleGateInOutDto.class);
+        } catch (JsonProcessingException e) {
+            System.out.println("Error in parsing " + e.getMessage());
+            throw new RuntimeException(e);
+        }
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(transferService.saveManualGateOutDetails(entry, imageFile));
+        return responseDto;
+    }
+
+    @PostMapping("/getVehicleGateInOutDetails")
+    public ResponseDto getVehicleGateInOutDetails(@RequestBody VehicleGateInOutDto entry)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(transferService.getVehicleGateInOutDetails(entry));
+        return responseDto;
+    }
+
+    @PostMapping(value = "/editVehicleGateInOutDetails", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseDto editVehicleGateInOutDetails(@RequestParam("entryRequest") String branchRequestJson, @RequestParam(value = "image", required = false) List<MultipartFile> imageFile) {
+        VehicleGateInOutDto entry = null;
+        try {
+            entry = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(branchRequestJson, VehicleGateInOutDto.class);
+        } catch (JsonProcessingException e) {
+            System.out.println("Error in parsing " + e.getMessage());
+            throw new RuntimeException(e);
+        }
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(transferService.editVehicleGateInOutDetails(entry, imageFile));
+        return responseDto;
+    }
+
 }

@@ -52,6 +52,9 @@ public class TransferServiceImpl implements TransferService{
     SugEggVehiclePlanDtlRepository sugEggVehiclePlanDtlRepository;
 
     @Autowired
+    BreederVehicleGateInOutRepository breederVehicleGateInOutRepository;
+
+    @Autowired
     private ObjectMapper mapper;
 
     @Autowired
@@ -829,6 +832,183 @@ public class TransferServiceImpl implements TransferService{
 
         }
         return "200";
+    }
+
+    @Override
+    @Transactional
+    public String saveManualGateInDetails(VehicleGateInOutDto entry, List<MultipartFile> imageFile) {
+        try {
+            BreederVehicleGateInOut gateInOut = new BreederVehicleGateInOut();
+            gateInOut.setBranchId(entry.getBRANCH_ID());
+            gateInOut.setVehicleNo(entry.getVEHICLE_NO());
+            gateInOut.setDriverName(entry.getDRIVER_NAME());
+            gateInOut.setDriverMobileNo(entry.getDRIVER_MOBILE_NO());
+            gateInOut.setPurpose(entry.getPURPOSE());
+            Date gateInDate = parseGateDate(entry.getGATE_IN_DATE());
+            gateInOut.setGateInDate(gateInDate != null ? gateInDate : new Date());
+            gateInOut.setCreatedBy(entry.getCREATED_BY());
+            gateInOut.setCreatedDate(new Date());
+
+            breederVehicleGateInOutRepository.save(gateInOut);
+        } catch (Exception e) {
+            System.out.println("Error in saveManualGateInDetails: " + e.getMessage());
+        }
+        return "200";
+    }
+
+    @Override
+    @Transactional
+    public String saveManualGateOutDetails(VehicleGateInOutDto entry, List<MultipartFile> imageFile) {
+        try {
+            if (entry.getGATE_IN_ID() == null) {
+                return "GATE_IN_ID is required";
+            }
+            BreederVehicleGateInOut gateInOut = breederVehicleGateInOutRepository.findById(entry.getGATE_IN_ID()).orElse(null);
+            if (gateInOut == null) {
+                return "Gate in record not found";
+            }
+            Date gateOutDate = parseGateDate(entry.getGATE_OUT_DATE());
+            gateInOut.setGateOutDate(gateOutDate != null ? gateOutDate : new Date());
+            gateInOut.setUpdatedBy(entry.getUPDATED_BY());
+            gateInOut.setUpdatedDate(new Date());
+            breederVehicleGateInOutRepository.save(gateInOut);
+        } catch (Exception e) {
+            System.out.println("Error in saveManualGateOutDetails: " + e.getMessage());
+        }
+        return "200";
+    }
+
+    @Override
+    public ArrayList<VehicleGateInOutDto> getManualGateInDetails(BranchRequest branchRequest) {
+        ArrayList<VehicleGateInOutDto> result = new ArrayList<>();
+        try {
+            Long branchId = Long.valueOf(branchRequest.getBranchID());
+            List<BreederVehicleGateInOut> records = breederVehicleGateInOutRepository.findByBranchIdOrderByGateInDateDesc(branchId);
+            for (BreederVehicleGateInOut record : records) {
+                result.add(mapToVehicleGateInOutDto(record));
+            }
+        } catch (Exception e) {
+            System.out.println("Error in getManualGateInDetails: " + e.getMessage());
+        }
+        return result;
+    }
+
+    @Override
+    public ArrayList<VehicleGateInOutDto> getManualGateOutDetails(BranchRequest branchRequest) {
+        ArrayList<VehicleGateInOutDto> result = new ArrayList<>();
+        try {
+            Long branchId = Long.valueOf(branchRequest.getBranchID());
+            List<BreederVehicleGateInOut> records = breederVehicleGateInOutRepository.findByBranchIdAndGateOutDateIsNullOrderByGateInDateDesc(branchId);
+            for (BreederVehicleGateInOut record : records) {
+                result.add(mapToVehicleGateInOutDto(record));
+            }
+        } catch (Exception e) {
+            System.out.println("Error in getManualGateOutDetails: " + e.getMessage());
+        }
+        return result;
+    }
+
+    @Override
+    public ArrayList<VehicleGateInOutDto> getVehicleGateInOutDetails(VehicleGateInOutDto entry) {
+        ArrayList<VehicleGateInOutDto> result = new ArrayList<>();
+        try {
+            if (entry.getGATE_IN_ID() != null) {
+                BreederVehicleGateInOut record = breederVehicleGateInOutRepository.findById(entry.getGATE_IN_ID()).orElse(null);
+                if (record != null) {
+                    result.add(mapToVehicleGateInOutDto(record));
+                }
+                return result;
+            }
+            if (entry.getBRANCH_ID() != null) {
+                List<BreederVehicleGateInOut> records = breederVehicleGateInOutRepository.findByBranchIdOrderByGateInDateDesc(entry.getBRANCH_ID());
+                for (BreederVehicleGateInOut record : records) {
+                    result.add(mapToVehicleGateInOutDto(record));
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Error in getVehicleGateInOutDetails: " + e.getMessage());
+        }
+        return result;
+    }
+
+    @Override
+    @Transactional
+    public String editVehicleGateInOutDetails(VehicleGateInOutDto entry, List<MultipartFile> imageFile) {
+        try {
+            if (entry.getGATE_IN_ID() == null) {
+                return "GATE_IN_ID is required";
+            }
+            BreederVehicleGateInOut gateInOut = breederVehicleGateInOutRepository.findById(entry.getGATE_IN_ID()).orElse(null);
+            if (gateInOut == null) {
+                return "Gate in record not found";
+            }
+            if (entry.getBRANCH_ID() != null) {
+                gateInOut.setBranchId(entry.getBRANCH_ID());
+            }
+            if (entry.getVEHICLE_NO() != null && !entry.getVEHICLE_NO().isBlank()) {
+                gateInOut.setVehicleNo(entry.getVEHICLE_NO());
+            }
+            if (entry.getDRIVER_NAME() != null) {
+                gateInOut.setDriverName(entry.getDRIVER_NAME());
+            }
+            if (entry.getDRIVER_MOBILE_NO() != null) {
+                gateInOut.setDriverMobileNo(entry.getDRIVER_MOBILE_NO());
+            }
+            if (entry.getPURPOSE() != null) {
+                gateInOut.setPurpose(entry.getPURPOSE());
+            }
+            Date gateInDate = parseGateDate(entry.getGATE_IN_DATE());
+            if (gateInDate != null) {
+                gateInOut.setGateInDate(gateInDate);
+            }
+            Date gateOutDate = parseGateDate(entry.getGATE_OUT_DATE());
+            if (gateOutDate != null) {
+                gateInOut.setGateOutDate(gateOutDate);
+            }
+            gateInOut.setUpdatedBy(entry.getUPDATED_BY());
+            gateInOut.setUpdatedDate(new Date());
+            breederVehicleGateInOutRepository.save(gateInOut);
+        } catch (Exception e) {
+            System.out.println("Error in editVehicleGateInOutDetails: " + e.getMessage());
+        }
+        return "200";
+    }
+
+    private VehicleGateInOutDto mapToVehicleGateInOutDto(BreederVehicleGateInOut record) {
+        VehicleGateInOutDto dto = new VehicleGateInOutDto();
+        dto.setGATE_IN_ID(record.getGateInId());
+        dto.setBRANCH_ID(record.getBranchId());
+        dto.setVEHICLE_NO(record.getVehicleNo());
+        dto.setDRIVER_NAME(record.getDriverName());
+        dto.setDRIVER_MOBILE_NO(record.getDriverMobileNo());
+        dto.setPURPOSE(record.getPurpose());
+        dto.setGATE_IN_DATE(formatDate(record.getGateInDate()));
+        dto.setGATE_OUT_DATE(formatDate(record.getGateOutDate()));
+        dto.setGATE_IN_IMAGE(record.getGateInImage());
+        dto.setGATE_OUT_IMAGE(record.getGateOutImage());
+        dto.setCREATED_BY(record.getCreatedBy());
+        dto.setCREATED_DATE(formatDate(record.getCreatedDate()));
+        dto.setUPDATED_BY(record.getUpdatedBy());
+        dto.setUPDATED_DATE(formatDate(record.getUpdatedDate()));
+        return dto;
+    }
+
+    private Date parseGateDate(String dateValue) {
+        if (dateValue == null || dateValue.isBlank()) {
+            return null;
+        }
+        Date parsedDate = getTxnDateString(dateValue, fromdateFormat);
+        if (parsedDate == null) {
+            parsedDate = getTxnDateString(dateValue, fromdateFormat1);
+        }
+        return parsedDate;
+    }
+
+    private String formatDate(Date date) {
+        if (date == null) {
+            return null;
+        }
+        return new SimpleDateFormat(fromdateFormat).format(date);
     }
 
 }
