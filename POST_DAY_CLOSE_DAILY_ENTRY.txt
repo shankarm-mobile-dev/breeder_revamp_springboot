@@ -1,0 +1,809 @@
+--------------------------------------------------------------------------------
+-- Procedure : SUG.POST_DAY_CLOSE_DAILY_ENTRY
+-- Purpose   : Same logic as Java FarmServiceImpl.postTodaySavedDayCloseEntries
+--             / saveDayEntriesToDailyEntry
+--
+-- Picks unposted DAY_CLOSE from SUG.SUG_MAI_GPPS_CONSUMPTIONS where
+--   trunc(creation_date) in (trunc(sysdate), trunc(sysdate) - 2)
+--   and nvl(status, 'N') <> 'Y'
+-- Inserts HEADER / FEED / MORTALITY into SUG.SUG_MAI_BREEDER_DAILY_ENTRY
+-- Then marks that DAY_CLOSE as posted (STATUS = 'Y')
+--
+-- DEVICE_ID is always 123456
+-- HEADER/FEED/MORTALITY branch_code = branch_name, location_code = segment1,
+-- inventory_location_id from flock+branch lookup
+-- FEED item/desc from on-hand stock; consumption qty is grams, stored as KG
+-- MORTALITY reason is always WEAK
+--------------------------------------------------------------------------------
+
+CREATE OR REPLACE PROCEDURE SUG.POST_DAY_CLOSE_DAILY_ENTRY (
+    p_posted_count  OUT NUMBER,
+    p_skipped_count OUT NUMBER,
+    p_message       OUT VARCHAR2
+) IS
+
+    c_device_id CONSTANT NUMBER := 123456;
+
+    v_posted   NUMBER := 0;
+    v_skipped  NUMBER := 0;
+    v_reasons  VARCHAR2(4000) := NULL;
+    v_now      DATE := SYSDATE;
+
+    FUNCTION fn_is_female (p_val VARCHAR2) RETURN BOOLEAN IS
+    BEGIN
+        RETURN p_val IS NOT NULL
+           AND UPPER(TRIM(p_val)) IN ('F', 'FEMALE');
+    END fn_is_female;
+
+    FUNCTION fn_is_male (p_val VARCHAR2) RETURN BOOLEAN IS
+    BEGIN
+        RETURN p_val IS NOT NULL
+           AND UPPER(TRIM(p_val)) IN ('M', 'MALE');
+    END fn_is_male;
+
+    FUNCTION fn_fm_code (p_sex VARCHAR2, p_bird_type VARCHAR2) RETURN VARCHAR2 IS
+    BEGIN
+        IF fn_is_female(p_sex) OR fn_is_female(p_bird_type) THEN
+            RETURN 'F';
+        ELSIF fn_is_male(p_sex) OR fn_is_male(p_bird_type) THEN
+            RETURN 'M';
+        ELSE
+            RETURN NVL(p_bird_type, p_sex);
+        END IF;
+    END fn_fm_code;
+
+    FUNCTION fn_parse_time (p_time VARCHAR2) RETURN DATE IS
+        v_time VARCHAR2(50);
+        v_dt   DATE;
+    BEGIN
+        IF p_time IS NULL OR TRIM(p_time) IS NULL THEN
+            RETURN NULL;
+        END IF;
+        v_time := TRIM(p_time);
+        BEGIN
+            v_dt := TO_DATE(v_time, 'HH:MI AM');
+            RETURN v_dt;
+        EXCEPTION
+            WHEN OTHERS THEN NULL;
+        END;
+        BEGIN
+            v_dt := TO_DATE(v_time, 'HH24:MI');
+            RETURN v_dt;
+        EXCEPTION
+            WHEN OTHERS THEN NULL;
+        END;
+        BEGIN
+            v_dt := TO_DATE(REPLACE(v_time, ' ', ''), 'HH:MIAM');
+            RETURN v_dt;
+        EXCEPTION
+            WHEN OTHERS THEN NULL;
+        END;
+        RETURN NULL;
+    END fn_parse_time;
+
+    FUNCTION fn_lighting_hrs (p_start VARCHAR2, p_end VARCHAR2) RETURN NUMBER IS
+        v_start DATE;
+        v_end   DATE;
+        v_diff  NUMBER;
+    BEGIN
+        v_start := fn_parse_time(p_start);
+        v_end   := fn_parse_time(p_end);
+        IF v_start IS NULL OR v_end IS NULL THEN
+            RETURN 0;
+        END IF;
+        v_diff := (v_end - v_start) * 24;
+        IF v_diff < 0 THEN
+            v_diff := v_diff + 24;
+        END IF;
+        RETURN v_diff;
+    END fn_lighting_hrs;
+
+    FUNCTION fn_branch_id (p_farm_code VARCHAR2) RETURN NUMBER IS
+        v_id NUMBER;
+    BEGIN
+        IF p_farm_code IS NULL THEN
+            RETURN NULL;
+        END IF;
+        BEGIN
+            SELECT a.branch_id
+              INTO v_id
+              FROM sug_organization_mv a
+             WHERE a.branch_code = p_farm_code
+               AND ROWNUM = 1;
+        EXCEPTION
+            WHEN OTHERS THEN
+                v_id := NULL;
+        END;
+        RETURN v_id;
+    END fn_branch_id;
+
+    FUNCTION fn_inventory_loc (p_shed_no VARCHAR2, p_branch_id NUMBER) RETURN NUMBER IS
+        v_loc NUMBER := 0;
+    BEGIN
+        IF p_shed_no IS NULL OR p_branch_id IS NULL THEN
+            RETURN 0;
+        END IF;
+        BEGIN
+            SELECT t.inventory_location_id
+              INTO v_loc
+              FROM mtl_item_locations t
+             WHERE t.segment1 = p_shed_no
+               AND t.organization_id = p_branch_id
+               AND ROWNUM = 1;
+        EXCEPTION
+            WHEN OTHERS THEN
+                v_loc := 0;
+        END;
+        RETURN NVL(v_loc, 0);
+    END fn_inventory_loc;
+
+    FUNCTION fn_item_desc (p_item_id NUMBER, p_branch_id NUMBER) RETURN VARCHAR2 IS
+        v_desc VARCHAR2(400);
+    BEGIN
+        IF p_item_id IS NULL OR p_branch_id IS NULL THEN
+            RETURN NULL;
+        END IF;
+        BEGIN
+            SELECT t.description
+              INTO v_desc
+              FROM mtl_system_items_b t
+             WHERE t.inventory_item_id = p_item_id
+               AND t.organization_id = p_branch_id
+               AND ROWNUM = 1;
+        EXCEPTION
+            WHEN OTHERS THEN
+                v_desc := NULL;
+        END;
+        RETURN v_desc;
+    END fn_item_desc;
+
+    FUNCTION fn_flock_age (p_flock_id VARCHAR2, p_shed_code VARCHAR2, p_age NUMBER)
+        RETURN NUMBER
+    IS
+        v_age NUMBER;
+    BEGIN
+        IF NVL(p_age, 0) > 0 THEN
+            RETURN p_age;
+        END IF;
+        BEGIN
+            SELECT age
+              INTO v_age
+              FROM (
+                    SELECT age
+                      FROM sug.sug_mai_gpps_housing_shed
+                     WHERE flock_id = p_flock_id
+                       AND shed_no = p_shed_code
+                     ORDER BY txn_date DESC
+                   )
+             WHERE ROWNUM = 1;
+        EXCEPTION
+            WHEN OTHERS THEN
+                v_age := 0;
+        END;
+        RETURN NVL(v_age, 0);
+    END fn_flock_age;
+
+    FUNCTION fn_already_posted (p_txn_id NUMBER, p_txn_date DATE) RETURN BOOLEAN IS
+        v_cnt NUMBER := 0;
+    BEGIN
+        IF p_txn_id IS NULL OR p_txn_id = 0 OR p_txn_date IS NULL THEN
+            RETURN FALSE;
+        END IF;
+        SELECT COUNT(1)
+          INTO v_cnt
+          FROM sug.sug_mai_breeder_daily_entry a
+         WHERE a.txn_id = p_txn_id
+           AND a.txn_type = 'HEADER'
+           AND TRUNC(a.txn_date) = TRUNC(p_txn_date);
+        RETURN v_cnt > 0;
+    END fn_already_posted;
+
+    PROCEDURE pr_append_reason (p_text VARCHAR2) IS
+    BEGIN
+        IF v_reasons IS NULL THEN
+            v_reasons := p_text;
+        ELSIF LENGTH(v_reasons) + LENGTH(p_text) < 3900 THEN
+            v_reasons := v_reasons || p_text;
+        END IF;
+    END pr_append_reason;
+
+    PROCEDURE pr_post_one_day_close (
+        p_trans_id     NUMBER,
+        p_batch_id     NUMBER,
+        p_flock_id     VARCHAR2,
+        p_shed_code    VARCHAR2,
+        p_farm_code    VARCHAR2,
+        p_txn_date     DATE,
+        p_age          NUMBER,
+        p_created_by   VARCHAR2,
+        p_branch_id    NUMBER,
+        p_latitude     NUMBER,
+        p_longitude    NUMBER
+    ) IS
+        v_txn_date      DATE;
+        v_flock_id      VARCHAR2(50);
+        v_branch_id     NUMBER;
+        v_branch_code   VARCHAR2(150);
+        v_location_code VARCHAR2(80);
+        v_batch_no      VARCHAR2(80);
+        v_loc_id        NUMBER := 0;
+        v_feed_item_id  NUMBER;
+        v_feed_desc     VARCHAR2(400);
+        v_cons_item_id  NUMBER;
+        v_cons_grade    VARCHAR2(150);
+        v_age           NUMBER;
+        v_op_male       NUMBER := 0;
+        v_op_female     NUMBER := 0;
+        v_mort_male     NUMBER := 0;
+        v_mort_female   NUMBER := 0;
+        v_cull_male     NUMBER := 0;
+        v_cull_female   NUMBER := 0;
+        v_exsh_male     NUMBER := 0;
+        v_exsh_female   NUMBER := 0;
+        v_cl_male       NUMBER := 0;
+        v_cl_female     NUMBER := 0;
+        v_total_egg     NUMBER := 0;
+        v_temp_min      NUMBER;
+        v_temp_max      NUMBER;
+        v_start_time    VARCHAR2(50);
+        v_end_time      VARCHAR2(50);
+        v_light_hrs     NUMBER := 0;
+        v_remarks       VARCHAR2(4000);
+        v_ph_level      NUMBER;
+        v_ppm_level     NUMBER;
+        v_header_id     NUMBER;
+        v_qty           NUMBER;
+        v_txn_type      VARCHAR2(80);
+        v_sex           VARCHAR2(30);
+        v_bird_type     VARCHAR2(30);
+        v_female        BOOLEAN;
+        v_male          BOOLEAN;
+
+        CURSOR c_day_entries (cp_use_txn_date CHAR) IS
+            SELECT a.*
+              FROM sug.sug_mai_gpps_consumptions a
+             WHERE a.flock_id = v_flock_id
+               AND NVL(a.txn_type, 'X') <> 'DAY_CLOSE'
+               AND (a.shed_code = p_shed_code OR a.shed_code IS NULL)
+               AND (a.batch_id = p_batch_id OR p_batch_id IS NULL)
+               AND (
+                        (cp_use_txn_date = 'Y'
+                         AND TRUNC(NVL(a.txn_date, a.creation_date)) = TRUNC(v_txn_date))
+                     OR (cp_use_txn_date = 'N'
+                         AND TRUNC(a.creation_date) IN (TRUNC(SYSDATE), TRUNC(SYSDATE) - 2))
+                   );
+
+        TYPE t_entry_tab IS TABLE OF sug.sug_mai_gpps_consumptions%ROWTYPE INDEX BY PLS_INTEGER;
+        l_entries t_entry_tab;
+    BEGIN
+        v_txn_date  := NVL(p_txn_date, v_now);
+        v_flock_id  := p_flock_id;
+        v_branch_id := p_branch_id;
+        v_age       := fn_flock_age(p_flock_id, p_shed_code, p_age);
+
+        IF fn_already_posted(p_trans_id, v_txn_date) THEN
+            UPDATE sug.sug_mai_gpps_consumptions a
+               SET a.status = 'Y'
+             WHERE a.trans_id = p_trans_id
+               AND UPPER(TRIM(a.txn_type)) = 'DAY_CLOSE';
+            v_skipped := v_skipped + 1;
+            pr_append_reason(' TRANS_ID ' || p_trans_id || ' already posted;');
+            RETURN;
+        END IF;
+
+        IF v_branch_id IS NULL AND p_farm_code IS NOT NULL THEN
+            v_branch_id := fn_branch_id(p_farm_code);
+        END IF;
+        v_branch_code   := p_farm_code;
+        v_location_code := p_shed_code;
+
+        BEGIN
+            SELECT branch_name, segment1, inventory_location_id, batch_no
+              INTO v_branch_code, v_location_code, v_loc_id, v_batch_no
+              FROM (
+                    SELECT c.branch_name,
+                           a.segment1,
+                           a.inventory_location_id,
+                           b.batch_no
+                      FROM mtl_item_locations a,
+                           gme_batch_header b,
+                           sug_organization_mv c,
+                           hr_locations_all e
+                     WHERE b.organization_id = a.organization_id
+                       AND NVL(b.attribute4, a.segment1) = a.segment1
+                       AND b.batch_status = 2
+                       AND a.organization_id = c.branch_id
+                       AND b.organization_id = c.branch_id
+                       AND b.attribute_category <> 'None'
+                       AND a.organization_id = e.inventory_organization_id
+                       AND e.location_id = c.hr_location_id
+                       AND NOT EXISTS (
+                            SELECT 1
+                              FROM fm_form_mst x
+                             WHERE x.formula_no LIKE '%CONVERSION%'
+                               AND x.formula_id = b.formula_id
+                           )
+                       AND b.batch_id NOT IN (
+                            SELECT aa.batch_id
+                              FROM sug.sug_mai_breeder_daily_entry aa
+                             WHERE aa.txn_type = 'WBC'
+                           )
+                       AND NVL(a.attribute4, 1) = 1
+                       AND DECODE(b.attribute2, NULL, b.attribute1, b.attribute1 || '-' || b.attribute2) = v_flock_id
+                       AND b.organization_id = v_branch_id
+                     ORDER BY CASE WHEN a.segment1 = p_shed_code THEN 0 ELSE 1 END
+                   )
+             WHERE ROWNUM = 1;
+        EXCEPTION
+            WHEN OTHERS THEN
+                v_branch_code   := NVL(v_branch_code, p_farm_code);
+                v_location_code := NVL(v_location_code, p_shed_code);
+                IF NVL(v_loc_id, 0) = 0 THEN
+                    v_loc_id := fn_inventory_loc(p_shed_code, v_branch_id);
+                END IF;
+        END;
+
+        IF NVL(v_loc_id, 0) = 0 THEN
+            v_loc_id := fn_inventory_loc(p_shed_code, v_branch_id);
+        END IF;
+
+        OPEN c_day_entries('Y');
+        FETCH c_day_entries BULK COLLECT INTO l_entries;
+        CLOSE c_day_entries;
+
+        IF l_entries.COUNT = 0 THEN
+            OPEN c_day_entries('N');
+            FETCH c_day_entries BULK COLLECT INTO l_entries;
+            CLOSE c_day_entries;
+        END IF;
+
+        BEGIN
+            FOR hs IN (
+                SELECT sex, NVL(cl_qty, NVL(op_qty, 0)) qty
+                  FROM (
+                        SELECT sex,
+                               cl_qty,
+                               op_qty,
+                               ROW_NUMBER() OVER (PARTITION BY sex ORDER BY txn_date DESC) rn
+                          FROM sug.sug_mai_gpps_housing_shed
+                         WHERE flock_id = v_flock_id
+                           AND shed_no = p_shed_code
+                       )
+                 WHERE rn = 1
+            ) LOOP
+                IF fn_is_female(hs.sex) THEN
+                    v_op_female := NVL(hs.qty, 0);
+                ELSIF fn_is_male(hs.sex) THEN
+                    v_op_male := NVL(hs.qty, 0);
+                END IF;
+            END LOOP;
+        EXCEPTION
+            WHEN OTHERS THEN
+                v_op_male   := 0;
+                v_op_female := 0;
+        END;
+
+        IF l_entries.COUNT > 0 THEN
+            FOR i IN 1 .. l_entries.COUNT LOOP
+                v_txn_type := UPPER(TRIM(NVL(l_entries(i).txn_type, ' ')));
+                v_qty      := NVL(l_entries(i).qty, 0);
+                v_sex      := l_entries(i).sex;
+                v_bird_type := l_entries(i).bird_type;
+                v_female   := fn_is_female(v_sex) OR fn_is_female(v_bird_type);
+                v_male     := fn_is_male(v_sex) OR fn_is_male(v_bird_type);
+
+                IF v_txn_type IN ('MORTALITY', 'MORTALITY_PML') THEN
+                    IF v_female THEN
+                        v_mort_female := v_mort_female + v_qty;
+                    ELSIF v_male THEN
+                        v_mort_male := v_mort_male + v_qty;
+                    END IF;
+                ELSIF v_txn_type IN ('CULLING', 'DESTROY') THEN
+                    IF v_female THEN
+                        v_cull_female := v_cull_female + v_qty;
+                    ELSIF v_male THEN
+                        v_cull_male := v_cull_male + v_qty;
+                    END IF;
+                ELSIF v_txn_type IN ('ADJUSTMENT', 'EXCESS', 'SHORTAGE') THEN
+                    IF v_female THEN
+                        v_exsh_female := v_exsh_female + v_qty;
+                    ELSIF v_male THEN
+                        v_exsh_male := v_exsh_male + v_qty;
+                    END IF;
+                ELSIF v_txn_type = 'EGG COLLECTION' THEN
+                    IF NVL(l_entries(i).item_id, -1) <> 0 THEN
+                        v_total_egg := v_total_egg + v_qty;
+                    END IF;
+                ELSIF v_txn_type = 'OTHERS' THEN
+                    v_temp_min   := l_entries(i).temp_min;
+                    v_temp_max   := l_entries(i).temp_max;
+                    v_start_time := l_entries(i).ligthing_start_hrs;
+                    v_end_time   := l_entries(i).ligthing_end_hrs;
+                    v_light_hrs  := fn_lighting_hrs(v_start_time, v_end_time);
+                    v_remarks    := l_entries(i).remarks;
+                ELSIF v_txn_type = 'WATER_SANITIZER' THEN
+                    v_ph_level  := l_entries(i).ph_level;
+                    v_ppm_level := l_entries(i).pm_level;
+                END IF;
+            END LOOP;
+        END IF;
+
+        v_cl_male   := GREATEST(v_op_male - v_mort_male - v_cull_male - v_exsh_male, 0);
+        v_cl_female := GREATEST(v_op_female - v_mort_female - v_cull_female - v_exsh_female, 0);
+
+        SELECT sug_mai_breeder_daily_entry_s.nextval INTO v_header_id FROM dual;
+
+        INSERT INTO sug.sug_mai_breeder_daily_entry (
+            txn_id,
+            report_id,
+            device_id,
+            branch_id,
+            branch_code,
+            location_code,
+            inventory_location_id,
+            emp_code,
+            txn_type,
+            txn_date,
+            batch_no,
+            batch_id,
+            flock_no,
+            age,
+            hh,
+            op_male,
+            op_female,
+            mort_male,
+            mort_female,
+            culls_male,
+            cull_female,
+            exsh_male,
+            exsh_female,
+            cl_male,
+            cl_female,
+            total_egg,
+            start_time,
+            end_time,
+            temp_min,
+            temp_max,
+            ligthing_hrs,
+            remarks,
+            latitude,
+            longitude,
+            ph_level,
+            ppm_level,
+            mtl_report_id,
+            flock_liquid,
+            posted_flag,
+            entry_creation_date
+        ) VALUES (
+            p_trans_id,
+            v_header_id,
+            c_device_id,
+            v_branch_id,
+            v_branch_code,
+            v_location_code,
+            NULLIF(v_loc_id, 0),
+            p_created_by,
+            'HEADER',
+            v_txn_date,
+            v_batch_no,
+            p_batch_id,
+            v_flock_id,
+            v_age,
+            'Y',
+            v_op_male,
+            v_op_female,
+            v_mort_male,
+            v_mort_female,
+            v_cull_male,
+            v_cull_female,
+            v_exsh_male,
+            v_exsh_female,
+            v_cl_male,
+            v_cl_female,
+            v_total_egg,
+            v_start_time,
+            v_end_time,
+            v_temp_min,
+            v_temp_max,
+            v_light_hrs,
+            v_remarks,
+            p_latitude,
+            p_longitude,
+            v_ph_level,
+            v_ppm_level,
+            p_trans_id,
+            'N',
+            'N',
+            v_now
+        );
+
+        IF l_entries.COUNT > 0 THEN
+            FOR i IN 1 .. l_entries.COUNT LOOP
+                v_txn_type := UPPER(TRIM(NVL(l_entries(i).txn_type, ' ')));
+                BEGIN
+                    IF v_txn_type = 'FEED' THEN
+                        v_cons_item_id := l_entries(i).item_id;
+                        v_cons_grade   := l_entries(i).grade;
+                        v_feed_item_id := v_cons_item_id;
+                        v_feed_desc    := NVL(fn_item_desc(v_cons_item_id, v_branch_id), v_cons_grade);
+                        BEGIN
+                            SELECT inventory_item_id, item_description
+                              INTO v_feed_item_id, v_feed_desc
+                              FROM (
+                                    SELECT inventory_item_id,
+                                           item_description,
+                                           item_code,
+                                           CASE
+                                               WHEN v_cons_item_id IS NOT NULL
+                                                    AND inventory_item_id = v_cons_item_id THEN 1
+                                               WHEN v_cons_grade IS NOT NULL
+                                                    AND (UPPER(item_code) = UPPER(v_cons_grade)
+                                                      OR UPPER(item_description) = UPPER(v_cons_grade)) THEN 2
+                                               ELSE 3
+                                           END match_rank
+                                      FROM (
+                                            SELECT a.inventory_item_id AS inventory_item_id,
+                                                   a.description AS item_description,
+                                                   a.segment1 AS item_code,
+                                                   ((SUM(d.secondary_transaction_quantity) -
+                                                     NVL(SUM((SELECT SUM(NVL(g.secondary_qty, 0))
+                                                                FROM sug.sug_mai_breeder_daily_entry g,
+                                                                     gme_batch_header h
+                                                               WHERE 1 = 2
+                                                                 AND g.branch_id = a.organization_id
+                                                                 AND h.batch_id = g.batch_id
+                                                                 AND g.inventory_item_id = a.inventory_item_id
+                                                                 AND h.batch_status = 2
+                                                                 AND g.posted_flag = 'N'
+                                                                 AND g.created_date > TRUNC(SYSDATE - 30)
+                                                                 AND f.organization_id = g.branch_id
+                                                                 AND f.inventory_item_id = g.inventory_item_id)), 0)) -
+                                                    NVL((SELECT SUM(NVL(h.qty, 0))
+                                                           FROM sug.sug_mai_gpps_trans_dtl h
+                                                          WHERE 1 = 2
+                                                            AND h.item_id = a.inventory_item_id
+                                                            AND h.from_farm_id = d.organization_id
+                                                            AND h.created_date > TRUNC(SYSDATE - 30)
+                                                            AND h.posted_flag = 'N'), 0)) AS secondary_transaction_quantity
+                                              FROM mtl_system_items_b a,
+                                                   mtl_item_categories b,
+                                                   mtl_categories c,
+                                                   mtl_onhand_quantities_detail d,
+                                                   mtl_lot_numbers f
+                                             WHERE b.inventory_item_id = a.inventory_item_id
+                                               AND b.organization_id = a.organization_id
+                                               AND b.category_set_id = 1
+                                               AND c.category_id = b.category_id
+                                               AND d.inventory_item_id = a.inventory_item_id
+                                               AND d.organization_id = a.organization_id
+                                               AND f.organization_id = d.organization_id
+                                               AND f.inventory_item_id = d.inventory_item_id
+                                               AND f.lot_number(+) = d.lot_number
+                                               AND NVL(f.expiration_date, SYSDATE + 1) > SYSDATE
+                                               AND (c.segment1 IN (SELECT flv.lookup_code
+                                                                     FROM fnd_lookup_values flv
+                                                                    WHERE flv.lookup_type = 'SUG_BREEDER_ITEM_CATEGORY'
+                                                                      AND flv.description = 'F'
+                                                                      AND flv.enabled_flag = 'Y'
+                                                                      AND TRUNC(SYSDATE) BETWEEN flv.start_date_active
+                                                                          AND NVL(flv.end_date_active, SYSDATE))
+                                                 OR a.segment1 IN (SELECT sa.lookup_code
+                                                                     FROM fnd_lookup_values sa
+                                                                    WHERE sa.lookup_type = 'SUG_GPPS_MEDICIN_ADDL_ITEMS'
+                                                                      AND sa.tag = 'FEED'
+                                                                      AND sa.enabled_flag = 'Y'
+                                                                      AND TRUNC(SYSDATE) BETWEEN sa.start_date_active
+                                                                          AND NVL(sa.end_date_active, SYSDATE)))
+                                               AND c.disable_date IS NULL
+                                               AND d.organization_id = v_branch_id
+                                             GROUP BY a.inventory_item_id,
+                                                      a.segment1,
+                                                      a.description,
+                                                      d.organization_id,
+                                                      d.subinventory_code,
+                                                      a.primary_uom_code,
+                                                      d.secondary_uom_code,
+                                                      c.segment1,
+                                                      c.segment2
+                                            HAVING SUM(d.secondary_transaction_quantity) > .001
+                                           ) stock
+                                     WHERE secondary_transaction_quantity > .001
+                                     ORDER BY match_rank, inventory_item_id
+                                   )
+                             WHERE ROWNUM = 1;
+                        EXCEPTION
+                            WHEN OTHERS THEN
+                                NULL;
+                        END;
+
+                        INSERT INTO sug.sug_mai_breeder_daily_entry (
+                            txn_id,
+                            report_id,
+                            device_id,
+                            branch_id,
+                            branch_code,
+                            location_code,
+                            inventory_location_id,
+                            emp_code,
+                            txn_type,
+                            txn_date,
+                            batch_id,
+                            flock_no,
+                            bird_type,
+                            trans_uom,
+                            secondary_qty,
+                            txn_category,
+                            start_time,
+                            end_time,
+                            inventory_item_id,
+                            inventory_desc,
+                            mtl_report_id,
+                            posted_flag,
+                            entry_creation_date
+                        ) VALUES (
+                            p_trans_id,
+                            sug_mai_breeder_daily_entry_s.nextval,
+                            c_device_id,
+                            v_branch_id,
+                            v_branch_code,
+                            v_location_code,
+                            NULLIF(v_loc_id, 0),
+                            p_created_by,
+                            'FEED',
+                            v_txn_date,
+                            p_batch_id,
+                            v_flock_id,
+                            fn_fm_code(l_entries(i).sex, l_entries(i).bird_type),
+                            'KG',
+                            NVL(l_entries(i).qty, 0) / 1000,
+                            'ISSUE',
+                            v_start_time,
+                            v_end_time,
+                            NULLIF(v_feed_item_id, 0),
+                            v_feed_desc,
+                            p_trans_id,
+                            'N',
+                            v_now
+                        );
+                    ELSIF v_txn_type IN ('MORTALITY', 'MORTALITY_PML') THEN
+                        INSERT INTO sug.sug_mai_breeder_daily_entry (
+                            txn_id,
+                            report_id,
+                            device_id,
+                            branch_id,
+                            branch_code,
+                            location_code,
+                            inventory_location_id,
+                            emp_code,
+                            txn_type,
+                            txn_date,
+                            batch_id,
+                            flock_no,
+                            bird_type,
+                            trans_uom,
+                            primary_qty,
+                            reason,
+                            adj_type,
+                            mtl_report_id,
+                            posted_flag,
+                            entry_creation_date
+                        ) VALUES (
+                            p_trans_id,
+                            sug_mai_breeder_daily_entry_s.nextval,
+                            c_device_id,
+                            v_branch_id,
+                            v_branch_code,
+                            v_location_code,
+                            NULLIF(v_loc_id, 0),
+                            p_created_by,
+                            'MORTALITY',
+                            v_txn_date,
+                            p_batch_id,
+                            v_flock_id,
+                            fn_fm_code(l_entries(i).sex, l_entries(i).bird_type),
+                            'EA',
+                            NVL(l_entries(i).qty, 0),
+                            'WEAK',
+                            'NA',
+                            p_trans_id,
+                            'N',
+                            v_now
+                        );
+                    END IF;
+                EXCEPTION
+                    WHEN OTHERS THEN
+                        RAISE;
+                END;
+            END LOOP;
+        END IF;
+
+        UPDATE sug.sug_mai_gpps_consumptions a
+           SET a.status = 'Y'
+         WHERE a.trans_id = p_trans_id
+           AND UPPER(TRIM(a.txn_type)) = 'DAY_CLOSE';
+
+        v_posted := v_posted + 1;
+    END pr_post_one_day_close;
+
+BEGIN
+    FOR rec IN (
+        SELECT a.trans_id,
+               a.batch_id,
+               a.flock_id,
+               a.shed_code,
+               a.farm_code,
+               a.txn_date,
+               a.creation_date,
+               a.age,
+               a.created_by,
+               a.branch_id,
+               a.latitude,
+               a.longitude
+          FROM sug.sug_mai_gpps_consumptions a
+         WHERE UPPER(TRIM(NVL(a.txn_type, ' '))) = 'DAY_CLOSE'
+           AND TRUNC(a.creation_date) IN (TRUNC(SYSDATE), TRUNC(SYSDATE) - 2)
+           AND NVL(a.status, 'N') <> 'Y'
+    ) LOOP
+        BEGIN
+            SAVEPOINT day_close_sv;
+            pr_post_one_day_close(
+                rec.trans_id,
+                rec.batch_id,
+                rec.flock_id,
+                rec.shed_code,
+                rec.farm_code,
+                NVL(rec.txn_date, rec.creation_date),
+                rec.age,
+                rec.created_by,
+                rec.branch_id,
+                rec.latitude,
+                rec.longitude
+            );
+        EXCEPTION
+            WHEN OTHERS THEN
+                ROLLBACK TO day_close_sv;
+                v_skipped := v_skipped + 1;
+                pr_append_reason(' TRANS_ID ' || rec.trans_id || ' error: ' || SUBSTR(SQLERRM, 1, 200) || ';');
+        END;
+    END LOOP;
+
+    IF v_posted = 0 AND v_skipped = 0 THEN
+        p_message := 'No DAY_CLOSE entry with creation date today or two days back';
+    ELSE
+        p_message := v_posted || ' DAY_CLOSE entries posted for creation date today and two days back';
+        IF v_skipped > 0 THEN
+            p_message := p_message || ' (' || v_skipped || ' skipped:' || v_reasons || ')';
+        END IF;
+    END IF;
+
+    p_posted_count  := v_posted;
+    p_skipped_count := v_skipped;
+    COMMIT;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        p_posted_count  := NVL(v_posted, 0);
+        p_skipped_count := NVL(v_skipped, 0);
+        p_message       := 'Error: ' || SQLERRM;
+        RAISE;
+END POST_DAY_CLOSE_DAILY_ENTRY;
+/
+
+SHOW ERRORS
+
+--------------------------------------------------------------------------------
+-- How to run
+--------------------------------------------------------------------------------
+-- DECLARE
+--     v_posted  NUMBER;
+--     v_skipped NUMBER;
+--     v_msg     VARCHAR2(4000);
+-- BEGIN
+--     SUG.POST_DAY_CLOSE_DAILY_ENTRY(v_posted, v_skipped, v_msg);
+--     DBMS_OUTPUT.PUT_LINE('Posted  = ' || v_posted);
+--     DBMS_OUTPUT.PUT_LINE('Skipped = ' || v_skipped);
+--     DBMS_OUTPUT.PUT_LINE(v_msg);
+-- END;
+-- /
+--------------------------------------------------------------------------------
