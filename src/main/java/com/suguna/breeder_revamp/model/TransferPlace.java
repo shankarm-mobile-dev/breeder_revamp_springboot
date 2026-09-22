@@ -32,6 +32,10 @@ public class TransferPlace {
     @JsonProperty("regionalOffice")
     String regionalOffice;
 
+    @Column(name = "INVENTORY_LOCATION_ID" , type = String.class)
+    @JsonProperty("inventoryLocationId")
+    String inventoryLocationId;
+
     @JsonProperty("ShedInfoLineDetails")
     ArrayList<ShedDetailsReport> ShedInfoLineDetails;
 

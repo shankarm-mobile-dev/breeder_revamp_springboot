@@ -320,5 +320,14 @@ public class TransferController {
         responseDto.setResult(transferService.editVehicleGateInOutDetails(entry, imageFile));
         return responseDto;
     }
-
+    @PostMapping("/gettranfershedmaster")
+    public ResponseDto gettranfershedmaster(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(transferService.gettranfershedmaster(branchRequest.getBranchID()));
+        return responseDto;
+    }
 }

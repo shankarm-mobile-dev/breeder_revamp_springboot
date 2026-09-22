@@ -279,23 +279,39 @@ public class TransferServiceImpl implements TransferService{
                             BigDecimal fromFarmId = FarmDto1.getFrom_farm_id() != null
                                     ? FarmDto1.getFrom_farm_id() : FarmDto.getFrom_farm_id();
                             Object[] fromLocation = getFromInventoryLocation(FarmDto1.getFrom_batch_id(), fromFarmId);
-                            if (fromLocation != null) {
-                                if (fromLocation[0] instanceof Number) {
-                                    sugMaiGppsTransDtlModels.setFROM_INVENTORY_LOCATION_ID(
-                                            BigDecimal.valueOf(((Number) fromLocation[0]).longValue()));
+                            if(FarmDto1.getTxn_type().equals("BIRD")) {
+                                if (fromLocation != null) {
+                                    if (fromLocation[0] instanceof Number) {
+                                        sugMaiGppsTransDtlModels.setFROM_INVENTORY_LOCATION_ID(
+                                                BigDecimal.valueOf(((Number) fromLocation[0]).longValue()));
+                                    }
+                                    sugMaiGppsTransDtlModels.setFROM_INVENTORY_LOC_DESC(
+                                            fromLocation[1] == null ? null : String.valueOf(fromLocation[1]));
+                                } else {
+                                    sugMaiGppsTransDtlModels.setFROM_INVENTORY_LOCATION_ID(FarmDto1.getFrom_inventory_location_id());
+                                    sugMaiGppsTransDtlModels.setFROM_INVENTORY_LOC_DESC(FarmDto1.getFrom_inventory_loc_desc());
                                 }
-                                sugMaiGppsTransDtlModels.setFROM_INVENTORY_LOC_DESC(
-                                        fromLocation[1] == null ? null : String.valueOf(fromLocation[1]));
-                            } else {
+                            }
+                            else {
                                 sugMaiGppsTransDtlModels.setFROM_INVENTORY_LOCATION_ID(FarmDto1.getFrom_inventory_location_id());
                                 sugMaiGppsTransDtlModels.setFROM_INVENTORY_LOC_DESC(FarmDto1.getFrom_inventory_loc_desc());
                             }
                             sugMaiGppsTransDtlModels.setFROM_BATCH_ID(FarmDto1.getFrom_batch_id());
                             sugMaiGppsTransDtlModels.setTO_BATCH_ID(FarmDto1.getTo_batch_id());
                             sugMaiGppsTransDtlModels.setTXN_TYPE(FarmDto1.getTxn_type());
-                            sugMaiGppsTransDtlModels.setBIRD_TYPE(FarmDto1.getBird_type());
+                            if(FarmDto1.getTxn_type().equals("BIRD"))
+                            {
+                                sugMaiGppsTransDtlModels.setBIRD_TYPE(FarmDto1.getBird_type().substring(0, 1));
+                                sugMaiGppsTransDtlModels.setITEM_DESC("NA");
+                            }
+                            else
+                            {
+                                sugMaiGppsTransDtlModels.setBIRD_TYPE(FarmDto1.getBird_type());
+                                sugMaiGppsTransDtlModels.setITEM_DESC(FarmDto1.getItem_desc());
+                            }
+
                             sugMaiGppsTransDtlModels.setITEM_ID(FarmDto1.getItem_id());
-                            sugMaiGppsTransDtlModels.setITEM_DESC(FarmDto1.getItem_desc());
+                            sugMaiGppsTransDtlModels.setTO_INVENTORY_LOCATION_ID(FarmDto1.getTo_inventory_location_id());
                             sugMaiGppsTransDtlModels.setUOM(FarmDto1.getUom());
                             sugMaiGppsTransDtlModels.setSTOCK_QTY(FarmDto1.getStock_qty());
                             sugMaiGppsTransDtlModels.setQTY(FarmDto1.getQty());
@@ -853,6 +869,27 @@ public class TransferServiceImpl implements TransferService{
         } catch (Exception e) {
             System.out.println("Error in saveManualGateInDetails: " + e.getMessage());
         }
+
+        try {String mortalityImage = null;
+            if (imageFile != null && !imageFile.isEmpty()) {
+                for (MultipartFile data1 : imageFile) {
+                    mortalityImage = fileStorageService.saveImage(data1, entry.getVEHICLE_NO(), Long.valueOf(entry.getBRANCH_ID()), FileStorageCategory.GATE_IN_OUT);
+                    /*DailyEntryLines dailyEntryLines = DailyEntryLines.builder()
+                            .transId(saveResult.getTransId())
+                            .hdrType("MORTALITY")
+                            .imagePath(mortalityImage)
+                            .build();*/
+                    /**
+                     * AI Mortality Count
+                     */
+
+
+
+                }
+            }
+        } catch (IOException | IllegalArgumentException ex) {
+            //  return Response.buildSingleResponse("Failed", HttpStatus.BAD_REQUEST, ex.getMessage(), null);
+        }
         return "200";
     }
 
@@ -874,6 +911,26 @@ public class TransferServiceImpl implements TransferService{
             breederVehicleGateInOutRepository.save(gateInOut);
         } catch (Exception e) {
             System.out.println("Error in saveManualGateOutDetails: " + e.getMessage());
+        }
+        try {String mortalityImage = null;
+            if (imageFile != null && !imageFile.isEmpty()) {
+                for (MultipartFile data1 : imageFile) {
+                    mortalityImage = fileStorageService.saveImage(data1, entry.getVEHICLE_NO(), Long.valueOf(entry.getBRANCH_ID()), FileStorageCategory.GATE_IN_OUT);
+                    /*DailyEntryLines dailyEntryLines = DailyEntryLines.builder()
+                            .transId(saveResult.getTransId())
+                            .hdrType("MORTALITY")
+                            .imagePath(mortalityImage)
+                            .build();*/
+                    /**
+                     * AI Mortality Count
+                     */
+
+
+
+                }
+            }
+        } catch (IOException | IllegalArgumentException ex) {
+            //  return Response.buildSingleResponse("Failed", HttpStatus.BAD_REQUEST, ex.getMessage(), null);
         }
         return "200";
     }
@@ -968,8 +1025,29 @@ public class TransferServiceImpl implements TransferService{
             gateInOut.setUpdatedBy(entry.getUPDATED_BY());
             gateInOut.setUpdatedDate(new Date());
             breederVehicleGateInOutRepository.save(gateInOut);
+
         } catch (Exception e) {
             System.out.println("Error in editVehicleGateInOutDetails: " + e.getMessage());
+        }
+        try {String mortalityImage = null;
+            if (imageFile != null && !imageFile.isEmpty()) {
+                for (MultipartFile data1 : imageFile) {
+                    mortalityImage = fileStorageService.saveImage(data1, entry.getVEHICLE_NO(), Long.valueOf(entry.getBRANCH_ID()), FileStorageCategory.GATE_IN_OUT);
+                    /*DailyEntryLines dailyEntryLines = DailyEntryLines.builder()
+                            .transId(saveResult.getTransId())
+                            .hdrType("MORTALITY")
+                            .imagePath(mortalityImage)
+                            .build();*/
+                    /**
+                     * AI Mortality Count
+                     */
+
+
+
+                }
+            }
+        } catch (IOException | IllegalArgumentException ex) {
+            //  return Response.buildSingleResponse("Failed", HttpStatus.BAD_REQUEST, ex.getMessage(), null);
         }
         return "200";
     }
@@ -1009,6 +1087,32 @@ public class TransferServiceImpl implements TransferService{
             return null;
         }
         return new SimpleDateFormat(fromdateFormat).format(date);
+    }
+
+    @Override
+    public ArrayList<FromFarmShedTransferDetailsDto> gettranfershedmaster(String branchID) {
+        // BranchUser.FeedAllocationDetails details = new BranchUser.FeedAllocationDetails();
+        ArrayList<FromFarmShedTransferDetailsDto> shedDetailsArrayList = new ArrayList<FromFarmShedTransferDetailsDto>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.gettranfershedmaster");
+
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchID);
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+
+            while (resultSet.next()) {
+                FromFarmShedTransferDetailsDto shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, FromFarmShedTransferDetailsDto.class);
+
+                shedDetailsArrayList.add(shedDetails);
+            }
+        } catch (Exception e) {
+
+        }
+        //  details.setFarmFlockDetails(shedDetailsArrayList);
+        //  details.setGardeMstDetails(getgrademst(branchID));
+        return shedDetailsArrayList;
     }
 
 }
