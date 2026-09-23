@@ -22,20 +22,20 @@ public class InventoryController {
         ResponseDto responseDto = new ResponseDto();
 
         String response = "";
-
+        response=inventoryService.SaveSugMaterialConsumption(entry);
         if(response.equalsIgnoreCase("True"))
         {
             responseDto.setMessage("Success");
             responseDto.setStatusCode(200);
             responseDto.setStatus("Success");
-            response=inventoryService.SaveSugMaterialConsumption(entry);
+
         }
         else
         {
             responseDto.setMessage("UnSuccess");
             responseDto.setStatusCode(201);
             responseDto.setStatus("UnSuccess");
-            response=inventoryService.SaveSugMaterialConsumption(entry);
+           // response=inventoryService.SaveSugMaterialConsumption(entry);
         }
         responseDto.setResult(response);
         return responseDto;

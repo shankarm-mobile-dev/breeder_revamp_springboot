@@ -2872,14 +2872,24 @@ public class FarmServiceImpl implements FarmService {
         for (SugMaiGppsConsumptions consumption : dayEntries) {
             try {
                 String txnType = txnTypeOf(consumption);
-                if ("FEED".equals(txnType)) {
+                if (txnType.contains("FEED")) {
                     saveDailyEntry(
                             buildFeedDailyEntry(consumption, branchRequest, batch, txnDate, dayCloseTransId, now,
                                     lightStart, lightEnd, locationDetails, feedStockItems));
-                } else if ("MORTALITY".equals(txnType) || "MORTALITY_PML".equals(txnType)) {
+                } else if ("MORTALITY_PML".equals(txnType)) {
                     saveDailyEntry(
                             buildMortalityDailyEntry(consumption, branchRequest, batch, txnDate, dayCloseTransId, now,
                                     locationDetails));
+                } else if ("EGG COLLECTION".equals(txnType)) {
+                    if (consumption.getITEM_ID() != null && consumption.getITEM_ID() != 0L) {
+                        saveDailyEntry(buildEggCollDailyEntry(consumption, branchRequest, batch, txnDate,
+                                dayCloseTransId, now, locationDetails));
+                    }
+                } else if (txnType.contains("MEDICINE") || txnType.contains("VACCINE")) {
+                    if (consumption.getITEM_ID() != null && consumption.getITEM_ID() != 0L) {
+                        saveDailyEntry(buildMedicineDailyEntry(consumption, branchRequest, batch, txnDate,
+                                dayCloseTransId, now, locationDetails));
+                    }
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -2989,8 +2999,8 @@ public class FarmServiceImpl implements FarmService {
         if (othersEntry != null) {
             header.setTEMP_MIN((float) othersEntry.getTEMP_MIN());
             header.setTEMP_MAX((float) othersEntry.getTEMP_MAX());
-            header.setSTART_TIME(othersEntry.getLIGTHING_START_HRS());
-            header.setEND_TIME(othersEntry.getLIGTHING_END_HRS());
+            header.setSTART_TIME(formatTimeAmPm(othersEntry.getLIGTHING_START_HRS()));
+            header.setEND_TIME(formatTimeAmPm(othersEntry.getLIGTHING_END_HRS()));
             header.setLIGTHING_HRS(lightingHours(othersEntry.getLIGTHING_START_HRS(), othersEntry.getLIGTHING_END_HRS()));
             header.setREMARKS(othersEntry.getREMARKS());
         }
@@ -3023,17 +3033,22 @@ public class FarmServiceImpl implements FarmService {
         feed.setTRANS_UOM("KG");
         feed.setSECONDARY_QTY((float) (qtyOf(consumption) / 1000.0));
         feed.setTXN_CATEGORY("ISSUE");
-        feed.setSTART_TIME(lightStart);
-        feed.setEND_TIME(lightEnd);
         FeedStockItem stockItem = resolveFeedStockItem(feedStockItems, consumption);
         if (stockItem != null) {
             if (stockItem.inventoryItemId != null && stockItem.inventoryItemId > 0) {
                 feed.setINVENTORY_ITEM_ID(stockItem.inventoryItemId);
             }
             feed.setINVENTORY_DESC(stockItem.inventoryDesc);
+            if (stockItem.stockQty != null) {
+                feed.setSTOCK_QTY(stockItem.stockQty);
+            }
         } else if (consumption.getITEM_ID() != null && consumption.getITEM_ID() > 0) {
             feed.setINVENTORY_ITEM_ID(consumption.getITEM_ID());
             feed.setINVENTORY_DESC(getItemDescription(consumption.getITEM_ID(), branchRequest.getBranchID()));
+            Float stockQty = getOnHandSecondaryStockQty(consumption.getITEM_ID(), branchRequest.getBranchID());
+            if (stockQty != null) {
+                feed.setSTOCK_QTY(stockQty);
+            }
         } else if (consumption.getGRADE() != null) {
             feed.setINVENTORY_DESC(consumption.getGRADE());
         }
@@ -3048,13 +3063,108 @@ public class FarmServiceImpl implements FarmService {
                                                                   Date now,
                                                                   FlockLocationDetails locationDetails) {
         SugMaiBreederDailyEntryModel mortality = buildBaseDailyEntry(branchRequest, batch, txnDate, dayCloseTransId, now, locationDetails);
-        mortality.setTXN_TYPE("MORTALITY");
+        mortality.setTXN_TYPE(txnTypeOf(consumption));
         mortality.setBIRD_TYPE(toFmCode(consumption.getSEX(), consumption.getBIRD_TYPE()));
         mortality.setTRANS_UOM("EA");
         mortality.setPRIMARY_QTY(qtyOf(consumption));
-        mortality.setREASON("WEAK");
+        mortality.setREASON(consumption.getREASON());
         mortality.setADJ_TYPE("NA");
         return mortality;
+    }
+
+    private SugMaiBreederDailyEntryModel buildEggCollDailyEntry(SugMaiGppsConsumptions consumption,
+                                                                BranchRequest branchRequest,
+                                                                SugGppsObservationBatchDTO batch,
+                                                                Date txnDate,
+                                                                long dayCloseTransId,
+                                                                Date now,
+                                                                FlockLocationDetails locationDetails) {
+        SugMaiBreederDailyEntryModel egg = buildBaseDailyEntry(branchRequest, batch, txnDate, dayCloseTransId, now, locationDetails);
+        egg.setTXN_TYPE("EGG_COLL");
+        egg.setPRIMARY_QTY(qtyOf(consumption));
+        if (consumption.getITEM_ID() != null && consumption.getITEM_ID() > 0) {
+            egg.setINVENTORY_ITEM_ID(consumption.getITEM_ID());
+            egg.setINVENTORY_DESC(getItemDescription(consumption.getITEM_ID(), branchRequest.getBranchID()));
+        }
+        Long collectionNo = parseLongOrNull(consumption.getLINE_NO());
+        if (collectionNo != null) {
+            egg.setCOLLECTION_NO(collectionNo);
+        }
+        return egg;
+    }
+
+    private SugMaiBreederDailyEntryModel buildMedicineDailyEntry(SugMaiGppsConsumptions consumption,
+                                                                 BranchRequest branchRequest,
+                                                                 SugGppsObservationBatchDTO batch,
+                                                                 Date txnDate,
+                                                                 long dayCloseTransId,
+                                                                 Date now,
+                                                                 FlockLocationDetails locationDetails) {
+        SugMaiBreederDailyEntryModel medicine = buildBaseDailyEntry(branchRequest, batch, txnDate, dayCloseTransId, now, locationDetails);
+        medicine.setTXN_TYPE(txnTypeOf(consumption));
+        medicine.setTRANS_UOM(consumption.getUOM());
+        medicine.setPRIMARY_QTY(qtyOf(consumption));
+        medicine.setTXN_CATEGORY("ISSUE");
+        if (consumption.getITEM_ID() != null && consumption.getITEM_ID() > 0) {
+            medicine.setINVENTORY_ITEM_ID(consumption.getITEM_ID());
+            medicine.setINVENTORY_DESC(getItemDescription(consumption.getITEM_ID(), branchRequest.getBranchID()));
+            Float stockQty = getOnHandStockQty(consumption.getITEM_ID(), branchRequest.getBranchID());
+            if (stockQty != null) {
+                medicine.setSTOCK_QTY(stockQty);
+            }
+        }
+        return medicine;
+    }
+
+    private Long parseLongOrNull(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private Float getOnHandStockQty(Long itemId, String branchId) {
+        if (itemId == null || branchId == null || branchId.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            Object qty = entityManager.createNativeQuery(
+                            "select nvl(sum(d.primary_transaction_quantity), 0) " +
+                                    "  from mtl_onhand_quantities_detail d " +
+                                    " where d.inventory_item_id = ?1 and d.organization_id = ?2")
+                    .setParameter(1, itemId)
+                    .setParameter(2, branchId)
+                    .getSingleResult();
+            if (qty instanceof Number) {
+                return ((Number) qty).floatValue();
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
+    private Float getOnHandSecondaryStockQty(Long itemId, String branchId) {
+        if (itemId == null || branchId == null || branchId.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            Object qty = entityManager.createNativeQuery(
+                            "select nvl(sum(d.secondary_transaction_quantity), 0) " +
+                                    "  from mtl_onhand_quantities_detail d " +
+                                    " where d.inventory_item_id = ?1 and d.organization_id = ?2")
+                    .setParameter(1, itemId)
+                    .setParameter(2, branchId)
+                    .getSingleResult();
+            if (qty instanceof Number) {
+                return ((Number) qty).floatValue();
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 
     private static class FlockLocationDetails {
@@ -3067,6 +3177,7 @@ public class FarmServiceImpl implements FarmService {
         Long inventoryItemId;
         String inventoryDesc;
         String itemCode;
+        Float stockQty;
     }
 
     private FlockLocationDetails getFlockLocationDetails(String branchId, String flockId, String shedCode) {
@@ -3132,7 +3243,7 @@ public class FarmServiceImpl implements FarmService {
         try {
             @SuppressWarnings("unchecked")
             List<Object[]> rows = entityManager.createNativeQuery(
-                            "select inventory_item_id, item_description, item_code from (" +
+                            "select inventory_item_id, item_description, item_code, secondary_transaction_quantity from (" +
                                     " select a.inventory_item_id as inventory_item_id," +
                                     "        a.description as item_description," +
                                     "        a.segment1 as item_code," +
@@ -3183,6 +3294,9 @@ public class FarmServiceImpl implements FarmService {
                 }
                 item.inventoryDesc = row[1] == null ? null : String.valueOf(row[1]);
                 item.itemCode = row[2] == null ? null : String.valueOf(row[2]);
+                if (row.length > 3 && row[3] instanceof Number) {
+                    item.stockQty = ((Number) row[3]).floatValue();
+                }
                 items.add(item);
             }
         } catch (Exception e) {
@@ -3252,6 +3366,24 @@ public class FarmServiceImpl implements FarmService {
         } catch (Exception ignored) {
             return null;
         }
+    }
+
+    private String formatTimeAmPm(String time) {
+        if (time == null || time.trim().isEmpty()) {
+            return null;
+        }
+        String value = time.trim();
+        String[] patterns = {"hh:mm a", "h:mm a", "HH:mm", "HH:mm:ss", "hh:mm:ss a", "hh:mma", "H:mm"};
+        for (String pattern : patterns) {
+            try {
+                SimpleDateFormat in = new SimpleDateFormat(pattern, Locale.ENGLISH);
+                in.setLenient(false);
+                Date parsed = in.parse(value);
+                return new SimpleDateFormat("hh:mm a", Locale.ENGLISH).format(parsed);
+            } catch (ParseException ignored) {
+            }
+        }
+        return value;
     }
 
     private float lightingHours(String startTime, String endTime) {
@@ -3597,11 +3729,11 @@ public class FarmServiceImpl implements FarmService {
                 maiGppsConsumptions.setQTY(Long.valueOf(sugMedicineVaccineDetails.getQty()));
                 maiGppsConsumptions.setBATCH_ID(Long.valueOf(branchRequest.getBatchID()));
                 //maiGppsConsumptions.setSEX(sugMortalityDetails.getBirdType());
-                maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getTransDate(),fromdateFormat1));
+                maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
                 maiGppsConsumptions.setCREATION_DATE(new Date());
                 maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
                 maiGppsConsumptions.setTXN_TYPE(sugMedicineVaccineDetails.getItemType());
-                maiGppsConsumptions.setBATCH_ID(Long.valueOf(branchRequest.getBranchID()));
+                maiGppsConsumptions.setBATCH_ID(Long.valueOf(branchRequest.getBatchID()));
                 sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
                 sugMaiGppsItemAllocationRepositories.updateentry(sugMedicineVaccineDetails.getTransId());
             }
@@ -4271,13 +4403,13 @@ public class FarmServiceImpl implements FarmService {
             SugMaiGppsConsumptions savedDayClose = sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
         final Date txnDateToPost = txnDate;
         final long flockAgeToPost = flockAge;
-        CompletableFuture.runAsync(() -> {
+       /* CompletableFuture.runAsync(() -> {
             try {
                 postSavedDayCloseToDailyEntry(savedDayClose, branchRequest, gppsObservationBatchDTO, txnDateToPost, flockAgeToPost);
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        });
+        });*/
         return "200";
     }
 
