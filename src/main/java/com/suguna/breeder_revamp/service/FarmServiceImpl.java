@@ -379,12 +379,14 @@ public class FarmServiceImpl implements FarmService {
             storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
-            storedProcedureQuery.registerStoredProcedureParameter(4, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.registerStoredProcedureParameter(4, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(5, ArrayList.class, ParameterMode.REF_CURSOR);
             storedProcedureQuery.setParameter(1, branchRequest.getBranchID());
             storedProcedureQuery.setParameter(2, branchRequest.getShedNo());
             storedProcedureQuery.setParameter(3, branchRequest.getFlockID());
+            storedProcedureQuery.setParameter(4, branchRequest.getEntryDate());
             storedProcedureQuery.execute();
-            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(4);
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(5);
 
             while (resultSet.next()) {
                 BranchUser.ShedWiseFeedDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.ShedWiseFeedDetails.class);
@@ -414,6 +416,7 @@ public class FarmServiceImpl implements FarmService {
                 shedWiseFeedBirdsDetails.setFeedDetails(shedDetailsArray);
                 shedWiseFeedBirdsDetails.setFeedEntryMadeDetails(getShedWiseFeedMadeDetails(branchRequest,shedWiseFeedBirdsDetails.getBirdType()));
                 shedBirsDetailsArrayList.add(shedWiseFeedBirdsDetails);
+
             }
 
         } catch (Exception e) {
@@ -4412,5 +4415,18 @@ public class FarmServiceImpl implements FarmService {
         });*/
         return "200";
     }
-
+    public String get_pmlmortality_status(String date,String flockid,String shed) {
+        try {
+            Object result = entityManager
+                    .createNativeQuery("SELECT SUG_MAI_GPPS_MOB_PKG.get_pmlmortality_status(:date,:flockid,:shed) FROM dual")
+                    .setParameter("date", date)
+                    .setParameter("flockid", flockid)
+                    .setParameter("shed", shed)
+                    .getSingleResult();
+            return result != null ? result.toString() : "N";
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "N";
+        }
+    }
 }

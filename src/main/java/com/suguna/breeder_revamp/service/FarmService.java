@@ -128,4 +128,6 @@ public interface FarmService {
     ArrayList<BranchUser.FarmFlockDetails> getDayCloseFlockDetails(String branchID);
 
     String saveDayCloseConfirm(BranchRequest branchRequest);
+
+    String get_pmlmortality_status(String date,String flockid,String shed);
 }

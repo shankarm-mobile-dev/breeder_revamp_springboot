@@ -2,6 +2,7 @@ package com.suguna.breeder_revamp.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.suguna.breeder_revamp.dto.*;
+import com.suguna.breeder_revamp.model.BranchUser;
 import com.suguna.breeder_revamp.service.FarmService;
 import org.hibernate.sql.exec.ExecutionException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -98,18 +99,30 @@ public class FarmController {
         responseDto.setStatus("Success");
         if(branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
             responseDto.setResult(farmService.getObservationCategory(branchRequest));
+            responseDto.setMessage("Observation Question Downloaded");
         }
         else if(branchRequest.getActivityName().equalsIgnoreCase("FEED")) {
             responseDto.setResult(farmService.getshedwise_feeddtls(branchRequest));
+            ArrayList<BranchUser.ShedWiseFeedBirdsDetails> details= (ArrayList<BranchUser.ShedWiseFeedBirdsDetails>) responseDto.getResult();
+            responseDto.setMessage("Feed Details Downloaded");
+            if(details.size() == 0)
+            {
+                responseDto.setMessage("Feed allocation is not done for this date.");
+                responseDto.setStatusCode(201);
+                responseDto.setStatus("UnSuccess");
+            }
         }
         else if(branchRequest.getActivityName().equalsIgnoreCase("MORTALITY")) {
             responseDto.setResult(farmService.getshedwise_birdsdtls(branchRequest));
+            responseDto.setMessage("Mortality Information Downloaded");
         }
         else if(branchRequest.getActivityName().equalsIgnoreCase("WEAK BIRD SEPARATION")) {
             responseDto.setResult(farmService.getshedwise_birdsdtls(branchRequest));
+            responseDto.setMessage("Week Bird Information Downloaded");
         }
         else if(branchRequest.getActivityName().equalsIgnoreCase("EGG COLLECTION")) {
             responseDto.setResult(farmService.getegg_collectiondtls(branchRequest));
+            responseDto.setMessage("Egg Collection Information Downloaded");
         }
             return responseDto;
     }
@@ -683,9 +696,16 @@ public class FarmController {
         responseDto.setStatusCode(200);
         responseDto.setStatus("Success");
         String response = "";
-        // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
-        responseDto.setResult(farmService.saveDayCloseConfirm(branchRequest));
-        //}
+         if (farmService.get_pmlmortality_status(branchRequest.getEntryDate(),branchRequest.getFlockID(),branchRequest.getShedNo()).equalsIgnoreCase("N"))
+         {
+             responseDto.setResult(farmService.saveDayCloseConfirm(branchRequest));
+         }
+         else
+         {
+             responseDto.setMessage("PML Entry is not completed");
+             responseDto.setStatusCode(201);
+             responseDto.setStatus("Success");
+         }
         return responseDto;
     }
 }
