@@ -24,7 +24,7 @@ public class SugMaiGppsTransDtl {
     BigDecimal FROM_INVENTORY_LOCATION_ID;
     String FROM_INVENTORY_LOC_DESC;
     BigDecimal FROM_BATCH_ID;
-    BigDecimal TO_INVENTORY_LOCATION_ID;
+    Long TO_INVENTORY_LOCATION_ID;
     BigDecimal TO_BATCH_ID;
     String TXN_TYPE;
     String BIRD_TYPE;

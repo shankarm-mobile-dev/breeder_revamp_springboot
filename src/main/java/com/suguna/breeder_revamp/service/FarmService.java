@@ -130,4 +130,8 @@ public interface FarmService {
     String saveDayCloseConfirm(BranchRequest branchRequest);
 
     String get_pmlmortality_status(String date,String flockid,String shed);
+
+    String get_eggdailynotcomplete_status(String date,String flockid,String shed);
+
+    String get_hatcheggmant_status(String date,String flockid,String shed);
 }

@@ -961,6 +961,7 @@ public class FarmServiceImpl implements FarmService {
             data = mapper.convertValue(rawData, BranchRequest.SugFeedAllocationDetails.class);
         }
         SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
+        sugMaiGppsItemAllocationRepositories.updatefeedallocationentry(branchRequest.getFlockID());
         if (!data.getFemale().isEmpty()) {
             for (BranchRequest.SugFeedAllocationDetails.FeedAllocationDetails sugFeedDetails : data.getFemale()) {
                 SugMaiGppsItemAllocation sugMaiGppsItemAllocation = new SugMaiGppsItemAllocation();
@@ -1107,7 +1108,7 @@ public class FarmServiceImpl implements FarmService {
                     maiGppsConsumptions.setBATCH_ID(Long.valueOf(branchRequest.getBatchID()));
                     maiGppsConsumptions.setREASON(sugCullingDetails.getReason());
                     maiGppsConsumptions.setCREATION_DATE(new Date());
-                    maiGppsConsumptions.setTXN_DATE(date);
+                    maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
                     maiGppsConsumptions.setSEX("Female");
                     maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
                     maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
@@ -1126,7 +1127,7 @@ public class FarmServiceImpl implements FarmService {
                     maiGppsConsumptions.setBATCH_ID(Long.valueOf(branchRequest.getBatchID()));
                     maiGppsConsumptions.setREASON(sugCullingDetails.getReason());
                     maiGppsConsumptions.setCREATION_DATE(new Date());
-                    maiGppsConsumptions.setTXN_DATE(date);
+                    maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
                     maiGppsConsumptions.setSEX("Male");
                     maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
                     maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
@@ -1475,7 +1476,7 @@ public class FarmServiceImpl implements FarmService {
         if (!data.isEmpty()) {
             for (BranchRequest.SugCullingDetails sugCullingDetails : data) {
                 if(sugCullingDetails.getFemaleBirdsCount() != null && !sugCullingDetails.getFemaleBirdsCount().isEmpty() && !sugCullingDetails.getFemaleBirdsCount().equalsIgnoreCase("0")) {
-                    try {
+                    /*try {
                         String serverDate = LocalDate.now()
                                 .format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
                         SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
@@ -1497,14 +1498,13 @@ public class FarmServiceImpl implements FarmService {
                         saveDailyEntry(sugMaiBreederDailyEntryModel);
                     } catch (Exception e) {
 
-                    }
-/*
+                    }*/
 
                     SugMaiGppsConsumptions maiGppsConsumptions = new SugMaiGppsConsumptions();
                     maiGppsConsumptions.setFARM_CODE(gppsObservationBatchDTO.getBRANCH_CODE());
                     maiGppsConsumptions.setFLOCK_ID(gppsObservationBatchDTO.getFLOCK_NO());
                     // maiGppsConsumptions.setSHED_CODE(branchRequest.getShedNo());
-
+                    maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
                     maiGppsConsumptions.setQTY(Long.valueOf(sugCullingDetails.getFemaleBirdsCount()));
                     //maiGppsConsumptions.setWEIGHT(BigDecimal.valueOf(Double.parseDouble(sugCullingDetails.getFemaleBirdsWeight())));
                     maiGppsConsumptions.setBATCH_ID(Long.valueOf(branchRequest.getBatchID()));
@@ -1512,12 +1512,24 @@ public class FarmServiceImpl implements FarmService {
                     maiGppsConsumptions.setCREATION_DATE(new Date());
                     maiGppsConsumptions.setSEX("Female");
                     maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
-                    maiGppsConsumptions.setTXN_TYPE(sugCullingDetails.getType());
+                    if(sugCullingDetails.getType().equalsIgnoreCase("Excess"))
+                    {
+                        maiGppsConsumptions.setTXN_TYPE("EXCESS");
+                    }
+                    else if(sugCullingDetails.getType().equalsIgnoreCase("Sortage") || sugCullingDetails.getType().equalsIgnoreCase("Shortage"))
+                    {
+                        maiGppsConsumptions.setTXN_TYPE("SHORTAGE");
+                    }
+                    else
+                    {
+                        maiGppsConsumptions.setTXN_TYPE(sugCullingDetails.getType());
+                    }
+                    maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
+                    maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
                     sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
-*/
                 }
                 if( sugCullingDetails.getMaleBirdsCount() != null && !sugCullingDetails.getMaleBirdsCount().isEmpty() && !sugCullingDetails.getMaleBirdsCount().equalsIgnoreCase("0")) {
-                    try {
+                    /*try {
                         String serverDate = LocalDate.now()
                                 .format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
                         SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
@@ -1538,12 +1550,12 @@ public class FarmServiceImpl implements FarmService {
                         saveDailyEntry(sugMaiBreederDailyEntryModel);
                     } catch (Exception e) {
 
-                    }
-                   /* SugMaiGppsConsumptions maiGppsConsumptions = new SugMaiGppsConsumptions();
+                    }*/
+                    SugMaiGppsConsumptions maiGppsConsumptions = new SugMaiGppsConsumptions();
                     maiGppsConsumptions.setFARM_CODE(gppsObservationBatchDTO.getBRANCH_CODE());
                     maiGppsConsumptions.setFLOCK_ID(gppsObservationBatchDTO.getFLOCK_NO());
                     // maiGppsConsumptions.setSHED_CODE(branchRequest.getShedNo());
-
+                    maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
                     maiGppsConsumptions.setQTY(Long.valueOf(sugCullingDetails.getMaleBirdsCount()));
                     //maiGppsConsumptions.setWEIGHT(BigDecimal.valueOf(Double.parseDouble(sugCullingDetails.getMaleBirdsWeight())));
                     maiGppsConsumptions.setBATCH_ID(Long.valueOf(branchRequest.getBatchID()));
@@ -1551,8 +1563,21 @@ public class FarmServiceImpl implements FarmService {
                     maiGppsConsumptions.setCREATION_DATE(new Date());
                     maiGppsConsumptions.setSEX("Male");
                     maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
-                    maiGppsConsumptions.setTXN_TYPE(sugCullingDetails.getType());
-                    sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);*/
+                    if(sugCullingDetails.getType().equalsIgnoreCase("Excess"))
+                    {
+                        maiGppsConsumptions.setTXN_TYPE("EXCESS");
+                    }
+                    else if(sugCullingDetails.getType().equalsIgnoreCase("Sortage") || sugCullingDetails.getType().equalsIgnoreCase("Shortage"))
+                    {
+                        maiGppsConsumptions.setTXN_TYPE("SHORTAGE");
+                    }
+                    else
+                    {
+                        maiGppsConsumptions.setTXN_TYPE(sugCullingDetails.getType());
+                    }
+                    maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
+                    maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
+                    sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
                 }
 
             }
@@ -4419,6 +4444,35 @@ public class FarmServiceImpl implements FarmService {
         try {
             Object result = entityManager
                     .createNativeQuery("SELECT SUG_MAI_GPPS_MOB_PKG.get_pmlmortality_status(:date,:flockid,:shed) FROM dual")
+                    .setParameter("date", date)
+                    .setParameter("flockid", flockid)
+                    .setParameter("shed", shed)
+                    .getSingleResult();
+            return result != null ? result.toString() : "N";
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "N";
+        }
+    }
+    public String get_eggdailynotcomplete_status(String date,String flockid,String shed) {
+        try {
+            Object result = entityManager
+                    .createNativeQuery("SELECT SUG_MAI_GPPS_MOB_PKG.get_eggdailynotcomplete_status(:date,:flockid,:shed) FROM dual")
+                    .setParameter("date", date)
+                    .setParameter("flockid", flockid)
+                    .setParameter("shed", shed)
+                    .getSingleResult();
+            return result != null ? result.toString() : "N";
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "N";
+        }
+    }
+
+    public String get_hatcheggmant_status(String date,String flockid,String shed) {
+        try {
+            Object result = entityManager
+                    .createNativeQuery("SELECT SUG_MAI_GPPS_MOB_PKG.get_hatcheggmant_status(:date,:flockid,:shed) FROM dual")
                     .setParameter("date", date)
                     .setParameter("flockid", flockid)
                     .setParameter("shed", shed)

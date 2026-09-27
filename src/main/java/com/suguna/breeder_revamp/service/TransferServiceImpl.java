@@ -28,6 +28,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class TransferServiceImpl implements TransferService{
@@ -234,7 +235,7 @@ public class TransferServiceImpl implements TransferService{
     @Override
     public String saveTransOut(ArrayList<SUGMAIGPPSTRANS_HDRDto> entry) {
         String fromdateFormat = "DD-MM-YYYY hh:mm:ss";
-        String fromdateFormat1 = "DD-MM-YYYY";
+        //String fromdateFormat1 = "DD-MMM-YYYY";
         try {
             for (SUGMAIGPPSTRANS_HDRDto FarmDto : entry) {
                 String HDR = "0";//getSUGMAIGPPSTRANS_HDR(FarmDto.DEVICEID, FarmDto.txn_header_id, FarmDto.entry_creation_date);
@@ -311,7 +312,12 @@ public class TransferServiceImpl implements TransferService{
                             }
 
                             sugMaiGppsTransDtlModels.setITEM_ID(FarmDto1.getItem_id());
-                            sugMaiGppsTransDtlModels.setTO_INVENTORY_LOCATION_ID(FarmDto1.getTo_inventory_location_id());
+                            if(FarmDto1.getLocation_TYPE().equals("HATCHERY")) {
+                                sugMaiGppsTransDtlModels.setTO_INVENTORY_LOCATION_ID(Long.valueOf(get_locator_inv_id(String.valueOf(FarmDto1.getTo_farm_id()))));
+                            }
+                            else {
+                                sugMaiGppsTransDtlModels.setTO_INVENTORY_LOCATION_ID(FarmDto1.getTo_inventory_location_id());
+                            }
                             sugMaiGppsTransDtlModels.setUOM(FarmDto1.getUom());
                             sugMaiGppsTransDtlModels.setSTOCK_QTY(FarmDto1.getStock_qty());
                             sugMaiGppsTransDtlModels.setQTY(FarmDto1.getQty());
@@ -324,17 +330,22 @@ public class TransferServiceImpl implements TransferService{
                             sugMaiGppsTransDtlModels.setAGE(FarmDto1.getAge());
                             sugMaiGppsTransDtlModels.setPOST_TO_ERP(FarmDto1.getPost_to_ERP());
                             sugMaiGppsTransDtlModels.setLOTNUMBER(FarmDto1.getLotnumber());
-                            sugMaiGppsTransDtlModels.setLOCATION_TYPE(FarmDto1.getLocation_TYPE());
-                            if (FarmDto1.getLaydate() != "NA") {
+                           // sugMaiGppsTransDtlModels.setLOCATION_TYPE(FarmDto1.getLocation_TYPE());
+                            if (!Objects.equals(FarmDto1.getLaydate(), "NA")) {
                                 sugMaiGppsTransDtlModels.setLAY_DATE(getTxnDateString(FarmDto1.getLaydate(), fromdateFormat1));
                             }
-                            sugMaiGppsTransDtlModels.setLOCATION_TYPE(FarmDto1.getLocation_TYPE());
+                            if(!FarmDto1.getLocation_TYPE().equals("HATCHERY")) {
+                                sugMaiGppsTransDtlModels.setLOCATION_TYPE(FarmDto1.getLocation_TYPE());
+                            }
                             sugMaiGppsTransDtlModels.setTXN_TIME(FarmDto1.getTXN_TIME());
                             sugMaiGppsTransDtlModels.setBREEDNAME(FarmDto1.getBreedname());
                             sugMaiGppsTransDtlModels.setFROM_LINE_NAME(FarmDto1.getFromLine());
                             sugMaiGppsTransDtlModels.setTO_LINE_NAME(FarmDto1.getToLine());
                             sugMaiGppsTransDtlModels.setFROM_SIDE_NAME(FarmDto1.getFromSide());
                             sugMaiGppsTransDtlModels.setTO_SIDE_NAME(FarmDto1.getToSide());
+                          /*  if(!FarmDto1.getLaydate().isEmpty()) {
+                                sugMaiGppsTransDtlModels.setLAY_DATE(getTxnDateString(FarmDto1.getLaydate(), fromdateFormat1));
+                            }*/
                             sugMaiGppsTransDtlRepository.save(sugMaiGppsTransDtlModels);
 
                         } else {
@@ -350,7 +361,18 @@ public class TransferServiceImpl implements TransferService{
         }
         return "200";
     }
-
+    public String get_locator_inv_id(String branchid) {
+        try {
+            Object result = entityManager
+                    .createNativeQuery("SELECT SUG_MAI_GPPS_MOB_PKG.get_locator_inv_id(:branchid) FROM dual")
+                    .setParameter("branchid", branchid)
+                    .getSingleResult();
+            return result != null ? result.toString() : "0";
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "0";
+        }
+    }
     @Override
     public ArrayList<TransferPlace> getTransferPlanPlace(BranchRequest branchRequest) {
         ArrayList<TransferPlace> transferPlacesArrayList = new ArrayList<TransferPlace>();

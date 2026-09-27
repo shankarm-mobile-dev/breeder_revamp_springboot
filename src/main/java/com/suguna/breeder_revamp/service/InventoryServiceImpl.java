@@ -27,6 +27,7 @@ public class InventoryServiceImpl implements  InventoryService{
 
     String fromdateFormat  = "dd-MMM-yyyy HH:mm:ss";
     String fromdateFormat1 = "dd-MMM-yyyy";
+    String fromdateFormat2 = "dd-MM-yyyy";
 
     @Autowired
     EntityManager entityManager;
@@ -177,6 +178,7 @@ public class InventoryServiceImpl implements  InventoryService{
             for(IssueReturnDto issueReturnDto:entry)
             {
                 SugMaiBreederDailyEntryModel sugMaiBreederDailyEntryModel=new SugMaiBreederDailyEntryModel();
+                sugMaiBreederDailyEntryModel.setDEVICE_ID(123456L);
                 sugMaiBreederDailyEntryModel.setTXN_TYPE(issueReturnDto.trans_TYPE);
                 sugMaiBreederDailyEntryModel.setTXN_DATE(getTxnDateString(issueReturnDto.trans_DATE,fromdateFormat1));
                 sugMaiBreederDailyEntryModel.setEMP_CODE(issueReturnDto.empCode);
