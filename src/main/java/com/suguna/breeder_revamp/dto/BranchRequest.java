@@ -1,5 +1,7 @@
 package com.suguna.breeder_revamp.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
@@ -8,7 +10,12 @@ import java.util.ArrayList;
 
 @Getter
 @Setter
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class BranchRequest<T> {
+
+    @JsonProperty("GATE_FLOW")
+    @JsonAlias({"FLOW_TYPE", "IN_OUT"})
+    String GATE_FLOW;
 
     @JsonProperty("userCode")
     String userCode;
@@ -18,6 +25,7 @@ public class BranchRequest<T> {
     String userType;
     @JsonProperty("branchID")
     String branchID;
+
     @JsonProperty("branchCode")
     String branchCode;
     @JsonProperty("FLOCK_NUMBER")

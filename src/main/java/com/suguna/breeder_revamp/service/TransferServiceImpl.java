@@ -28,6 +28,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class TransferServiceImpl implements TransferService{
@@ -232,9 +233,8 @@ public class TransferServiceImpl implements TransferService{
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public String saveTransOut(ArrayList<SUGMAIGPPSTRANS_HDRDto> entry) {
-        String fromdateFormat = "DD-MM-YYYY hh:mm:ss";
-        String fromdateFormat1 = "DD-MM-YYYY";
         try {
             for (SUGMAIGPPSTRANS_HDRDto FarmDto : entry) {
                 String HDR = "0";//getSUGMAIGPPSTRANS_HDR(FarmDto.DEVICEID, FarmDto.txn_header_id, FarmDto.entry_creation_date);
@@ -247,7 +247,7 @@ public class TransferServiceImpl implements TransferService{
                     sugmaigppstransHdrModels.setTO_FARM_ID(FarmDto.getTo_farm_id());
                     //sugmaigppstransHdrModels.setTXN_HEADER_ID(new BigDecimal(FarmDto.txn_header_id));
                     sugmaigppstransHdrModels.setTRANS_TYPE(FarmDto.getTransfer_type());
-                    sugmaigppstransHdrModels.setTXN_DATE(getTxnDateString(FarmDto.getTxn_date(), fromdateFormat1));
+                    sugmaigppstransHdrModels.setTXN_DATE(parseTransferTxnDate(FarmDto.getTxn_date(), null));
                     sugmaigppstransHdrModels.setVEHICLE_NO(FarmDto.getVehicle_no());
                     sugmaigppstransHdrModels.setOUT_PASS_NO(FarmDto.getOut_pass_no());
                     sugmaigppstransHdrModels.setRECEIVER_NAME(FarmDto.getReceiver_name());
@@ -263,8 +263,13 @@ public class TransferServiceImpl implements TransferService{
                     sugmaigppstransHdrModels.setTRAY_NOS(FarmDto.getTraynumber());
                     sugmaigppstransHdrModels.setBOX_NOS(FarmDto.getBoxnumber());
                     sugmaigppstransHdrModels.setPACK_MATERIAL(FarmDto.getPackmaterial());
-                    sugmaigppstransHdrModels.setPLAN_DTL_ID(Long.parseLong(FarmDto.getPid()));
+                    applyPlanDtlIdFromPid(FarmDto, sugmaigppstransHdrModels);
                     SugMaiGppsTransHdr sugmaigppstransHdrModels1=sugMaiGppsTransHdrRepository.save(sugmaigppstransHdrModels);
+                    if (isTransferIn(FarmDto.getTransfer_type())) {
+                        updateVehicleGateInOutInStatusForTransIn(FarmDto);
+                    } else {
+                        updateVehicleGateInOutForTransOut(FarmDto);
+                    }
                     long txn_id=0;
                     txn_id=sugmaigppstransHdrModels1.getTXN_HEADER_ID();
                     for (SUGMAIGPPSTRANS_HDRDto.SugMaiGppsTrans_DtlDto FarmDto1 : FarmDto.getDetails()) {
@@ -325,8 +330,12 @@ public class TransferServiceImpl implements TransferService{
                             sugMaiGppsTransDtlModels.setPOST_TO_ERP(FarmDto1.getPost_to_ERP());
                             sugMaiGppsTransDtlModels.setLOTNUMBER(FarmDto1.getLotnumber());
                             sugMaiGppsTransDtlModels.setLOCATION_TYPE(FarmDto1.getLocation_TYPE());
-                            if (FarmDto1.getLaydate() != "NA") {
-                                sugMaiGppsTransDtlModels.setLAY_DATE(getTxnDateString(FarmDto1.getLaydate(), fromdateFormat1));
+                            if (FarmDto1.getLaydate() != null && !"NA".equals(FarmDto1.getLaydate())) {
+                                Date layDate = parseTransferTxnDate(FarmDto1.getLaydate(), null);
+                                if (layDate == null) {
+                                    layDate = getTxnDateString(FarmDto1.getLaydate(), fromdateFormat1);
+                                }
+                                sugMaiGppsTransDtlModels.setLAY_DATE(layDate);
                             }
                             sugMaiGppsTransDtlModels.setLOCATION_TYPE(FarmDto1.getLocation_TYPE());
                             sugMaiGppsTransDtlModels.setTXN_TIME(FarmDto1.getTXN_TIME());
@@ -346,7 +355,9 @@ public class TransferServiceImpl implements TransferService{
                 }
             }
         } catch (Exception e) {
-            e.getMessage();
+            System.out.println("Error in saveTransOut: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
         }
         return "200";
     }
@@ -852,45 +863,48 @@ public class TransferServiceImpl implements TransferService{
 
     @Override
     @Transactional
-    public String saveManualGateInDetails(VehicleGateInOutDto entry, List<MultipartFile> imageFile) {
+    public VehicleGateInOutDto saveManualGateInDetails(VehicleGateInOutDto entry, List<MultipartFile> imageFile) {
+        SugMaiBreederVehicleGateinout saved = null;
         try {
-            BreederVehicleGateInOut gateInOut = new BreederVehicleGateInOut();
-            gateInOut.setBranchId(entry.getBRANCH_ID());
+            if (resolveFromBranchId(entry) == null) {
+                throw new IllegalArgumentException("FROM_BRANCH_ID is required");
+            }
+            if (entry.getVEHICLE_NO() == null || entry.getVEHICLE_NO().isBlank()) {
+                throw new IllegalArgumentException("VEHICLE_NO is required");
+            }
+            SugMaiBreederVehicleGateinout gateInOut = new SugMaiBreederVehicleGateinout();
+            gateInOut.setFromBranchId(resolveFromBranchId(entry));
             gateInOut.setVehicleNo(entry.getVEHICLE_NO());
             gateInOut.setDriverName(entry.getDRIVER_NAME());
             gateInOut.setDriverMobileNo(entry.getDRIVER_MOBILE_NO());
             gateInOut.setPurpose(entry.getPURPOSE());
-            Date gateInDate = parseGateDate(entry.getGATE_IN_DATE());
-            gateInOut.setGateInDate(gateInDate != null ? gateInDate : new Date());
-            gateInOut.setCreatedBy(entry.getCREATED_BY());
-            gateInOut.setCreatedDate(new Date());
+            Date fromGateInDate = parseGateDate(entry.getFROM_GATE_IN_DATE());
+            gateInOut.setFromGateInDate(fromGateInDate != null ? fromGateInDate : new Date());
+            gateInOut.setFromCreatedBy(entry.getFROM_CREATED_BY());
+            gateInOut.setFromCreatedDate(new Date());
+            gateInOut.setToBranchId(entry.getTO_BRANCH_ID());
+            gateInOut.setShipmentNo(entry.getSHIPMENT_NO());
+            gateInOut.setOrderNo(entry.getORDER_NO());
 
-            breederVehicleGateInOutRepository.save(gateInOut);
+            saved = breederVehicleGateInOutRepository.save(gateInOut);
         } catch (Exception e) {
             System.out.println("Error in saveManualGateInDetails: " + e.getMessage());
+            throw new RuntimeException(e.getMessage(), e);
         }
 
-        try {String mortalityImage = null;
+        try {
             if (imageFile != null && !imageFile.isEmpty()) {
                 for (MultipartFile data1 : imageFile) {
-                    mortalityImage = fileStorageService.saveImage(data1, entry.getVEHICLE_NO(), Long.valueOf(entry.getBRANCH_ID()), FileStorageCategory.GATE_IN_OUT);
-                    /*DailyEntryLines dailyEntryLines = DailyEntryLines.builder()
-                            .transId(saveResult.getTransId())
-                            .hdrType("MORTALITY")
-                            .imagePath(mortalityImage)
-                            .build();*/
-                    /**
-                     * AI Mortality Count
-                     */
-
-
-
+                    if (data1 != null && !data1.isEmpty()) {
+                        Long branchId = resolveFromBranchId(entry);
+                        fileStorageService.saveImage(data1, entry.getVEHICLE_NO(), branchId != null ? branchId : 0L, FileStorageCategory.GATE_IN_OUT);
+                    }
                 }
             }
         } catch (IOException | IllegalArgumentException ex) {
-            //  return Response.buildSingleResponse("Failed", HttpStatus.BAD_REQUEST, ex.getMessage(), null);
+            System.out.println("Error in saveManualGateInDetails image: " + ex.getMessage());
         }
-        return "200";
+        return mapToVehicleGateInOutDto(saved);
     }
 
     @Override
@@ -900,14 +914,14 @@ public class TransferServiceImpl implements TransferService{
             if (entry.getGATE_IN_ID() == null) {
                 return "GATE_IN_ID is required";
             }
-            BreederVehicleGateInOut gateInOut = breederVehicleGateInOutRepository.findById(entry.getGATE_IN_ID()).orElse(null);
+            SugMaiBreederVehicleGateinout gateInOut = breederVehicleGateInOutRepository.findById(entry.getGATE_IN_ID()).orElse(null);
             if (gateInOut == null) {
                 return "Gate in record not found";
             }
-            Date gateOutDate = parseGateDate(entry.getGATE_OUT_DATE());
-            gateInOut.setGateOutDate(gateOutDate != null ? gateOutDate : new Date());
-            gateInOut.setUpdatedBy(entry.getUPDATED_BY());
-            gateInOut.setUpdatedDate(new Date());
+            Date fromGateOutDate = parseGateDate(entry.getFROM_GATE_OUT_DATE());
+            gateInOut.setFromGateOutDate(fromGateOutDate != null ? fromGateOutDate : new Date());
+            gateInOut.setFromUpdatedBy(entry.getFROM_UPDATED_BY());
+            gateInOut.setFromUpdatedDate(new Date());
             breederVehicleGateInOutRepository.save(gateInOut);
         } catch (Exception e) {
             System.out.println("Error in saveManualGateOutDetails: " + e.getMessage());
@@ -915,7 +929,8 @@ public class TransferServiceImpl implements TransferService{
         try {String mortalityImage = null;
             if (imageFile != null && !imageFile.isEmpty()) {
                 for (MultipartFile data1 : imageFile) {
-                    mortalityImage = fileStorageService.saveImage(data1, entry.getVEHICLE_NO(), Long.valueOf(entry.getBRANCH_ID()), FileStorageCategory.GATE_IN_OUT);
+                    Long branchId = resolveFromBranchId(entry);
+                    mortalityImage = fileStorageService.saveImage(data1, entry.getVEHICLE_NO(), branchId != null ? branchId : 0L, FileStorageCategory.GATE_IN_OUT);
                     /*DailyEntryLines dailyEntryLines = DailyEntryLines.builder()
                             .transId(saveResult.getTransId())
                             .hdrType("MORTALITY")
@@ -940,8 +955,8 @@ public class TransferServiceImpl implements TransferService{
         ArrayList<VehicleGateInOutDto> result = new ArrayList<>();
         try {
             Long branchId = Long.valueOf(branchRequest.getBranchID());
-            List<BreederVehicleGateInOut> records = breederVehicleGateInOutRepository.findByBranchIdOrderByGateInDateDesc(branchId);
-            for (BreederVehicleGateInOut record : records) {
+            List<SugMaiBreederVehicleGateinout> records = breederVehicleGateInOutRepository.findByFromBranchIdOrderByFromGateInDateDesc(branchId);
+            for (SugMaiBreederVehicleGateinout record : records) {
                 result.add(mapToVehicleGateInOutDto(record));
             }
         } catch (Exception e) {
@@ -955,8 +970,8 @@ public class TransferServiceImpl implements TransferService{
         ArrayList<VehicleGateInOutDto> result = new ArrayList<>();
         try {
             Long branchId = Long.valueOf(branchRequest.getBranchID());
-            List<BreederVehicleGateInOut> records = breederVehicleGateInOutRepository.findByBranchIdAndGateOutDateIsNullOrderByGateInDateDesc(branchId);
-            for (BreederVehicleGateInOut record : records) {
+            List<SugMaiBreederVehicleGateinout> records = breederVehicleGateInOutRepository.findByFromBranchIdAndFromGateOutDateIsNullOrderByFromGateInDateDesc(branchId);
+            for (SugMaiBreederVehicleGateinout record : records) {
                 result.add(mapToVehicleGateInOutDto(record));
             }
         } catch (Exception e) {
@@ -966,19 +981,261 @@ public class TransferServiceImpl implements TransferService{
     }
 
     @Override
+    public ArrayList<VehicleGateInOutDto> getReceivingFarmGateInDetails(BranchRequest branchRequest) {
+        ArrayList<VehicleGateInOutDto> result = new ArrayList<>();
+        try {
+            Long branchId = resolveBranchIdFromRequest(branchRequest);
+            if (branchId == null) {
+                System.out.println("branchID missing in getReceivingFarmGateInDetails payload");
+                return result;
+            }
+            List<SugMaiBreederVehicleGateinout> records =
+                    breederVehicleGateInOutRepository.findPendingReceivingFarmGateIn(branchId);
+            for (SugMaiBreederVehicleGateinout record : records) {
+                result.add(mapToVehicleGateInOutDto(record));
+            }
+        } catch (Exception e) {
+            System.out.println("Error in getReceivingFarmGateInDetails: " + e.getMessage());
+        }
+        return result;
+    }
+
+    @Override
+    public ArrayList<VehicleGateInOutDto> getToGateOutDetails(BranchRequest branchRequest) {
+        ArrayList<VehicleGateInOutDto> result = new ArrayList<>();
+        try {
+            Long branchId = resolveBranchIdFromRequest(branchRequest);
+            if (branchId == null) {
+                System.out.println("branchID missing in getToGateOutDetails payload");
+                return result;
+            }
+            List<SugMaiBreederVehicleGateinout> records =
+                    breederVehicleGateInOutRepository.findPendingToGateOut(branchId);
+            for (SugMaiBreederVehicleGateinout record : records) {
+                result.add(mapToVehicleGateInOutDto(record));
+            }
+        } catch (Exception e) {
+            System.out.println("Error in getToGateOutDetails: " + e.getMessage());
+        }
+        return result;
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
+    public VehicleGateInOutDto saveToGateInDetails(VehicleGateInOutDto entry, List<MultipartFile> imageFile) {
+        if (entry.getGATE_IN_ID() == null) {
+            throw new IllegalArgumentException("GATE_IN_ID is required");
+        }
+        if (entry.getTO_GATE_IN_DATE() == null || entry.getTO_GATE_IN_DATE().isBlank()) {
+            throw new IllegalArgumentException("TO_GATE_IN_DATE is required");
+        }
+        Long gateInId = entry.getGATE_IN_ID();
+        SugMaiBreederVehicleGateinout existing = breederVehicleGateInOutRepository.findById(gateInId)
+                .orElseThrow(() -> new IllegalArgumentException("Gate in record not found for GATE_IN_ID: " + gateInId));
+        if (existing.getFromGateOutDate() == null) {
+            throw new IllegalArgumentException("Sending farm gate-out must be completed before TO gate-in");
+        }
+        if (existing.getToGateInDate() != null) {
+            throw new IllegalArgumentException("TO_GATE_IN_DATE is already set for GATE_IN_ID: " + gateInId);
+        }
+
+        Date toGateInDate = parseGateDate(entry.getTO_GATE_IN_DATE());
+        if (toGateInDate == null) {
+            throw new IllegalArgumentException("Invalid TO_GATE_IN_DATE format");
+        }
+        Date toFarmCreatedDate = parseGateDate(entry.getTO_FARM_CREATED_DATE());
+        if (toFarmCreatedDate == null) {
+            toFarmCreatedDate = new Date();
+        }
+        String toFarmCreatedBy = entry.getTO_FARM_CREATED_BY();
+        Long toBranchId = entry.getTO_BRANCH_ID() != null ? entry.getTO_BRANCH_ID() : existing.getToBranchId();
+
+        int updatedRows = updateToGateInDateNative(gateInId, toGateInDate, toFarmCreatedBy, toFarmCreatedDate, toBranchId);
+        System.out.println("saveToGateInDetails native updatedRows=" + updatedRows + " GATE_IN_ID=" + gateInId);
+
+        if (updatedRows == 0) {
+            existing.setToGateInDate(toGateInDate);
+            existing.setToFarmCreatedBy(toFarmCreatedBy);
+            existing.setToFarmCreatedDate(toFarmCreatedDate);
+            if (toBranchId != null) {
+                existing.setToBranchId(toBranchId);
+            }
+            breederVehicleGateInOutRepository.saveAndFlush(existing);
+            System.out.println("saveToGateInDetails JPA fallback GATE_IN_ID=" + gateInId);
+        }
+
+        entityManager.flush();
+        entityManager.clear();
+        SugMaiBreederVehicleGateinout saved = breederVehicleGateInOutRepository.findById(gateInId)
+                .orElseThrow(() -> new IllegalArgumentException("Gate in record not found after update"));
+
+        try {
+            if (imageFile != null && !imageFile.isEmpty()) {
+                for (MultipartFile data1 : imageFile) {
+                    if (data1 != null && !data1.isEmpty()) {
+                        Long branchId = toBranchId != null ? toBranchId : saved.getToBranchId();
+                        fileStorageService.saveImage(data1,
+                                entry.getVEHICLE_NO() != null ? entry.getVEHICLE_NO() : saved.getVehicleNo(),
+                                branchId != null ? branchId : 0L, FileStorageCategory.GATE_IN_OUT);
+                    }
+                }
+            }
+        } catch (IOException | IllegalArgumentException ex) {
+            System.out.println("Error in saveToGateInDetails image: " + ex.getMessage());
+        }
+        return mapToVehicleGateInOutDto(saved);
+    }
+
+    @Override
+    @Transactional
+    public VehicleGateInOutDto saveReceivingFarmGateInDetails(VehicleGateInOutDto entry, List<MultipartFile> imageFile) {
+        return saveToGateInDetails(entry, imageFile);
+    }
+
+    private int updateToGateInDateNative(
+            Long gateInId,
+            Date toGateInDate,
+            String toFarmCreatedBy,
+            Date toFarmCreatedDate,
+            Long toBranchId) {
+        return entityManager.createNativeQuery("""
+                        UPDATE SUG.SUG_MAI_BREEDER_VEHICLE_GATEINOUT
+                           SET TO_GATE_IN_DATE = :toGateInDate,
+                               TO_FARM_CREATED_BY = :toFarmCreatedBy,
+                               TO_FARM_CREATED_DATE = :toFarmCreatedDate,
+                               TO_BRANCH_ID = :toBranchId
+                         WHERE GATE_IN_ID = :gateInId
+                        """)
+                .setParameter("toGateInDate", new java.sql.Timestamp(toGateInDate.getTime()))
+                .setParameter("toFarmCreatedBy", toFarmCreatedBy)
+                .setParameter("toFarmCreatedDate", new java.sql.Timestamp(toFarmCreatedDate.getTime()))
+                .setParameter("toBranchId", toBranchId)
+                .setParameter("gateInId", gateInId)
+                .executeUpdate();
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
+    public VehicleGateInOutDto saveToGateOutDetails(VehicleGateInOutDto entry, List<MultipartFile> imageFile) {
+        if (entry.getGATE_IN_ID() == null) {
+            throw new IllegalArgumentException("GATE_IN_ID is required");
+        }
+        if (entry.getTO_GATE_OUT_DATE() == null || entry.getTO_GATE_OUT_DATE().isBlank()) {
+            throw new IllegalArgumentException("TO_GATE_OUT_DATE is required");
+        }
+        Long gateInId = entry.getGATE_IN_ID();
+        SugMaiBreederVehicleGateinout existing = breederVehicleGateInOutRepository.findById(gateInId)
+                .orElseThrow(() -> new IllegalArgumentException("Gate in record not found for GATE_IN_ID: " + gateInId));
+        if (existing.getToGateInDate() == null) {
+            throw new IllegalArgumentException("TO gate-in must be completed before TO gate-out");
+        }
+        if (existing.getToGateOutDate() != null) {
+            throw new IllegalArgumentException("TO_GATE_OUT_DATE is already set for GATE_IN_ID: " + gateInId);
+        }
+        if (!isInStatusY(existing.getInStatus())) {
+            throw new IllegalArgumentException("IN_STATUS must be Y before TO gate-out");
+        }
+        if (entry.getTO_BRANCH_ID() != null && existing.getToBranchId() != null
+                && !entry.getTO_BRANCH_ID().equals(existing.getToBranchId())) {
+            throw new IllegalArgumentException("TO_BRANCH_ID does not match gate record");
+        }
+
+        Date toGateOutDate = parseGateDate(entry.getTO_GATE_OUT_DATE());
+        if (toGateOutDate == null) {
+            throw new IllegalArgumentException("Invalid TO_GATE_OUT_DATE format");
+        }
+        Date toFarmUpdatedDate = parseGateDate(entry.getTO_FARM_UPDATED_DATE());
+        if (toFarmUpdatedDate == null) {
+            toFarmUpdatedDate = new Date();
+        }
+        String toFarmUpdatedBy = entry.getTO_FARM_UPDATED_BY();
+        if (toFarmUpdatedBy == null || toFarmUpdatedBy.isBlank()) {
+            toFarmUpdatedBy = entry.getTO_FARM_CREATED_BY();
+        }
+
+        int updatedRows = updateToGateOutDateNative(gateInId, toGateOutDate, toFarmUpdatedBy, toFarmUpdatedDate);
+        System.out.println("saveToGateOutDetails native updatedRows=" + updatedRows + " GATE_IN_ID=" + gateInId);
+
+        if (updatedRows == 0) {
+            existing.setToGateOutDate(toGateOutDate);
+            existing.setToFarmUpdatedBy(toFarmUpdatedBy);
+            existing.setToFarmUpdatedDate(toFarmUpdatedDate);
+            breederVehicleGateInOutRepository.saveAndFlush(existing);
+            System.out.println("saveToGateOutDetails JPA fallback GATE_IN_ID=" + gateInId);
+        }
+
+        entityManager.flush();
+        entityManager.clear();
+        SugMaiBreederVehicleGateinout saved = breederVehicleGateInOutRepository.findById(gateInId)
+                .orElseThrow(() -> new IllegalArgumentException("Gate in record not found after update"));
+
+        try {
+            if (imageFile != null && !imageFile.isEmpty()) {
+                for (MultipartFile data1 : imageFile) {
+                    if (data1 != null && !data1.isEmpty()) {
+                        Long branchId = entry.getTO_BRANCH_ID() != null ? entry.getTO_BRANCH_ID() : saved.getToBranchId();
+                        fileStorageService.saveImage(data1,
+                                entry.getVEHICLE_NO() != null ? entry.getVEHICLE_NO() : saved.getVehicleNo(),
+                                branchId != null ? branchId : 0L, FileStorageCategory.GATE_IN_OUT);
+                    }
+                }
+            }
+        } catch (IOException | IllegalArgumentException ex) {
+            System.out.println("Error in saveToGateOutDetails image: " + ex.getMessage());
+        }
+        return mapToVehicleGateInOutDto(saved);
+    }
+
+    private boolean isInStatusY(String inStatus) {
+        return inStatus != null && "Y".equalsIgnoreCase(inStatus.trim());
+    }
+
+    private int updateToGateOutDateNative(
+            Long gateInId,
+            Date toGateOutDate,
+            String toFarmUpdatedBy,
+            Date toFarmUpdatedDate) {
+        return entityManager.createNativeQuery("""
+                        UPDATE SUG.SUG_MAI_BREEDER_VEHICLE_GATEINOUT
+                           SET TO_GATE_OUT_DATE = :toGateOutDate,
+                               TO_FARM_UPDATED_BY = :toFarmUpdatedBy,
+                               TO_FARM_UPDATED_DATE = :toFarmUpdatedDate
+                         WHERE GATE_IN_ID = :gateInId
+                        """)
+                .setParameter("toGateOutDate", new java.sql.Timestamp(toGateOutDate.getTime()))
+                .setParameter("toFarmUpdatedBy", toFarmUpdatedBy)
+                .setParameter("toFarmUpdatedDate", new java.sql.Timestamp(toFarmUpdatedDate.getTime()))
+                .setParameter("gateInId", gateInId)
+                .executeUpdate();
+    }
+
+    private Long resolveBranchIdFromRequest(BranchRequest branchRequest) {
+        if (branchRequest.getBranchID() != null && !branchRequest.getBranchID().isBlank()) {
+            return Long.valueOf(branchRequest.getBranchID().trim());
+        }
+        return null;
+    }
+
+    @Override
     public ArrayList<VehicleGateInOutDto> getVehicleGateInOutDetails(VehicleGateInOutDto entry) {
         ArrayList<VehicleGateInOutDto> result = new ArrayList<>();
         try {
             if (entry.getGATE_IN_ID() != null) {
-                BreederVehicleGateInOut record = breederVehicleGateInOutRepository.findById(entry.getGATE_IN_ID()).orElse(null);
+                SugMaiBreederVehicleGateinout record = breederVehicleGateInOutRepository.findById(entry.getGATE_IN_ID()).orElse(null);
                 if (record != null) {
                     result.add(mapToVehicleGateInOutDto(record));
                 }
                 return result;
             }
-            if (entry.getBRANCH_ID() != null) {
-                List<BreederVehicleGateInOut> records = breederVehicleGateInOutRepository.findByBranchIdOrderByGateInDateDesc(entry.getBRANCH_ID());
-                for (BreederVehicleGateInOut record : records) {
+            Long fromBranchId = resolveFromBranchId(entry);
+            if (fromBranchId != null) {
+                List<SugMaiBreederVehicleGateinout> records = breederVehicleGateInOutRepository.findByFromBranchIdOrderByFromGateInDateDesc(fromBranchId);
+                for (SugMaiBreederVehicleGateinout record : records) {
+                    result.add(mapToVehicleGateInOutDto(record));
+                }
+            } else if (entry.getTO_BRANCH_ID() != null) {
+                List<SugMaiBreederVehicleGateinout> records = breederVehicleGateInOutRepository.findByToBranchIdOrderByToGateInDateDesc(entry.getTO_BRANCH_ID());
+                for (SugMaiBreederVehicleGateinout record : records) {
                     result.add(mapToVehicleGateInOutDto(record));
                 }
             }
@@ -995,44 +1252,24 @@ public class TransferServiceImpl implements TransferService{
             if (entry.getGATE_IN_ID() == null) {
                 return "GATE_IN_ID is required";
             }
-            BreederVehicleGateInOut gateInOut = breederVehicleGateInOutRepository.findById(entry.getGATE_IN_ID()).orElse(null);
+            SugMaiBreederVehicleGateinout gateInOut = breederVehicleGateInOutRepository.findById(entry.getGATE_IN_ID()).orElse(null);
             if (gateInOut == null) {
                 return "Gate in record not found";
             }
-            if (entry.getBRANCH_ID() != null) {
-                gateInOut.setBranchId(entry.getBRANCH_ID());
-            }
-            if (entry.getVEHICLE_NO() != null && !entry.getVEHICLE_NO().isBlank()) {
-                gateInOut.setVehicleNo(entry.getVEHICLE_NO());
-            }
-            if (entry.getDRIVER_NAME() != null) {
-                gateInOut.setDriverName(entry.getDRIVER_NAME());
-            }
-            if (entry.getDRIVER_MOBILE_NO() != null) {
-                gateInOut.setDriverMobileNo(entry.getDRIVER_MOBILE_NO());
-            }
-            if (entry.getPURPOSE() != null) {
-                gateInOut.setPurpose(entry.getPURPOSE());
-            }
-            Date gateInDate = parseGateDate(entry.getGATE_IN_DATE());
-            if (gateInDate != null) {
-                gateInOut.setGateInDate(gateInDate);
-            }
-            Date gateOutDate = parseGateDate(entry.getGATE_OUT_DATE());
-            if (gateOutDate != null) {
-                gateInOut.setGateOutDate(gateOutDate);
-            }
-            gateInOut.setUpdatedBy(entry.getUPDATED_BY());
-            gateInOut.setUpdatedDate(new Date());
+            applyEditVehicleGateInOutFields(gateInOut, entry);
             breederVehicleGateInOutRepository.save(gateInOut);
 
+        } catch (IllegalArgumentException e) {
+            return e.getMessage();
         } catch (Exception e) {
             System.out.println("Error in editVehicleGateInOutDetails: " + e.getMessage());
+            return e.getMessage();
         }
         try {String mortalityImage = null;
             if (imageFile != null && !imageFile.isEmpty()) {
                 for (MultipartFile data1 : imageFile) {
-                    mortalityImage = fileStorageService.saveImage(data1, entry.getVEHICLE_NO(), Long.valueOf(entry.getBRANCH_ID()), FileStorageCategory.GATE_IN_OUT);
+                    Long branchId = resolveFromBranchId(entry);
+                    mortalityImage = fileStorageService.saveImage(data1, entry.getVEHICLE_NO(), branchId != null ? branchId : 0L, FileStorageCategory.GATE_IN_OUT);
                     /*DailyEntryLines dailyEntryLines = DailyEntryLines.builder()
                             .transId(saveResult.getTransId())
                             .hdrType("MORTALITY")
@@ -1052,32 +1289,249 @@ public class TransferServiceImpl implements TransferService{
         return "200";
     }
 
-    private VehicleGateInOutDto mapToVehicleGateInOutDto(BreederVehicleGateInOut record) {
+    private boolean isTransferIn(String transferType) {
+        return transferType != null && "IN".equalsIgnoreCase(transferType.trim());
+    }
+
+    /**
+     * transfer_type IN: planId/pid = GATE_IN_ID → set IN_STATUS = Y on receiving transfer post.
+     */
+    private void updateVehicleGateInOutInStatusForTransIn(SUGMAIGPPSTRANS_HDRDto farmDto) {
+        String planId = resolvePidForTransOut(farmDto);
+        if (planId == null || planId.isBlank()) {
+            System.out.println("planId/pid missing in saveTransOut (transfer IN) for IN_STATUS update");
+            return;
+        }
+        try {
+            Long gateInId = parsePayloadId(planId);
+            int updatedRows = entityManager.createNativeQuery("""
+                            UPDATE SUG.SUG_MAI_BREEDER_VEHICLE_GATEINOUT
+                               SET IN_STATUS = 'Y'
+                             WHERE GATE_IN_ID = :gateInId
+                            """)
+                    .setParameter("gateInId", gateInId)
+                    .executeUpdate();
+            if (updatedRows == 0) {
+                breederVehicleGateInOutRepository.findById(gateInId).ifPresent(gateRow -> {
+                    gateRow.setInStatus("Y");
+                    breederVehicleGateInOutRepository.saveAndFlush(gateRow);
+                });
+            }
+            System.out.println("Gate IN_STATUS=Y GATE_IN_ID=" + gateInId + " updatedRows=" + updatedRows);
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid planId/pid for IN_STATUS update: " + planId);
+        } catch (Exception e) {
+            System.out.println("Error in updateVehicleGateInOutInStatusForTransIn: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * pid = PLAN_DTL_ID. Gate row: GATE_IN_ID = pid and FROM_GATE_OUT_DATE is null → set TO_BRANCH_ID from to_farm_id.
+     */
+    private void updateVehicleGateInOutForTransOut(SUGMAIGPPSTRANS_HDRDto farmDto) {
+        String pid = resolvePidForTransOut(farmDto);
+        if (pid == null || pid.isBlank()) {
+            System.out.println("pid (plan_dtl_id) missing in saveTransOut payload for gate update");
+            return;
+        }
+        Long toBranchId = resolveToBranchIdForTransOut(farmDto);
+        if (toBranchId == null) {
+            System.out.println("to_farm_id missing in saveTransOut payload for gate TO_BRANCH_ID update");
+            return;
+        }
+        try {
+            Long gateInId = parsePayloadId(pid);
+            SugMaiBreederVehicleGateinout gateInOut = breederVehicleGateInOutRepository
+                    .findByGateInIdAndFromGateOutDateIsNull(gateInId)
+                    .orElse(null);
+            if (gateInOut == null) {
+                System.out.println("No open gate row (FROM_GATE_OUT_DATE null) for GATE_IN_ID=PLAN_DTL_ID: " + gateInId);
+                return;
+            }
+            gateInOut.setToBranchId(toBranchId);
+            breederVehicleGateInOutRepository.saveAndFlush(gateInOut);
+            System.out.println("Gate update: GATE_IN_ID=" + gateInId + " TO_BRANCH_ID=" + toBranchId);
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid pid for gate update: " + pid);
+        } catch (Exception e) {
+            System.out.println("Error in updateVehicleGateInOutForTransOut: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void applyPlanDtlIdFromPid(SUGMAIGPPSTRANS_HDRDto farmDto, SugMaiGppsTransHdr header) {
+        String pid = resolvePidForTransOut(farmDto);
+        if (pid == null || pid.isBlank()) {
+            System.out.println("pid missing in saveTransOut payload for PLAN_DTL_ID");
+            return;
+        }
+        try {
+            Long planDtlId = parsePayloadId(pid);
+            header.setPLAN_DTL_ID(planDtlId);
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid pid for PLAN_DTL_ID: " + pid);
+        }
+    }
+
+    private String resolvePidForTransOut(SUGMAIGPPSTRANS_HDRDto farmDto) {
+        if (farmDto.getPid() != null && !farmDto.getPid().isBlank()) {
+            return farmDto.getPid().trim();
+        }
+        return null;
+    }
+
+    private Long parsePayloadId(String idValue) {
+        return new BigDecimal(idValue.trim()).longValue();
+    }
+
+    private Date parseTransferTxnDate(String txnDate, String txnTime) {
+        if (txnDate == null || txnDate.isBlank()) {
+            return null;
+        }
+        String datePart = txnDate.trim();
+        boolean hasTime = txnTime != null && !txnTime.isBlank();
+        String valueToParse = hasTime ? datePart + " " + txnTime.trim() : datePart;
+        String[] patterns = hasTime
+                ? new String[]{
+                "dd-MM-yyyy hh:mm a",
+                "dd-MM-yyyy h:mm a",
+                "dd-MM-yyyy HH:mm",
+                "dd-MMM-yyyy hh:mm a",
+                "dd-MMM-yyyy HH:mm:ss",
+                "dd/MM/yyyy hh:mm a"
+        }
+                : new String[]{
+                "dd-MM-yyyy",
+                "dd-MMM-yyyy",
+                "dd/MM/yyyy",
+                "yyyy-MM-dd"
+        };
+        for (String pattern : patterns) {
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat(pattern, Locale.ENGLISH);
+                sdf.setLenient(false);
+                return sdf.parse(valueToParse);
+            } catch (ParseException ignored) {
+            }
+        }
+        if (hasTime) {
+            return parseTransferTxnDate(datePart, null);
+        }
+        return null;
+    }
+
+    private Long resolveToBranchIdForTransOut(SUGMAIGPPSTRANS_HDRDto farmDto) {
+        if (farmDto.getTo_branch_id() != null) {
+            return farmDto.getTo_branch_id().longValue();
+        }
+        if (farmDto.getTo_farm_id() != null) {
+            return farmDto.getTo_farm_id().longValue();
+        }
+        if (farmDto.getDetails() != null) {
+            for (SUGMAIGPPSTRANS_HDRDto.SugMaiGppsTrans_DtlDto detail : farmDto.getDetails()) {
+                if (detail.getTo_farm_id() != null) {
+                    return detail.getTo_farm_id().longValue();
+                }
+            }
+        }
+        return null;
+    }
+
+    private Long resolveFromBranchId(VehicleGateInOutDto entry) {
+        return entry.getFROM_BRANCH_ID();
+    }
+
+    private VehicleGateInOutDto mapToVehicleGateInOutDto(SugMaiBreederVehicleGateinout record) {
         VehicleGateInOutDto dto = new VehicleGateInOutDto();
         dto.setGATE_IN_ID(record.getGateInId());
-        dto.setBRANCH_ID(record.getBranchId());
+        dto.setFROM_BRANCH_ID(record.getFromBranchId());
         dto.setVEHICLE_NO(record.getVehicleNo());
         dto.setDRIVER_NAME(record.getDriverName());
         dto.setDRIVER_MOBILE_NO(record.getDriverMobileNo());
         dto.setPURPOSE(record.getPurpose());
-        dto.setGATE_IN_DATE(formatDate(record.getGateInDate()));
-        dto.setGATE_OUT_DATE(formatDate(record.getGateOutDate()));
-        dto.setGATE_IN_IMAGE(record.getGateInImage());
-        dto.setGATE_OUT_IMAGE(record.getGateOutImage());
-        dto.setCREATED_BY(record.getCreatedBy());
-        dto.setCREATED_DATE(formatDate(record.getCreatedDate()));
-        dto.setUPDATED_BY(record.getUpdatedBy());
-        dto.setUPDATED_DATE(formatDate(record.getUpdatedDate()));
+        dto.setFROM_GATE_IN_DATE(formatDate(record.getFromGateInDate()));
+        dto.setFROM_GATE_OUT_DATE(formatDate(record.getFromGateOutDate()));
+        dto.setFROM_CREATED_BY(record.getFromCreatedBy());
+        dto.setFROM_CREATED_DATE(formatDate(record.getFromCreatedDate()));
+        dto.setFROM_UPDATED_BY(record.getFromUpdatedBy());
+        dto.setFROM_UPDATED_DATE(formatDate(record.getFromUpdatedDate()));
+        dto.setTO_GATE_IN_DATE(formatDate(record.getToGateInDate()));
+        dto.setTO_GATE_OUT_DATE(formatDate(record.getToGateOutDate()));
+        dto.setTO_BRANCH_ID(record.getToBranchId());
+        dto.setTO_FARM_CREATED_BY(record.getToFarmCreatedBy());
+        dto.setTO_FARM_CREATED_DATE(formatDate(record.getToFarmCreatedDate()));
+        dto.setTO_FARM_UPDATED_BY(record.getToFarmUpdatedBy());
+        dto.setTO_FARM_UPDATED_DATE(formatDate(record.getToFarmUpdatedDate()));
+        dto.setSHIPMENT_NO(record.getShipmentNo());
+        dto.setORDER_NO(record.getOrderNo());
+        dto.setIN_STATUS(record.getInStatus());
         return dto;
+    }
+
+    private void applyEditVehicleGateInOutFields(SugMaiBreederVehicleGateinout gateInOut, VehicleGateInOutDto entry) {
+        if (entry.getVEHICLE_NO() != null && !entry.getVEHICLE_NO().isBlank()) {
+            gateInOut.setVehicleNo(entry.getVEHICLE_NO());
+        }
+        if (entry.getDRIVER_NAME() != null) {
+            gateInOut.setDriverName(entry.getDRIVER_NAME());
+        }
+        if (entry.getDRIVER_MOBILE_NO() != null) {
+            gateInOut.setDriverMobileNo(entry.getDRIVER_MOBILE_NO());
+        }
+        if (entry.getPURPOSE() != null) {
+            gateInOut.setPurpose(entry.getPURPOSE());
+        }
+        if (entry.getFROM_GATE_IN_DATE() != null && !entry.getFROM_GATE_IN_DATE().isBlank()) {
+            Date fromGateInDate = parseGateDate(entry.getFROM_GATE_IN_DATE());
+            if (fromGateInDate == null) {
+                throw new IllegalArgumentException("Invalid GATE_IN_DATE / FROM_GATE_IN_DATE format");
+            }
+            gateInOut.setFromGateInDate(fromGateInDate);
+        }
+        if (entry.getFROM_GATE_OUT_DATE() != null && !entry.getFROM_GATE_OUT_DATE().isBlank()) {
+            Date fromGateOutDate = parseGateDate(entry.getFROM_GATE_OUT_DATE());
+            if (fromGateOutDate == null) {
+                throw new IllegalArgumentException("Invalid GATE_OUT_DATE / FROM_GATE_OUT_DATE format");
+            }
+            gateInOut.setFromGateOutDate(fromGateOutDate);
+        }
+        if (entry.getFROM_UPDATED_BY() != null) {
+            gateInOut.setFromUpdatedBy(entry.getFROM_UPDATED_BY());
+        }
+        gateInOut.setFromUpdatedDate(new Date());
     }
 
     private Date parseGateDate(String dateValue) {
         if (dateValue == null || dateValue.isBlank()) {
             return null;
         }
-        Date parsedDate = getTxnDateString(dateValue, fromdateFormat);
+        String trimmed = dateValue.trim();
+        String[] dateTimePatterns = {
+                fromdateFormat,
+                "dd-MMM-yyyy HH:mm:ss",
+                "dd-MMM-yyyy HH:mm",
+                "dd-MM-yyyy HH:mm:ss",
+                "dd-MM-yyyy HH:mm",
+                "dd-MMM-yyyy hh:mm a",
+                "dd-MM-yyyy hh:mm a",
+                "yyyy-MM-dd HH:mm:ss",
+                "yyyy-MM-dd'T'HH:mm:ss"
+        };
+        for (String pattern : dateTimePatterns) {
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat(pattern, Locale.ENGLISH);
+                sdf.setLenient(false);
+                return sdf.parse(trimmed);
+            } catch (ParseException ignored) {
+            }
+        }
+        Date parsedDate = parseTransferTxnDate(trimmed, null);
         if (parsedDate == null) {
-            parsedDate = getTxnDateString(dateValue, fromdateFormat1);
+            parsedDate = getTxnDateString(trimmed, fromdateFormat);
+        }
+        if (parsedDate == null) {
+            parsedDate = getTxnDateString(trimmed, fromdateFormat1);
         }
         return parsedDate;
     }

@@ -256,6 +256,171 @@ public class TransferController {
         return responseDto;
     }
 
+    @PostMapping("/getReceivingFarmGateInDetails")
+    public ResponseDto getReceivingFarmGateInDetails(@RequestBody BranchRequest branchRequest) {
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(transferService.getReceivingFarmGateInDetails(branchRequest));
+        return responseDto;
+    }
+
+    @PostMapping("/getToGateOutDetails")
+    public ResponseDto getToGateOutDetails(@RequestBody BranchRequest branchRequest) {
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(transferService.getToGateOutDetails(branchRequest));
+        return responseDto;
+    }
+
+    @PostMapping(value = "/saveToGateInDetails", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseDto saveToGateInDetailsJson(@RequestBody VehicleGateInOutDto entry) {
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        try {
+            responseDto.setResult(transferService.saveToGateInDetails(entry, null));
+        } catch (IllegalArgumentException ex) {
+            responseDto.setMessage(ex.getMessage());
+            responseDto.setStatusCode(400);
+            responseDto.setStatus("Failed");
+        } catch (RuntimeException ex) {
+            responseDto.setMessage(ex.getMessage());
+            responseDto.setStatusCode(500);
+            responseDto.setStatus("Failed");
+        }
+        return responseDto;
+    }
+
+    @PostMapping(value = "/saveToGateInDetails", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseDto saveToGateInDetails(@RequestParam("entryRequest") String branchRequestJson,
+                                           @RequestParam(value = "image", required = false) List<MultipartFile> imageFile) {
+        VehicleGateInOutDto entry;
+        try {
+            entry = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(branchRequestJson, VehicleGateInOutDto.class);
+        } catch (JsonProcessingException e) {
+            System.out.println("Error in parsing " + e.getMessage());
+            throw new RuntimeException(e);
+        }
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        try {
+            responseDto.setResult(transferService.saveToGateInDetails(entry, imageFile));
+        } catch (IllegalArgumentException ex) {
+            responseDto.setMessage(ex.getMessage());
+            responseDto.setStatusCode(400);
+            responseDto.setStatus("Failed");
+        }
+        return responseDto;
+    }
+
+    @PostMapping(value = "/saveToGateOutDetails", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseDto saveToGateOutDetailsJson(@RequestBody VehicleGateInOutDto entry) {
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        try {
+            responseDto.setResult(transferService.saveToGateOutDetails(entry, null));
+        } catch (IllegalArgumentException ex) {
+            responseDto.setMessage(ex.getMessage());
+            responseDto.setStatusCode(400);
+            responseDto.setStatus("Failed");
+        } catch (RuntimeException ex) {
+            responseDto.setMessage(ex.getMessage());
+            responseDto.setStatusCode(500);
+            responseDto.setStatus("Failed");
+        }
+        return responseDto;
+    }
+
+    @PostMapping(value = "/saveToGateOutDetails", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseDto saveToGateOutDetails(@RequestParam("entryRequest") String branchRequestJson,
+                                            @RequestParam(value = "image", required = false) List<MultipartFile> imageFile) {
+        VehicleGateInOutDto entry;
+        try {
+            entry = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(branchRequestJson, VehicleGateInOutDto.class);
+        } catch (JsonProcessingException e) {
+            System.out.println("Error in parsing " + e.getMessage());
+            throw new RuntimeException(e);
+        }
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        try {
+            responseDto.setResult(transferService.saveToGateOutDetails(entry, imageFile));
+        } catch (IllegalArgumentException ex) {
+            responseDto.setMessage(ex.getMessage());
+            responseDto.setStatusCode(400);
+            responseDto.setStatus("Failed");
+        }
+        return responseDto;
+    }
+
+    @PostMapping(value = "/saveReceivingFarmGateInDetails", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseDto saveReceivingFarmGateInDetailsJson(@RequestBody VehicleGateInOutDto entry) {
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        try {
+            responseDto.setResult(transferService.saveReceivingFarmGateInDetails(entry, null));
+        } catch (IllegalArgumentException ex) {
+            responseDto.setMessage(ex.getMessage());
+            responseDto.setStatusCode(400);
+            responseDto.setStatus("Failed");
+        } catch (RuntimeException ex) {
+            responseDto.setMessage(ex.getMessage());
+            responseDto.setStatusCode(500);
+            responseDto.setStatus("Failed");
+        }
+        return responseDto;
+    }
+
+    @PostMapping(value = "/saveReceivingFarmGateInDetails", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseDto saveReceivingFarmGateInDetails(@RequestParam("entryRequest") String branchRequestJson,
+                                                      @RequestParam(value = "image", required = false) List<MultipartFile> imageFile) {
+        VehicleGateInOutDto entry;
+        try {
+            entry = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(branchRequestJson, VehicleGateInOutDto.class);
+        } catch (JsonProcessingException e) {
+            System.out.println("Error in parsing " + e.getMessage());
+            throw new RuntimeException(e);
+        }
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        try {
+            responseDto.setResult(transferService.saveReceivingFarmGateInDetails(entry, imageFile));
+        } catch (IllegalArgumentException ex) {
+            responseDto.setMessage(ex.getMessage());
+            responseDto.setStatusCode(400);
+            responseDto.setStatus("Failed");
+        }
+        return responseDto;
+    }
+
+    @PostMapping(value = "/saveManualGateInDetails", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseDto saveManualGateInDetailsJson(@RequestBody VehicleGateInOutDto entry) {
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("Success");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(transferService.saveManualGateInDetails(entry, null));
+        return responseDto;
+    }
+
     @PostMapping(value = "/saveManualGateInDetails", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseDto saveManualGateInDetails(@RequestParam("entryRequest") String branchRequestJson, @RequestParam(value = "image", required = false) List<MultipartFile> imageFile) {
         VehicleGateInOutDto entry = null;

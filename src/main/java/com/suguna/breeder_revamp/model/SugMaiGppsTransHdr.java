@@ -38,5 +38,7 @@ public class SugMaiGppsTransHdr {
     BigDecimal TRAY_NOS;
     BigDecimal BOX_NOS;
     String PACK_MATERIAL;
-    long PLAN_DTL_ID;
+
+    @Column(name = "PLAN_DTL_ID")
+    Long PLAN_DTL_ID;
 }

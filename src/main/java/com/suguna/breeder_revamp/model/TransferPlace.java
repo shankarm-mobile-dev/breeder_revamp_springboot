@@ -210,6 +210,10 @@ public class TransferPlace {
         @JsonProperty("isCommitted")
         String isCommitted;
 
+        @Column(name = "plan_id", type = String.class)
+        @JsonProperty("planId")
+        String planId;
+
         @JsonProperty("transferInDetails")
         ArrayList<TransferInDetails> transferInDetails;
     }

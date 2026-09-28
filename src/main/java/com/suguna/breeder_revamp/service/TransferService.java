@@ -45,13 +45,25 @@ public interface TransferService {
 
     String changeTransPlan(TransferPlanDto entry);
 
-    String saveManualGateInDetails(VehicleGateInOutDto entry, List<MultipartFile> imageFile);
+    VehicleGateInOutDto saveManualGateInDetails(VehicleGateInOutDto entry, List<MultipartFile> imageFile);
 
     String saveManualGateOutDetails(VehicleGateInOutDto entry, List<MultipartFile> imageFile);
 
     ArrayList<VehicleGateInOutDto> getManualGateInDetails(BranchRequest branchRequest);
 
     ArrayList<VehicleGateInOutDto> getManualGateOutDetails(BranchRequest branchRequest);
+
+    ArrayList<VehicleGateInOutDto> getReceivingFarmGateInDetails(BranchRequest branchRequest);
+
+    ArrayList<VehicleGateInOutDto> getToGateOutDetails(BranchRequest branchRequest);
+
+    /** Receiving farm: update TO_GATE_IN_DATE only (use this, not editVehicleGateInOutDetails). */
+    VehicleGateInOutDto saveToGateInDetails(VehicleGateInOutDto entry, List<MultipartFile> imageFile);
+
+    /** Receiving farm: update TO_GATE_OUT_DATE only. */
+    VehicleGateInOutDto saveToGateOutDetails(VehicleGateInOutDto entry, List<MultipartFile> imageFile);
+
+    VehicleGateInOutDto saveReceivingFarmGateInDetails(VehicleGateInOutDto entry, List<MultipartFile> imageFile);
 
     ArrayList<VehicleGateInOutDto> getVehicleGateInOutDetails(VehicleGateInOutDto entry);
 
