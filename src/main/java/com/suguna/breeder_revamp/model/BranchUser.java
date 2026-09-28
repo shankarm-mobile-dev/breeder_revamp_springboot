@@ -222,6 +222,12 @@ public class BranchUser {
             @Column(name = "COMPLETED_STATUS", type = String.class)
             @JsonProperty("completedStatus")
             String completedStatus;
+           @Column(name = "DAYCLOSE_SHED_STATUS", type = String.class)
+           @JsonProperty("dayCloseShedStatus")
+           String dayCloseShedStatus;
+           @Column(name = "DAYCLOSE_FLOCK_STATUS", type = String.class)
+           @JsonProperty("dayCloseFlockStatus")
+           String dayCloseFlockStatus;
         }
 
     @Getter
@@ -1261,6 +1267,10 @@ public class BranchUser {
         @Column(name = "STATUS", type = String.class)
         @JsonProperty("status")
         String status;
+
+        @Column(name = "FLOCK_STATUS", type = String.class)
+        @JsonProperty("flockStatus")
+        String flockStatus;
     }
     @Getter
     @Setter

@@ -12,4 +12,9 @@ public interface SugMaiGppsItemAllocationRepositories extends JpaRepository<SugM
     @Modifying
     @Transactional
     int updateentry(@Param("trans_id") String trans_id);
+
+    @Query(value = "update SUG_MAI_GPPS_ITEM_ALLOCATION a set a.allocate_status='Y' where a.FLOCK_ID = :flock_id and ITEM_TYPE = 'FEED' and allocate_status='N'", nativeQuery = true)
+    @Modifying
+    @Transactional
+    int updatefeedallocationentry(@Param("flock_id") String flock_id);
 }

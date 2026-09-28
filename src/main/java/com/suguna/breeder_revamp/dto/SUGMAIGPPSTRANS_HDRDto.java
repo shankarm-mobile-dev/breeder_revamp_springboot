@@ -151,7 +151,7 @@ public class SUGMAIGPPSTRANS_HDRDto {
         public BigDecimal from_batch_id;
 
         @JsonProperty("to_inventory_location_id")
-        public BigDecimal to_inventory_location_id;
+        public Long to_inventory_location_id;
 
         @JsonProperty("to_batch_id")
         public BigDecimal to_batch_id;

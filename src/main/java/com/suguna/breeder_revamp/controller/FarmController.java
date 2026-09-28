@@ -439,7 +439,29 @@ public class FarmController {
         responseDto.setStatus("Success");
         String response = "";
         // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
-        responseDto.setResult(farmService.saveCloseEntryDetails(branchRequest));
+        if (!farmService.get_pmlmortality_status(branchRequest.getEntryDate(),branchRequest.getFlockID(),branchRequest.getShedNo()).equalsIgnoreCase("N"))
+        {
+            responseDto.setMessage("Mortality PML Entry is not completed");
+            responseDto.setStatusCode(201);
+            responseDto.setStatus("Success");
+
+        }
+        else if (!farmService.get_eggdailynotcomplete_status(branchRequest.getEntryDate(),branchRequest.getFlockID(),branchRequest.getShedNo()).equalsIgnoreCase("N"))
+        {
+            responseDto.setMessage("Egg Collection By product not declared");
+            responseDto.setStatusCode(201);
+            responseDto.setStatus("Success");
+        }
+        else if (!farmService.get_hatcheggmant_status(branchRequest.getEntryDate(),branchRequest.getFlockID(),branchRequest.getShedNo()).equalsIgnoreCase("N"))
+        {
+            responseDto.setMessage("Hatch Egg Collection entry is not made");
+            responseDto.setStatusCode(201);
+            responseDto.setStatus("Success");
+        }
+        else
+        {
+            responseDto.setResult(farmService.saveCloseEntryDetails(branchRequest));
+        }
         //}
         return responseDto;
     }
@@ -696,16 +718,29 @@ public class FarmController {
         responseDto.setStatusCode(200);
         responseDto.setStatus("Success");
         String response = "";
-         if (farmService.get_pmlmortality_status(branchRequest.getEntryDate(),branchRequest.getFlockID(),branchRequest.getShedNo()).equalsIgnoreCase("N"))
+         /*if (!farmService.get_pmlmortality_status(branchRequest.getEntryDate(),branchRequest.getFlockID(),branchRequest.getShedNo()).equalsIgnoreCase("N"))
          {
-             responseDto.setResult(farmService.saveDayCloseConfirm(branchRequest));
+             responseDto.setMessage("Mortality PML Entry is not completed");
+             responseDto.setStatusCode(201);
+             responseDto.setStatus("Success");
+
          }
-         else
+        else if (!farmService.get_eggdailynotcomplete_status(branchRequest.getEntryDate(),branchRequest.getFlockID(),branchRequest.getShedNo()).equalsIgnoreCase("N"))
+        {
+            responseDto.setMessage("Egg Collection By product not declared");
+            responseDto.setStatusCode(201);
+            responseDto.setStatus("Success");
+        }
+         else if (!farmService.get_hatcheggmant_status(branchRequest.getEntryDate(),branchRequest.getFlockID(),branchRequest.getShedNo()).equalsIgnoreCase("N"))
          {
-             responseDto.setMessage("PML Entry is not completed");
+             responseDto.setMessage("Hatch Egg Collection entry is not made");
              responseDto.setStatusCode(201);
              responseDto.setStatus("Success");
          }
+         else
+         {*/
+             responseDto.setResult(farmService.saveDayCloseConfirm(branchRequest));
+        // }
         return responseDto;
     }
 }

@@ -15,27 +15,16 @@ import java.util.Date;
 @Table(name = "SUG_MAI_GPPS_CONSUMPTIONS", schema = "SUG")
 //@IdClass(SugMaiGppsConsumptionsID.class)
 public class SugMaiGppsConsumptions {
-
     String FARM_CODE;
-
     String FLOCK_ID;
-
     String SHED_CODE;
-
     Long BATCH_ID;
-
     String LINE_NO;
-
     String TXN_TYPE;
-
     Long ITEM_ID;
-
     String SEX;
-
     Date TXN_DATE;
-
     Long AGE;
-
     String GRADE;
     Long QTY;
     String UOM;
@@ -44,7 +33,6 @@ public class SugMaiGppsConsumptions {
     String STATUS;
     BigDecimal WEIGHT;
     String REMARK;
-
     String REASON;
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "id_seq_gpps_egg_weight")
