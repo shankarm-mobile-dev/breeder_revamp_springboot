@@ -40,6 +40,7 @@ public class BranchRequest<T> {
     String startDate;
     @JsonProperty("endDate")
     String endDate;
+
     @JsonProperty("preparedBy")
     String preparedBy;
     @JsonProperty("transDate")

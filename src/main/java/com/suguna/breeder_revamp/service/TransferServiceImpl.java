@@ -248,6 +248,7 @@ public class TransferServiceImpl implements TransferService{
                     sugmaigppstransHdrModels.setTO_FARM_ID(FarmDto.getTo_farm_id());
                     //sugmaigppstransHdrModels.setTXN_HEADER_ID(new BigDecimal(FarmDto.txn_header_id));
                     sugmaigppstransHdrModels.setTRANS_TYPE(FarmDto.getTransfer_type());
+
                     sugmaigppstransHdrModels.setTXN_DATE(getTxnDateString(FarmDto.getTxn_date(), fromdateFormat1));
                     sugmaigppstransHdrModels.setVEHICLE_NO(FarmDto.getVehicle_no());
                     sugmaigppstransHdrModels.setOUT_PASS_NO(FarmDto.getOut_pass_no());
@@ -315,7 +316,8 @@ public class TransferServiceImpl implements TransferService{
                             if(FarmDto1.getLocation_TYPE().equals("HATCHERY")) {
                                 sugMaiGppsTransDtlModels.setTO_INVENTORY_LOCATION_ID(Long.valueOf(get_locator_inv_id(String.valueOf(FarmDto1.getTo_farm_id()))));
                             }
-                            else {
+                            else
+                            {
                                 sugMaiGppsTransDtlModels.setTO_INVENTORY_LOCATION_ID(FarmDto1.getTo_inventory_location_id());
                             }
                             sugMaiGppsTransDtlModels.setUOM(FarmDto1.getUom());

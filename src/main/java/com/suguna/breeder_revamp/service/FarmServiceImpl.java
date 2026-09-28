@@ -27,7 +27,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
@@ -206,7 +205,7 @@ public class FarmServiceImpl implements FarmService {
                 }
                 try {
                     BranchUser.DailyEntryCompletedDetails standardDetailsArrayList = new BranchUser.DailyEntryCompletedDetails();
-                    standardDetailsArrayList=getDailyShedEntryDetails(branchID,shedDetails.getBatchId(),shedDetails.getFlockID());
+                    standardDetailsArrayList=getDailyShedEntryDetails(branchID,shedDetails.getBatchId(),shedDetails.getFlockID(),shedDetails.getShedNo());
                     shedDetails.setEggProductionAge(standardDetailsArrayList.getEgg_PRODUCTION_AGE());
                     shedDetails.setEntryDate(standardDetailsArrayList.getEntry_DATE());
                     shedDetails.setEntryAllowed(standardDetailsArrayList.getEntry_allowed());
@@ -1264,12 +1263,14 @@ public class FarmServiceImpl implements FarmService {
             storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
-            storedProcedureQuery.registerStoredProcedureParameter(4, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.registerStoredProcedureParameter(4, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(5, ArrayList.class, ParameterMode.REF_CURSOR);
             storedProcedureQuery.setParameter(1, branchRequest.getBranchID());
             storedProcedureQuery.setParameter(2, branchRequest.getFlockID());
             storedProcedureQuery.setParameter(3, branchRequest.getShedNo());
+            storedProcedureQuery.setParameter(4, branchRequest.getEntryDate());
             storedProcedureQuery.execute();
-            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(4);
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(5);
 
             while (resultSet.next()) {
                 BranchUser.FarmFlockDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.FarmFlockDetails.class);
@@ -2773,7 +2774,7 @@ public class FarmServiceImpl implements FarmService {
         }
         try {
             BranchUser.DailyEntryCompletedDetails details =
-                    getDailyShedEntryDetails(branchRequest.getBranchID(), branchRequest.getBatchID(), flockId);
+                    getDailyShedEntryDetails(branchRequest.getBranchID(), branchRequest.getBatchID(), flockId, shedCode);
             if (details.getEgg_PRODUCTION_AGE() != null && !details.getEgg_PRODUCTION_AGE().isEmpty()) {
                 return Long.parseLong(details.getEgg_PRODUCTION_AGE());
             }
@@ -3911,7 +3912,7 @@ public class FarmServiceImpl implements FarmService {
     }
 
 
-    public BranchUser.DailyEntryCompletedDetails getDailyShedEntryDetails(String branchID,String batchID,String flock) {
+    public BranchUser.DailyEntryCompletedDetails getDailyShedEntryDetails(String branchID, String batchID, String flock, String shedNo) {
         BranchUser.DailyEntryCompletedDetails standardDetailsArrayList = new BranchUser.DailyEntryCompletedDetails();
         String Standard="";
         try {
@@ -3919,12 +3920,14 @@ public class FarmServiceImpl implements FarmService {
             storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
-            storedProcedureQuery.registerStoredProcedureParameter(4, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.registerStoredProcedureParameter(4, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(5, ArrayList.class, ParameterMode.REF_CURSOR);
             storedProcedureQuery.setParameter(1, branchID);
             storedProcedureQuery.setParameter(2, batchID);
             storedProcedureQuery.setParameter(3, flock);
+            storedProcedureQuery.setParameter(4, shedNo);
             storedProcedureQuery.execute();
-            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(4);
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(5);
 
             while (resultSet.next()) {
                 BranchUser.DailyEntryCompletedDetails standardDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.DailyEntryCompletedDetails.class);
