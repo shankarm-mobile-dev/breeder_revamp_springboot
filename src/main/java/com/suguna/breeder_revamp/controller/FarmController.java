@@ -601,7 +601,7 @@ public class FarmController {
         responseDto.setMessage("");
         responseDto.setStatusCode(200);
         responseDto.setStatus("Success");
-        responseDto.setResult(farmService.getIfftApprovalHdrDetails(branchRequest.getUserCode()));
+        responseDto.setResult(farmService.getIfftApprovalHdrDetails(branchRequest.getBranchID()));
         return responseDto;
     }
 
@@ -743,4 +743,6 @@ public class FarmController {
         // }
         return responseDto;
     }
+
+
 }

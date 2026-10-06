@@ -26,7 +26,7 @@ public class SugMaiGppsConsumptions {
     Date TXN_DATE;
     Long AGE;
     String GRADE;
-    Long QTY;
+    BigDecimal QTY;
     String UOM;
     String CREATED_BY;
     Date CREATION_DATE;

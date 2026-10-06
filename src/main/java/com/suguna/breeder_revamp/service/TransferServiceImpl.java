@@ -237,7 +237,7 @@ public class TransferServiceImpl implements TransferService{
     @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public String saveTransOut(ArrayList<SUGMAIGPPSTRANS_HDRDto> entry) {
         String fromdateFormat = "DD-MM-YYYY hh:mm:ss";
-        //String fromdateFormat1 = "DD-MMM-YYYY";
+        String fromdateFormat1 = "dd-MM-yyyy";
         try {
             for (SUGMAIGPPSTRANS_HDRDto FarmDto : entry) {
                 String HDR = "0";//getSUGMAIGPPSTRANS_HDR(FarmDto.DEVICEID, FarmDto.txn_header_id, FarmDto.entry_creation_date);
@@ -250,6 +250,10 @@ public class TransferServiceImpl implements TransferService{
                     sugmaigppstransHdrModels.setTO_FARM_ID(FarmDto.getTo_farm_id());
                     //sugmaigppstransHdrModels.setTXN_HEADER_ID(new BigDecimal(FarmDto.txn_header_id));
                     sugmaigppstransHdrModels.setTRANS_TYPE(FarmDto.getTransfer_type());
+                    /*if(FarmDto.getTransfer_type().equals("IN"))
+                    {
+                        sugmaigppstransHdrModels.setTXN_HEADER_ID(Long.parseLong((FarmDto.txn_header_id)));
+                    }*/
                     sugmaigppstransHdrModels.setTXN_DATE(getTxnDateString(FarmDto.getTxn_date(), fromdateFormat1));
                     sugmaigppstransHdrModels.setVEHICLE_NO(FarmDto.getVehicle_no());
                     sugmaigppstransHdrModels.setOUT_PASS_NO(FarmDto.getOut_pass_no());
@@ -1589,5 +1593,50 @@ public class TransferServiceImpl implements TransferService{
         //  details.setGardeMstDetails(getgrademst(branchID));
         return shedDetailsArrayList;
     }
+    @Override
+    public String getTransOutPriceCheck(String fromId, String toId, String itemId, String transDate, String flockID) {
+        try {
+            if(itemId.equalsIgnoreCase("Female") || itemId.equalsIgnoreCase("Male") )
+            {
+                itemId=itemId.substring(0, 1);
+            }
+            Object result = entityManager
+                    .createNativeQuery("SELECT sug_mai_gpps_mob_pkg.gettransout_price_check(:fromId,:toId,:itemId,:transDate,:flockID) FROM dual")
+                    .setParameter("fromId", fromId)
+                    .setParameter("toId", toId)
+                    .setParameter("itemId", itemId)
+                    .setParameter("transDate", transDate)
+                    .setParameter("flockID", flockID)
+                    .getSingleResult();
+            return result != null ? result.toString() : "Error is Transfer Item1";
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Error is Transfer Item2";
+        }
+    }
 
+    @Override
+    public ArrayList<TransferPlace.OtherItemDetails> getOtherItemDetails(BranchRequest branchRequest) {
+        ArrayList<TransferPlace.OtherItemDetails> shedDetailsArrayList = new ArrayList<TransferPlace.OtherItemDetails>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getotheritem_transfer");
+
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchRequest.getBranchID());
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+
+            while (resultSet.next()) {
+                TransferPlace.OtherItemDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, TransferPlace.OtherItemDetails.class);
+
+                shedDetailsArrayList.add(shedDetails);
+            }
+        } catch (Exception e) {
+
+        }
+        //  details.setFarmFlockDetails(shedDetailsArrayList);
+        //  details.setGardeMstDetails(getgrademst(branchID));
+        return shedDetailsArrayList;
+    }
 }

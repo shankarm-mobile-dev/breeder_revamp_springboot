@@ -70,4 +70,8 @@ public interface TransferService {
     String editVehicleGateInOutDetails(VehicleGateInOutDto entry, List<MultipartFile> imageFile);
 
     ArrayList<FromFarmShedTransferDetailsDto> gettranfershedmaster(String branchID);
+
+    String getTransOutPriceCheck(String fromId, String toId, String itemId, String transDate, String flockID);
+
+    ArrayList<TransferPlace.OtherItemDetails> getOtherItemDetails(BranchRequest branchRequest);
 }

@@ -668,5 +668,48 @@ public class TransferPlace {
         @JsonProperty("qty")
         String qty;
     }
+    @Getter
+    @Setter
+    public static class OtherItemDetails {
+        @Column(name = "item_TYPE", type = String.class)
+        @JsonProperty("itemType")
+        String itemType;
+        @Column(name = "branch_ID", type = long.class)
+        @JsonProperty("organizationId")
+        long organizationId;
+        @Column(name = "subinventory_CODE", type = String.class)
+        @JsonProperty("subInventoryCode")
+        String subInventoryCode;
+        @Column(name = "inventory_ITEM_ID", type = long.class)
+        @JsonProperty("inventoryItemId")
+        long inventoryItemId;
+        @Column(name = "item_group", type = String.class)
+        @JsonProperty("itemGroup")
+        String itemGroup;
 
+        @Column(name = "item_CATEGORY", type = String.class)
+        @JsonProperty("itemCategory")
+        String itemCategory;
+        @Column(name = "inventory_ITEM_CODE", type = String.class)
+        @JsonProperty("itemCode")
+        String itemCode;
+        @Column(name = "description", type = String.class)
+        @JsonProperty("itemDescription")
+        String itemDescription;
+        @Column(name = "uom", type = String.class)
+        @JsonProperty("primaryUomCode")
+        String primaryUomCode;
+        @Column(name = "trans_QTY", type = String.class)
+        @JsonProperty("primaryTransactionQuantity")
+        String primaryTransactionQuantity;
+        @Column(name = "secondary_UOM_CODE", type = String.class)
+        @JsonProperty("secondaryUomCode")
+        String secondaryUomCode;
+        @Column(name = "secondary_TRANSACTION_QUANTITY", type = String.class)
+        @JsonProperty("secondaryTransactionQuantity")
+        String secondaryTransactionQuantity;
+        @Column(name = "AGE", type = long.class)
+        @JsonProperty("age")
+        long age;
+    }
 }

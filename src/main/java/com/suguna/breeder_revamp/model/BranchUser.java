@@ -426,6 +426,12 @@ public class BranchUser {
         @Column(name = "STATUS", type = String.class)
         @JsonProperty("status")
         String status;
+        @Column(name = "SIDE_NO", type = String.class)
+        @JsonProperty("sideNo")
+        String sideNo;
+        @Column(name = "LINE_NO", type = String.class)
+        @JsonProperty("lineNo")
+        String lineNo;
         @Column(name = "ROWID", type = String.class)
         @JsonProperty("rowID")
         String rowID;

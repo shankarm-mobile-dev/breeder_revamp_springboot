@@ -90,7 +90,8 @@ public class TransferController {
     }
 
     @PostMapping("/saveTransPlan")
-    public ResponseDto  saveTransPlan(@RequestBody TransferPlanDto entry) throws Exception{
+    public ResponseDto  saveTransPlan(@RequestBody TransferPlanDto entry) throws Exception
+    {
         ResponseDto responseDto = new ResponseDto();
         responseDto.setMessage("Success");
         responseDto.setStatusCode(200);
@@ -493,6 +494,27 @@ public class TransferController {
         responseDto.setStatusCode(200);
         responseDto.setStatus("Success");
         responseDto.setResult(transferService.gettranfershedmaster(branchRequest.getBranchID()));
+        return responseDto;
+    }
+    @PostMapping("/getTransOutPriceCheck")
+    public ResponseDto getTransOutPriceCheck(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(transferService.getTransOutPriceCheck(branchRequest.getFromId(),branchRequest.getToId(),branchRequest.getItemId(),branchRequest.getTransDate(),branchRequest.getFlockID()));
+        return responseDto;
+    }
+
+    @PostMapping("/getOtherItemDetails")
+    public ResponseDto getOtherItemDetails(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(transferService.getOtherItemDetails(branchRequest));
         return responseDto;
     }
 }
