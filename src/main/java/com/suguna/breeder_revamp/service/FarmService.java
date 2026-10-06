@@ -134,4 +134,6 @@ public interface FarmService {
     String get_eggdailynotcomplete_status(String date,String flockid,String shed);
 
     String get_hatcheggmant_status(String date,String flockid,String shed);
+
+    BranchUser.GetMortalityDetails getMortalityDetails(BranchRequest branchRequest);
 }

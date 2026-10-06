@@ -510,12 +510,14 @@ public class FarmServiceImpl implements FarmService {
             storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
-            storedProcedureQuery.registerStoredProcedureParameter(4, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.registerStoredProcedureParameter(4, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(5, ArrayList.class, ParameterMode.REF_CURSOR);
             storedProcedureQuery.setParameter(1, branchRequest.getBranchID());
             storedProcedureQuery.setParameter(2, branchRequest.getShedNo());
             storedProcedureQuery.setParameter(3, branchRequest.getFlockID());
+            storedProcedureQuery.setParameter(4, branchRequest.getEntryDate());
             storedProcedureQuery.execute();
-            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(4);
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(5);
 
             while (resultSet.next()) {
                 BranchUser.EggItemDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.EggItemDetails.class);
@@ -540,12 +542,14 @@ public class FarmServiceImpl implements FarmService {
             storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
-            storedProcedureQuery.registerStoredProcedureParameter(4, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.registerStoredProcedureParameter(4, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(5, ArrayList.class, ParameterMode.REF_CURSOR);
             storedProcedureQuery.setParameter(1, branchRequest.getBranchID());
             storedProcedureQuery.setParameter(2, branchRequest.getShedNo());
             storedProcedureQuery.setParameter(3, branchRequest.getFlockID());
+            storedProcedureQuery.setParameter(4, branchRequest.getEntryDate());
             storedProcedureQuery.execute();
-            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(4);
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(5);
 
             while (resultSet.next()) {
                 BranchUser.EggCollectionDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.EggCollectionDetails.class);
@@ -4486,4 +4490,115 @@ public class FarmServiceImpl implements FarmService {
             return "N";
         }
     }
+
+    private ArrayList<MortalitySavedBirdsDto> getMortalitySavedBirds(
+            String shedCode,
+            String txnDate) {
+
+        ArrayList<MortalitySavedBirdsDto> mortalitySavedBirdsDtoArrayList =
+                new ArrayList<>();
+        try {
+            StoredProcedureQuery storedProcedureQuery =
+                    entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getMortalityDetails");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, txnDate);
+            storedProcedureQuery.setParameter(2, shedCode);
+            storedProcedureQuery.execute();
+            ResultSet resultSet =
+                    (ResultSet) storedProcedureQuery.getOutputParameterValue(3);
+            while (resultSet.next()) {
+                MortalitySavedBirdsDto details =
+                        ResultSetMapper.mapResultSetToObject(
+                                resultSet,
+                                MortalitySavedBirdsDto.class
+                        );
+                mortalitySavedBirdsDtoArrayList.add(details);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return mortalitySavedBirdsDtoArrayList;
+    }
+
+    @Override
+    public BranchUser.GetMortalityDetails getMortalityDetails(BranchRequest branchRequest) {
+        BranchUser.GetMortalityDetails response =
+                new BranchUser.GetMortalityDetails();
+        try {
+// 1. Get shed-wise bird details
+            ArrayList<BranchUser.ShedWiseBirdsDetails> shedWiseBirdsDetails =
+                    getshedwise_birdsdtls(branchRequest);
+// 2. Get already saved mortality details
+            ArrayList<MortalitySavedBirdsDto> mortalitySavedBirdsDetails =
+                    getMortalitySavedBirds(
+                            branchRequest.getShedNo(),
+                            branchRequest.getEntryDate()
+                    );
+// 3. Set both into single response
+            response.setShedWiseBirdsDetails(shedWiseBirdsDetails);
+            response.setMortalityBirdsDetails(mortalitySavedBirdsDetails);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return response;
+    }
+
+//    @Override
+//    public ArrayList<BranchUser.GetMortalityDetails> getMortalityDetails(BranchRequest branchRequest) {
+//        ArrayList<BranchUser.ShedWiseFeedBirdsDetails> shedBirsDetailsArrayList = new ArrayList<BranchUser.ShedWiseFeedBirdsDetails>();
+//        ArrayList<BranchUser.ShedWiseFeedDetails> shedDetailsArrayList = new ArrayList<BranchUser.ShedWiseFeedDetails>();
+//        try {
+//            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getshedwise_feeddtls");
+//            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+//            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+//            storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
+//            storedProcedureQuery.registerStoredProcedureParameter(4, String.class, ParameterMode.IN);
+//            storedProcedureQuery.registerStoredProcedureParameter(5, ArrayList.class, ParameterMode.REF_CURSOR);
+//            storedProcedureQuery.setParameter(1, branchRequest.getBranchID());
+//            storedProcedureQuery.setParameter(2, branchRequest.getShedNo());
+//            storedProcedureQuery.setParameter(3, branchRequest.getFlockID());
+//            storedProcedureQuery.setParameter(4, branchRequest.getEntryDate());
+//            storedProcedureQuery.execute();
+//            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(5);
+//
+//            while (resultSet.next()) {
+//                BranchUser.ShedWiseFeedDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.ShedWiseFeedDetails.class);
+//
+//                shedDetailsArrayList.add(shedDetails);
+//            }
+//            // Use a Set to collect unique bird types
+//            Set<String> uniqueBirdTypes = new LinkedHashSet<>();
+//            for (BranchUser.ShedWiseFeedDetails b : shedDetailsArrayList) {
+//                uniqueBirdTypes.add(b.getBirdType());
+//            }
+//
+//            // Convert back to list if needed
+//            List<String> uniqueBirdList = new ArrayList<>(uniqueBirdTypes);
+//            for (String birdType : uniqueBirdList) {
+//                System.out.println("Bird Type: " + birdType);
+//                BranchUser.ShedWiseFeedBirdsDetails shedWiseFeedBirdsDetails = new BranchUser.ShedWiseFeedBirdsDetails();
+//                shedWiseFeedBirdsDetails.setBirdType(birdType);
+//                ArrayList<BranchUser.ShedWiseFeedDetails> shedDetailsArray = new ArrayList<BranchUser.ShedWiseFeedDetails>();
+//                for (BranchUser.ShedWiseFeedDetails b : shedDetailsArrayList) {
+//
+//                    if (b.getBirdType().equalsIgnoreCase(birdType)) {
+//                        shedDetailsArray.add(b);
+//
+//                    }
+//                }
+//                shedWiseFeedBirdsDetails.setFeedDetails(shedDetailsArray);
+//                shedWiseFeedBirdsDetails.setFeedEntryMadeDetails(getShedWiseFeedMadeDetails(branchRequest,shedWiseFeedBirdsDetails.getBirdType()));
+//                shedBirsDetailsArrayList.add(shedWiseFeedBirdsDetails);
+//
+//            }
+//
+//        } catch (Exception e) {
+//
+//        }
+//        return shedBirsDetailsArrayList;
+//    }
 }
