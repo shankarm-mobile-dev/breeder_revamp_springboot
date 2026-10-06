@@ -113,7 +113,14 @@ public class FarmController {
             }
         }
         else if(branchRequest.getActivityName().equalsIgnoreCase("MORTALITY")) {
-            responseDto.setResult(farmService.getshedwise_birdsdtls(branchRequest));
+//            BranchUser.ShedWiseBirdsDetails
+//            responseDto.setResult(farmService.getshedwise_birdsdtls(branchRequest));
+//
+//            ArrayList<BranchUser.GetMortalityDetails> details= (ArrayList<BranchUser.GetMortalityDetails>) responseDto.getResult();
+
+            BranchUser.GetMortalityDetails details =
+                    farmService.getMortalityDetails(branchRequest);
+            responseDto.setResult(details);
             responseDto.setMessage("Mortality Information Downloaded");
         }
         else if(branchRequest.getActivityName().equalsIgnoreCase("WEAK BIRD SEPARATION")) {

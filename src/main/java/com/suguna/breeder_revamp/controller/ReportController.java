@@ -11,6 +11,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+
 @Tag(name = "Report APIs", description = "New Reports")
 @RestController
 @RequestMapping("/api/reports")
@@ -33,6 +35,9 @@ public class ReportController {
 
     @Autowired
     BroodGrowRegisterServiceImpl broodGrowRegisterService;
+
+    @Autowired
+    FarmCardReportServiceImpl farmCardReportService;
 
     private ResponseEntity<ApiResponse<String>> buildResponse(String html, String message) {
 
@@ -149,6 +154,60 @@ public class ReportController {
 
         } catch (Exception e) {
             return buildError(e);
+        }
+    }
+
+    // 7. Farm Card Report (consumption day entries)
+    @Operation(summary = "Farm Card Report")
+    @PostMapping(value = "/farmCard")
+    public ResponseEntity<ApiResponse<ArrayList<FarmCardReportRowDto>>> getFarmCardReport(
+            @RequestBody FarmCardReportRequestDto request) {
+
+        try {
+            ArrayList<FarmCardReportRowDto> data = farmCardReportService.getFarmCardReport(request);
+
+            ApiResponse<ArrayList<FarmCardReportRowDto>> response = ApiResponse.<ArrayList<FarmCardReportRowDto>>builder()
+                    .status("SUCCESS")
+                    .statusCode(HttpStatus.OK.value())
+                    .message(data.isEmpty() ? "No data found" : "Farm card report generated")
+                    .data(data)
+                    .build();
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            ApiResponse<ArrayList<FarmCardReportRowDto>> response = ApiResponse.<ArrayList<FarmCardReportRowDto>>builder()
+                    .status("FAILED")
+                    .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                    .message(e.getMessage())
+                    .data(null)
+                    .build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    @PostMapping(value = "/getInOutDetails")
+    public ResponseEntity<ApiResponse<ArrayList<FramCardTransactionDetailsDto>>> getInOutDetails(
+            @RequestBody FarmCardReportRequestDto request) {
+
+        try {
+            ArrayList<FramCardTransactionDetailsDto> data = farmCardReportService.getInOutDetails(request);
+
+            ApiResponse<ArrayList<FramCardTransactionDetailsDto>> response = ApiResponse.<ArrayList<FramCardTransactionDetailsDto>>builder()
+                    .status("SUCCESS")
+                    .statusCode(HttpStatus.OK.value())
+                    .message(data.isEmpty() ? "No data found" : "Farm card report generated")
+                    .data(data)
+                    .build();
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            ApiResponse<ArrayList<FramCardTransactionDetailsDto>> response = ApiResponse.<ArrayList<FramCardTransactionDetailsDto>>builder()
+                    .status("FAILED")
+                    .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                    .message(e.getMessage())
+                    .data(null)
+                    .build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 }

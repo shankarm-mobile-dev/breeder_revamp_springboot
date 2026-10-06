@@ -1,6 +1,7 @@
 package com.suguna.breeder_revamp.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.suguna.breeder_revamp.dto.MortalitySavedBirdsDto;
 import com.suguna.breeder_revamp.utils.Column;
 import lombok.Getter;
 import lombok.Setter;
@@ -265,6 +266,15 @@ public class BranchUser {
         ArrayList<ShedWiseFeedDetails> feedDetails;
         @JsonProperty("feedEntryMadeDetails")
         ArrayList<ShedWiseFeedMadeDetails> feedEntryMadeDetails;
+    }
+
+    @Getter
+    @Setter
+    public static class GetMortalityDetails {
+        @JsonProperty("shedWiseBirdsDetails")
+        ArrayList<ShedWiseBirdsDetails> shedWiseBirdsDetails;
+        @JsonProperty("mortalityBirdsDetails")
+        ArrayList<MortalitySavedBirdsDto> mortalityBirdsDetails;
     }
     @Getter
     @Setter

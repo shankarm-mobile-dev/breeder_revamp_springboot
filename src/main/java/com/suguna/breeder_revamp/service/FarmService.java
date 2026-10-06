@@ -135,5 +135,5 @@ public interface FarmService {
 
     String get_hatcheggmant_status(String date,String flockid,String shed);
 
-
+    BranchUser.GetMortalityDetails getMortalityDetails(BranchRequest branchRequest);
 }
