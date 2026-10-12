@@ -154,7 +154,14 @@ public class FarmController {
             responseDto.setResult(farmService.saveObservationDetails(branchRequest));
         }
         else if(branchRequest.getActivityName().equalsIgnoreCase("FEED")) {
-            responseDto.setResult(farmService.saveFeedDetails(branchRequest,imageFile));
+            try {
+                farmService.saveFeedDetails(branchRequest, imageFile);
+            } catch (IllegalArgumentException ex) {
+                responseDto.setMessage(ex.getMessage());
+                responseDto.setStatusCode(400);
+                responseDto.setStatus("Failed");
+                return responseDto;
+            }
         }
         else if(branchRequest.getActivityName().equalsIgnoreCase("MORTALITY")) {
             responseDto.setResult(farmService.saveMortalityDetails(branchRequest,imageFile));

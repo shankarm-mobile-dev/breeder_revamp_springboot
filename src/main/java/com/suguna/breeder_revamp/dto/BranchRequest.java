@@ -243,6 +243,8 @@ public class BranchRequest<T> {
         String maleQty;
         @JsonProperty("lineNo")
         String lineNo;
+        @JsonProperty("sideNo")
+        String sideNo;
 
     }
 

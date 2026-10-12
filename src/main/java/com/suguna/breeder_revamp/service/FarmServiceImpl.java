@@ -580,6 +580,7 @@ public class FarmServiceImpl implements FarmService {
             }
         }
         SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
+        validateFeedAgainstOnHandStock(branchRequest, data1);
         if (!data1.isEmpty()) {
             for (BranchRequest.SugFeedDetails sugFeedDetails : data1) {
                 SugMaiGppsConsumptions maiGppsConsumptions = new SugMaiGppsConsumptions();
@@ -624,6 +625,97 @@ public class FarmServiceImpl implements FarmService {
         }
 
         return "200";
+    }
+
+    /**
+     * Feed is stored in grams and issued from secondary on-hand stock as KG (grams / 1000).
+     * Lines that share an item are added together before the stock check.
+     */
+    private void validateFeedAgainstOnHandStock(BranchRequest branchRequest, List<BranchRequest.SugFeedDetails> feedDetails) {
+        if (feedDetails == null || feedDetails.isEmpty()) {
+            return;
+        }
+        List<FeedStockItem> stockItems = getFeedStockItems(branchRequest.getBranchID());
+        Map<Long, BigDecimal> requestedGramsByItem = new LinkedHashMap<>();
+        Map<Long, String> labelByItem = new LinkedHashMap<>();
+
+        for (BranchRequest.SugFeedDetails detail : feedDetails) {
+            if (detail.getTotalActualFeed() == null || detail.getTotalActualFeed().trim().isEmpty()) {
+                continue;
+            }
+            BigDecimal actualFeed = new BigDecimal(detail.getTotalActualFeed().trim());
+            if (actualFeed.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            Long itemId = resolveFeedItemId(detail, stockItems);
+            if (itemId == null) {
+                String label = detail.getGrade() != null && !detail.getGrade().trim().isEmpty()
+                        ? detail.getGrade()
+                        : "selected feed";
+                throw new IllegalArgumentException("On-hand stock is not available for " + label);
+            }
+            requestedGramsByItem.merge(itemId, actualFeed, BigDecimal::add);
+            labelByItem.putIfAbsent(itemId, feedStockLabel(detail, itemId));
+        }
+
+        for (Map.Entry<Long, BigDecimal> entry : requestedGramsByItem.entrySet()) {
+            BigDecimal onHandKg = onHandSecondaryQty(entry.getKey(), stockItems, branchRequest.getBranchID());
+            BigDecimal onHandGrams = onHandKg.multiply(new BigDecimal("1000"));
+            if (entry.getValue().compareTo(onHandGrams) > 0) {
+                throw new IllegalArgumentException(
+                        "Total actual feed cannot exceed on-hand stock quantity for " + labelByItem.get(entry.getKey())
+                                + ". Requested " + toKg(entry.getValue()) + " KG, on-hand " + strip(onHandKg) + " KG");
+            }
+        }
+    }
+
+    private Long resolveFeedItemId(BranchRequest.SugFeedDetails detail, List<FeedStockItem> stockItems) {
+        if (detail.getItemId() != null && detail.getItemId() > 0) {
+            return detail.getItemId();
+        }
+        String grade = detail.getGrade();
+        if (grade == null || grade.trim().isEmpty() || stockItems == null) {
+            return null;
+        }
+        for (FeedStockItem item : stockItems) {
+            if (grade.equalsIgnoreCase(item.itemCode) || grade.equalsIgnoreCase(item.inventoryDesc)) {
+                return item.inventoryItemId;
+            }
+        }
+        return null;
+    }
+
+    private String feedStockLabel(BranchRequest.SugFeedDetails detail, Long itemId) {
+        if (detail.getGrade() != null && !detail.getGrade().trim().isEmpty()) {
+            return detail.getGrade();
+        }
+        return String.valueOf(itemId);
+    }
+
+    private BigDecimal onHandSecondaryQty(Long itemId, List<FeedStockItem> stockItems, String branchId) {
+        BigDecimal total = BigDecimal.ZERO;
+        boolean found = false;
+        if (stockItems != null && itemId != null) {
+            for (FeedStockItem item : stockItems) {
+                if (itemId.equals(item.inventoryItemId) && item.stockQty != null) {
+                    total = total.add(BigDecimal.valueOf(item.stockQty.doubleValue()));
+                    found = true;
+                }
+            }
+        }
+        if (found) {
+            return total;
+        }
+        Float qty = getOnHandSecondaryStockQty(itemId, branchId);
+        return qty == null ? BigDecimal.ZERO : BigDecimal.valueOf(qty.doubleValue());
+    }
+
+    private String toKg(BigDecimal grams) {
+        return strip(grams.divide(new BigDecimal("1000"), 3, java.math.RoundingMode.HALF_UP));
+    }
+
+    private String strip(BigDecimal value) {
+        return value.stripTrailingZeros().toPlainString();
     }
 
     @Override
@@ -740,69 +832,282 @@ public class FarmServiceImpl implements FarmService {
         return "200";
     }
 
+//    @Override
+//    public String saveWeekSeperationDetails(BranchRequest branchRequest) {
+//     /*   List<BranchRequest.SugFeedDetails> data=new ArrayList<>();
+//        data= (List<BranchRequest.SugFeedDetails>) branchRequest.getData();
+//*/
+//        Object rawData = branchRequest.getData();
+//        List<BranchRequest.SugWeekBirdDetails> data = new ArrayList<>();
+//        List<SugGppsObservationBatchDTO> batchDTOS = getBatchDetails(branchRequest.getBatchID());
+//        if (rawData instanceof List<?>) {
+//            for (Object item : (List<?>) rawData) {
+//                // Convert each LinkedHashMap into SugFeedDetails
+//                BranchRequest.SugWeekBirdDetails details =
+//                        mapper.convertValue(item, BranchRequest.SugWeekBirdDetails.class);
+//                data.add(details);
+//            }
+//        }
+//        SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
+//        if (!data.isEmpty()) {
+//            for (BranchRequest.SugWeekBirdDetails sugWeekBirdDetails : data) {
+//                if (!sugWeekBirdDetails.getFemaleQty().isEmpty()) {
+//                    SugMaiGppsConsumptions maiGppsConsumptions = new SugMaiGppsConsumptions();
+//                    maiGppsConsumptions.setFARM_CODE(gppsObservationBatchDTO.getBRANCH_CODE());
+//                    maiGppsConsumptions.setFLOCK_ID(gppsObservationBatchDTO.getFLOCK_NO());
+//                    maiGppsConsumptions.setSHED_CODE(branchRequest.getShedNo());
+//                    maiGppsConsumptions.setLINE_NO(sugWeekBirdDetails.getLineNo());
+//                    maiGppsConsumptions.setSEX("F");
+//                    maiGppsConsumptions.setQTY(new BigDecimal(sugWeekBirdDetails.getFemaleQty()));
+//                    maiGppsConsumptions.setBATCH_ID(Long.valueOf(branchRequest.getBatchID()));
+//                    // maiGppsConsumptions.setITEM_ID(Long.valueOf(sugEggCollectionDetails.getItemID()));
+//                    maiGppsConsumptions.setCREATION_DATE(new Date());
+//                    maiGppsConsumptions.setSTATUS("N");
+//                    maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
+//                    maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
+//                    maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
+//                    maiGppsConsumptions.setTXN_TYPE("WEAK");
+//                    maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
+//                    maiGppsConsumptions.setREASON(sugWeekBirdDetails.getReasonType());
+//                    maiGppsConsumptions.setSIDE_NO(sugWeekBirdDetails.getSideNo());
+//                    sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
+//
+//                }
+//                if (!sugWeekBirdDetails.getMaleQty().isEmpty()) {
+//                    SugMaiGppsConsumptions maiGppsConsumptions = new SugMaiGppsConsumptions();
+//                    maiGppsConsumptions.setFARM_CODE(gppsObservationBatchDTO.getBRANCH_CODE());
+//                    maiGppsConsumptions.setFLOCK_ID(gppsObservationBatchDTO.getFLOCK_NO());
+//                    maiGppsConsumptions.setSHED_CODE(branchRequest.getShedNo());
+//                    maiGppsConsumptions.setLINE_NO(sugWeekBirdDetails.getLineNo());
+//                    maiGppsConsumptions.setSEX("M");
+//                    maiGppsConsumptions.setQTY(new BigDecimal(sugWeekBirdDetails.getFemaleQty()));
+//                    maiGppsConsumptions.setBATCH_ID(Long.valueOf(branchRequest.getBatchID()));
+//                    // maiGppsConsumptions.setITEM_ID(Long.valueOf(sugEggCollectionDetails.getItemID()));
+//                    maiGppsConsumptions.setCREATION_DATE(new Date());
+//                    maiGppsConsumptions.setSTATUS("N");
+//                    maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
+//                    maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
+//                    maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
+//                    maiGppsConsumptions.setTXN_TYPE("WEAK");
+//                    maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
+//                    maiGppsConsumptions.setREASON(sugWeekBirdDetails.getReasonType());
+//                    maiGppsConsumptions.setSIDE_NO(sugWeekBirdDetails.getSideNo());
+//                    sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
+//
+//                }
+//            }
+//
+//        }
+//        return "200";
+//    }
+
     @Override
     public String saveWeekSeperationDetails(BranchRequest branchRequest) {
-     /*   List<BranchRequest.SugFeedDetails> data=new ArrayList<>();
-        data= (List<BranchRequest.SugFeedDetails>) branchRequest.getData();
-*/
+
         Object rawData = branchRequest.getData();
+
         List<BranchRequest.SugWeekBirdDetails> data = new ArrayList<>();
-        List<SugGppsObservationBatchDTO> batchDTOS = getBatchDetails(branchRequest.getBatchID());
+
+        List<SugGppsObservationBatchDTO> batchDTOS =
+                getBatchDetails(branchRequest.getBatchID());
+
+        if (batchDTOS == null || batchDTOS.isEmpty()) {
+            throw new RuntimeException(
+                    "Batch details not found for Batch ID: " + branchRequest.getBatchID()
+            );
+        }
+
         if (rawData instanceof List<?>) {
+
             for (Object item : (List<?>) rawData) {
-                // Convert each LinkedHashMap into SugFeedDetails
+
                 BranchRequest.SugWeekBirdDetails details =
-                        mapper.convertValue(item, BranchRequest.SugWeekBirdDetails.class);
+                        mapper.convertValue(
+                                item,
+                                BranchRequest.SugWeekBirdDetails.class
+                        );
+
                 data.add(details);
             }
         }
-        SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
+
+        SugGppsObservationBatchDTO gppsObservationBatchDTO =
+                batchDTOS.get(0);
+
         if (!data.isEmpty()) {
+
             for (BranchRequest.SugWeekBirdDetails sugWeekBirdDetails : data) {
-                if (!sugWeekBirdDetails.getFemaleQty().isEmpty()) {
-                    SugMaiGppsConsumptions maiGppsConsumptions = new SugMaiGppsConsumptions();
-                    maiGppsConsumptions.setFARM_CODE(gppsObservationBatchDTO.getBRANCH_CODE());
-                    maiGppsConsumptions.setFLOCK_ID(gppsObservationBatchDTO.getFLOCK_NO());
-                    maiGppsConsumptions.setSHED_CODE(branchRequest.getShedNo());
-                    maiGppsConsumptions.setLINE_NO(sugWeekBirdDetails.getLineNo());
-                    maiGppsConsumptions.setSEX("F");
-                    maiGppsConsumptions.setQTY(new BigDecimal(sugWeekBirdDetails.getFemaleQty()));
-                    maiGppsConsumptions.setBATCH_ID(Long.valueOf(branchRequest.getBatchID()));
-                    // maiGppsConsumptions.setITEM_ID(Long.valueOf(sugEggCollectionDetails.getItemID()));
-                    maiGppsConsumptions.setCREATION_DATE(new Date());
-                    maiGppsConsumptions.setSTATUS("N");
-                    maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
-                    maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
-                    maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
-                    maiGppsConsumptions.setTXN_TYPE("WEAK");
-                    maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
-                    maiGppsConsumptions.setREASON(sugWeekBirdDetails.getReasonType());
-                    sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
 
+                // Female quantity
+                BigDecimal femaleQty = BigDecimal.ZERO;
+
+                if (sugWeekBirdDetails.getFemaleQty() != null &&
+                        !sugWeekBirdDetails.getFemaleQty().trim().isEmpty()) {
+
+                    femaleQty = new BigDecimal(
+                            sugWeekBirdDetails.getFemaleQty().trim()
+                    );
                 }
-                if (!sugWeekBirdDetails.getMaleQty().isEmpty()) {
-                    SugMaiGppsConsumptions maiGppsConsumptions = new SugMaiGppsConsumptions();
-                    maiGppsConsumptions.setFARM_CODE(gppsObservationBatchDTO.getBRANCH_CODE());
-                    maiGppsConsumptions.setFLOCK_ID(gppsObservationBatchDTO.getFLOCK_NO());
-                    maiGppsConsumptions.setSHED_CODE(branchRequest.getShedNo());
-                    maiGppsConsumptions.setLINE_NO(sugWeekBirdDetails.getLineNo());
-                    maiGppsConsumptions.setSEX("M");
-                    maiGppsConsumptions.setQTY(new BigDecimal(sugWeekBirdDetails.getFemaleQty()));
-                    maiGppsConsumptions.setBATCH_ID(Long.valueOf(branchRequest.getBatchID()));
-                    // maiGppsConsumptions.setITEM_ID(Long.valueOf(sugEggCollectionDetails.getItemID()));
-                    maiGppsConsumptions.setCREATION_DATE(new Date());
-                    maiGppsConsumptions.setSTATUS("N");
-                    maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
-                    maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
-                    maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
-                    maiGppsConsumptions.setTXN_TYPE("WEAK");
-                    maiGppsConsumptions.setREMARK(sugWeekBirdDetails.getReasonType());
-                    sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
 
+                // Male quantity
+                BigDecimal maleQty = BigDecimal.ZERO;
+
+                if (sugWeekBirdDetails.getMaleQty() != null &&
+                        !sugWeekBirdDetails.getMaleQty().trim().isEmpty()) {
+
+                    maleQty = new BigDecimal(
+                            sugWeekBirdDetails.getMaleQty().trim()
+                    );
+                }
+
+
+                /*
+                 * FEMALE
+                 * Insert only when quantity > 0
+                 */
+                if (femaleQty.compareTo(BigDecimal.ZERO) > 0) {
+
+                    SugMaiGppsConsumptions maiGppsConsumptions =
+                            new SugMaiGppsConsumptions();
+
+                    maiGppsConsumptions.setFARM_CODE(
+                            gppsObservationBatchDTO.getBRANCH_CODE()
+                    );
+
+                    maiGppsConsumptions.setFLOCK_ID(
+                            gppsObservationBatchDTO.getFLOCK_NO()
+                    );
+
+                    maiGppsConsumptions.setSHED_CODE(
+                            branchRequest.getShedNo()
+                    );
+
+                    maiGppsConsumptions.setLINE_NO(
+                            sugWeekBirdDetails.getLineNo()
+                    );
+
+                    maiGppsConsumptions.setSEX("F");
+
+                    // FEMALE quantity
+                    maiGppsConsumptions.setQTY(femaleQty);
+
+                    maiGppsConsumptions.setBATCH_ID(
+                            Long.valueOf(branchRequest.getBatchID())
+                    );
+
+                    maiGppsConsumptions.setCREATION_DATE(new Date());
+
+                    maiGppsConsumptions.setSTATUS("N");
+
+                    maiGppsConsumptions.setCREATED_BY(
+                            branchRequest.getUserCode()
+                    );
+
+                    maiGppsConsumptions.setLATITUDE(
+                            Float.parseFloat(branchRequest.getLatitude())
+                    );
+
+                    maiGppsConsumptions.setLONGITUDE(
+                            Float.parseFloat(branchRequest.getLongitude())
+                    );
+
+                    maiGppsConsumptions.setTXN_TYPE("WEAK");
+
+                    maiGppsConsumptions.setTXN_DATE(
+                            getTxnDateString(
+                                    branchRequest.getEntryDate(),
+                                    fromdateFormat1
+                            )
+                    );
+
+                    maiGppsConsumptions.setREASON(
+                            sugWeekBirdDetails.getReasonType()
+                    );
+
+                    maiGppsConsumptions.setSIDE_NO(
+                            sugWeekBirdDetails.getSideNo()
+                    );
+
+                    sugMaiGppsConsumptionsRepositories.save(
+                            maiGppsConsumptions
+                    );
+                }
+
+
+                /*
+                 * MALE
+                 * Insert only when quantity > 0
+                 */
+                if (maleQty.compareTo(BigDecimal.ZERO) > 0) {
+
+                    SugMaiGppsConsumptions maiGppsConsumptions =
+                            new SugMaiGppsConsumptions();
+
+                    maiGppsConsumptions.setFARM_CODE(
+                            gppsObservationBatchDTO.getBRANCH_CODE()
+                    );
+
+                    maiGppsConsumptions.setFLOCK_ID(
+                            gppsObservationBatchDTO.getFLOCK_NO()
+                    );
+
+                    maiGppsConsumptions.setSHED_CODE(
+                            branchRequest.getShedNo()
+                    );
+
+                    maiGppsConsumptions.setLINE_NO(
+                            sugWeekBirdDetails.getLineNo()
+                    );
+
+                    maiGppsConsumptions.setSEX("M");
+
+                    // IMPORTANT: MALE quantity
+                    maiGppsConsumptions.setQTY(maleQty);
+
+                    maiGppsConsumptions.setBATCH_ID(
+                            Long.valueOf(branchRequest.getBatchID())
+                    );
+
+                    maiGppsConsumptions.setCREATION_DATE(new Date());
+
+                    maiGppsConsumptions.setSTATUS("N");
+
+                    maiGppsConsumptions.setCREATED_BY(
+                            branchRequest.getUserCode()
+                    );
+
+                    maiGppsConsumptions.setLATITUDE(
+                            Float.parseFloat(branchRequest.getLatitude())
+                    );
+
+                    maiGppsConsumptions.setLONGITUDE(
+                            Float.parseFloat(branchRequest.getLongitude())
+                    );
+
+                    maiGppsConsumptions.setTXN_TYPE("WEAK");
+
+                    maiGppsConsumptions.setTXN_DATE(
+                            getTxnDateString(
+                                    branchRequest.getEntryDate(),
+                                    fromdateFormat1
+                            )
+                    );
+
+                    maiGppsConsumptions.setREASON(
+                            sugWeekBirdDetails.getReasonType()
+                    );
+
+                    maiGppsConsumptions.setSIDE_NO(
+                            sugWeekBirdDetails.getSideNo()
+                    );
+
+                    sugMaiGppsConsumptionsRepositories.save(
+                            maiGppsConsumptions
+                    );
                 }
             }
-
         }
+
         return "200";
     }
 
