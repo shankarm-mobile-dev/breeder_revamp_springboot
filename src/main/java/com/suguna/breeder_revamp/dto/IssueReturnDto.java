@@ -9,9 +9,14 @@ import lombok.Setter;
 @Setter
 public class IssueReturnDto {
 
+    @Column(name = "TXN_ID", type = String.class)
+    @JsonProperty("txn_id")
+    public String txn_id;
+
     @Column(name = "report_ID", type = String.class)
     @JsonProperty("report_ID")
     public String report_ID;
+
     @Column(name = "trans_TYPE", type = String.class)
     @JsonProperty("trans_TYPE")
     public String trans_TYPE;
@@ -72,9 +77,14 @@ public class IssueReturnDto {
     @Column(name = "empCode", type = String.class)
     @JsonProperty("empCode")
     public String empCode ;
-    @Column(name = "branch_Code", type = String.class)
+
+    @Column(name = "BRANCH_CODE", type = String.class)
     @JsonProperty("branch_Code")
     public String branch_Code;
+
+    @Column(name = "ENTRY_CREATION_DATE", type = String.class)
+    @JsonProperty("entryCreationDate")
+    public String entryCreationDate;
 
 
 }

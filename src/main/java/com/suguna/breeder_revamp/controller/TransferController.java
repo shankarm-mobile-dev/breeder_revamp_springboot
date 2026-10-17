@@ -89,6 +89,28 @@ public class TransferController {
         return responseDto;
     }
 
+    @PostMapping("/saveShedLineTransfer")
+    public ResponseDto saveShedLineTransfer(@RequestBody ShedLineTransferRequest request) {
+        ResponseDto responseDto = new ResponseDto();
+        try {
+            responseDto.setMessage("Shed line transfer saved");
+            responseDto.setStatusCode(200);
+            responseDto.setStatus("Success");
+            responseDto.setResult(transferService.saveShedLineTransfer(request));
+        } catch (IllegalArgumentException ex) {
+            responseDto.setMessage(ex.getMessage());
+            responseDto.setStatusCode(400);
+            responseDto.setStatus("Failed");
+            responseDto.setResult("400");
+        } catch (Exception ex) {
+            responseDto.setMessage(ex.getMessage());
+            responseDto.setStatusCode(500);
+            responseDto.setStatus("Failed");
+            responseDto.setResult("500");
+        }
+        return responseDto;
+    }
+
     @PostMapping("/saveTransPlan")
     public ResponseDto  saveTransPlan(@RequestBody TransferPlanDto entry) throws Exception
     {

@@ -191,6 +191,7 @@ public class InventoryServiceImpl implements  InventoryService{
                 sugMaiBreederDailyEntryModel.setINVENTORY_LOCATION_ID(issueReturnDto.inventoryLocationId);
                 sugMaiBreederDailyEntryModel.setTRANS_UOM(issueReturnDto.uom);
                 sugMaiBreederDailyEntryModel.setSTOCK_QTY(Float.parseFloat(issueReturnDto.trans_QTY));
+                sugMaiBreederDailyEntryModel.setENTRY_CREATION_DATE(new Date());
                 if (issueReturnDto.trans_TYPE.equals("FEED")) {
                     sugMaiBreederDailyEntryModel.setSECONDARY_QTY(Float.parseFloat(issueReturnDto.quantity));
                 }
@@ -207,6 +208,7 @@ public class InventoryServiceImpl implements  InventoryService{
                                 "select sug_mai_breeder_daily_entry_s.nextval from dual")
                         .getSingleResult();
                 sugMaiBreederDailyEntryModel.setREPORT_ID(nextId.longValue());
+                sugMaiBreederDailyEntryModel.setTXN_ID(nextId.longValue());
                 sugMaiBreederDailyEntryRepository.save(sugMaiBreederDailyEntryModel);
             }
         } catch (Exception e) {

@@ -9,10 +9,12 @@ import com.suguna.breeder_revamp.repositories.*;
 import com.suguna.breeder_revamp.utils.ResultSetMapper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.ParameterMode;
+import jakarta.persistence.Query;
 import jakarta.persistence.StoredProcedureQuery;
 import org.hibernate.StaleObjectStateException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -53,6 +55,12 @@ public class FarmServiceImpl implements FarmService {
 
     @Autowired
     SugMaiGppsHousingLineRepositories sugMaiGppsHousingLineRepositories;
+
+    @Autowired
+    HousingLineStockService housingLineStockService;
+
+    @Autowired
+    FeedInventoryService feedInventoryService;
 
     @Autowired
     SugMaiGppsFarmLogRepositories sugMaiGppsFarmLogRepositories;
@@ -292,10 +300,65 @@ public class FarmServiceImpl implements FarmService {
 
                 shedDetailsArrayList.add(shedDetails);
             }
+            appendExtraDailyScheduleActivities(shedDetailsArrayList, branchRequest);
         } catch (Exception e) {
 
         }
         return shedDetailsArrayList;
+    }
+
+    private void appendExtraDailyScheduleActivities(ArrayList<BranchUser.DailyFlockEntryDetails> schedule,
+                                                    BranchRequest branchRequest) {
+        if (schedule == null || branchRequest == null) {
+            return;
+        }
+        if (schedule.stream().noneMatch(item -> "8".equals(item.getActivityId()))) {
+            schedule.add(buildExtraDailyScheduleActivity(
+                    "SANITIZATION",
+                    "8",
+                    getConsumptionEntryStatus(branchRequest.getShedNo(), branchRequest.getBatchID(),
+                            branchRequest.getEntryDate(), "WATER_SANITIZER")));
+        }
+        if (schedule.stream().noneMatch(item -> "0".equals(item.getActivityId()))) {
+            schedule.add(buildExtraDailyScheduleActivity(
+                    "OTHERS",
+                    "0",
+                    getConsumptionEntryStatus(branchRequest.getShedNo(), branchRequest.getBatchID(),
+                            branchRequest.getEntryDate(), "OTHERS")));
+        }
+    }
+
+    private BranchUser.DailyFlockEntryDetails buildExtraDailyScheduleActivity(String activityName,
+                                                                                String activityId,
+                                                                                String completedStatus) {
+        BranchUser.DailyFlockEntryDetails details = new BranchUser.DailyFlockEntryDetails();
+        details.setActivityName(activityName);
+        details.setPeriodType("");
+        details.setActivityId(activityId);
+        details.setCompletedStatus(completedStatus);
+        return details;
+    }
+
+    private String getConsumptionEntryStatus(String shedNo, String batchId, String entryDate, String txnType) {
+        if (shedNo == null || batchId == null || entryDate == null || txnType == null) {
+            return "N";
+        }
+        try {
+            Number count = (Number) entityManager.createNativeQuery(
+                            "SELECT COUNT(1) FROM SUG.SUG_MAI_GPPS_CONSUMPTIONS a " +
+                                    "WHERE a.SHED_CODE = :shedNo " +
+                                    "AND a.BATCH_ID = :batchId " +
+                                    "AND UPPER(TRIM(NVL(a.TXN_TYPE, ' '))) = UPPER(TRIM(:txnType)) " +
+                                    "AND a.TXN_DATE = :entryDate")
+                    .setParameter("shedNo", shedNo)
+                    .setParameter("batchId", Long.valueOf(batchId))
+                    .setParameter("txnType", txnType)
+                    .setParameter("entryDate", entryDate)
+                    .getSingleResult();
+            return count.longValue() > 0 ? "Y" : "N";
+        } catch (Exception e) {
+            return "N";
+        }
     }
 
     @Override
@@ -392,6 +455,8 @@ public class FarmServiceImpl implements FarmService {
 
                 shedDetailsArrayList.add(shedDetails);
             }
+            Map<String, ArrayList<BranchUser.ShedWiseFeedMadeDetails>> feedMadeDetailsByBirdType =
+                    getShedWiseFeedMadeDetailsGrouped(branchRequest);
             // Use a Set to collect unique bird types
             Set<String> uniqueBirdTypes = new LinkedHashSet<>();
             for (BranchUser.ShedWiseFeedDetails b : shedDetailsArrayList) {
@@ -401,7 +466,6 @@ public class FarmServiceImpl implements FarmService {
             // Convert back to list if needed
             List<String> uniqueBirdList = new ArrayList<>(uniqueBirdTypes);
             for (String birdType : uniqueBirdList) {
-                System.out.println("Bird Type: " + birdType);
                 BranchUser.ShedWiseFeedBirdsDetails shedWiseFeedBirdsDetails = new BranchUser.ShedWiseFeedBirdsDetails();
                 shedWiseFeedBirdsDetails.setBirdType(birdType);
                 ArrayList<BranchUser.ShedWiseFeedDetails> shedDetailsArray = new ArrayList<BranchUser.ShedWiseFeedDetails>();
@@ -413,7 +477,10 @@ public class FarmServiceImpl implements FarmService {
                     }
                 }
                 shedWiseFeedBirdsDetails.setFeedDetails(shedDetailsArray);
-                shedWiseFeedBirdsDetails.setFeedEntryMadeDetails(getShedWiseFeedMadeDetails(branchRequest,shedWiseFeedBirdsDetails.getBirdType()));
+                shedWiseFeedBirdsDetails.setFeedEntryMadeDetails(
+                        feedMadeDetailsByBirdType.getOrDefault(
+                                shedWiseFeedBirdsDetails.getBirdType(),
+                                new ArrayList<>()));
                 shedBirsDetailsArrayList.add(shedWiseFeedBirdsDetails);
 
             }
@@ -422,6 +489,64 @@ public class FarmServiceImpl implements FarmService {
 
         }
         return shedBirsDetailsArrayList;
+    }
+
+    /**
+     * One query for all bird types (avoids N stored-procedure calls per feed details download).
+     */
+    private Map<String, ArrayList<BranchUser.ShedWiseFeedMadeDetails>> getShedWiseFeedMadeDetailsGrouped(
+            BranchRequest branchRequest) {
+        Map<String, ArrayList<BranchUser.ShedWiseFeedMadeDetails>> grouped = new LinkedHashMap<>();
+        grouped.put("Female", new ArrayList<>());
+        grouped.put("Male", new ArrayList<>());
+        if (branchRequest.getEntryDate() == null
+                || branchRequest.getShedNo() == null
+                || branchRequest.getBatchID() == null) {
+            return grouped;
+        }
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object[]> rows = entityManager.createNativeQuery(
+                            "select a.txn_type, a.sex, a.grade, a.qty, " +
+                                    "to_char(a.txn_date, 'dd-Mon-yyyy'), nvl(a.bird_type, 'NORMAL') " +
+                                    "  from sug_mai_gpps_consumptions a " +
+                                    " where a.txn_type = 'FEED' " +
+                                    "   and trunc(a.txn_date) = trunc(to_date(?1, 'DD-MON-YYYY', 'NLS_DATE_LANGUAGE=AMERICAN')) " +
+                                    "   and a.shed_code = ?2 " +
+                                    "   and a.batch_id = ?3")
+                    .setParameter(1, branchRequest.getEntryDate())
+                    .setParameter(2, branchRequest.getShedNo())
+                    .setParameter(3, branchRequest.getBatchID())
+                    .getResultList();
+            if (rows == null) {
+                return grouped;
+            }
+            for (Object[] row : rows) {
+                BranchUser.ShedWiseFeedMadeDetails made = new BranchUser.ShedWiseFeedMadeDetails();
+                made.setTxnType(row[0] == null ? null : String.valueOf(row[0]));
+                made.setSex(row[1] == null ? null : String.valueOf(row[1]));
+                made.setGrade(row[2] == null ? null : String.valueOf(row[2]));
+                made.setQty(row[3] == null ? null : String.valueOf(row[3]));
+                made.setTxnDate(row[4] == null ? null : String.valueOf(row[4]));
+                made.setBirdType(row[5] == null ? "NORMAL" : String.valueOf(row[5]));
+                String birdTypeKey = normalizeFeedBirdType(made.getSex());
+                grouped.computeIfAbsent(birdTypeKey, key -> new ArrayList<>()).add(made);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return grouped;
+    }
+
+    private String normalizeFeedBirdType(String sex) {
+        if (sex == null) {
+            return "Male";
+        }
+        String normalized = sex.trim().toUpperCase(Locale.ENGLISH);
+        if (normalized.startsWith("F")) {
+            return "Female";
+        }
+        return "Male";
     }
 
     private ArrayList<BranchUser.ShedWiseFeedMadeDetails> getShedWiseFeedMadeDetails(BranchRequest branchRequest, String birdType) {
@@ -469,10 +594,116 @@ public class FarmServiceImpl implements FarmService {
                 BranchUser.ShedWiseBirdsDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.ShedWiseBirdsDetails.class);
                 shedDetailsArrayList.add(shedDetails);
             }
+            applyRecoveryDeductionsToWeakStock(
+                    shedDetailsArrayList,
+                    getWeakBirdRequest.getFlockNo(),
+                    getWeakBirdRequest.getShedNo()
+            );
+            removeZeroQuantityBirdStock(shedDetailsArrayList);
         } catch (Exception e) {
 
         }
         return shedDetailsArrayList;
+    }
+
+    private void removeZeroQuantityBirdStock(ArrayList<BranchUser.ShedWiseBirdsDetails> stock) {
+        if (stock == null || stock.isEmpty()) {
+            return;
+        }
+        stock.removeIf(item -> item == null || parseQty(item.getBirdsNo()) <= 0);
+    }
+
+    /**
+     * getWeakBirdDetails SP may not subtract RECOVERY until DB package is updated;
+     * align weak-pool qty with consumptions (weak in - mortality - recovery out).
+     */
+    private void applyRecoveryDeductionsToWeakStock(ArrayList<BranchUser.ShedWiseBirdsDetails> weakStock,
+                                                    String flockNo, String shedNo) {
+        if (weakStock == null || weakStock.isEmpty() || flockNo == null || shedNo == null) {
+            return;
+        }
+        try {
+            Query query = entityManager.createNativeQuery(
+                    "SELECT CASE " +
+                            "WHEN UPPER(SUBSTR(NVL(c.SEX, 'X'), 1, 1)) = 'F' THEN 'Female' " +
+                            "WHEN UPPER(SUBSTR(NVL(c.SEX, 'X'), 1, 1)) = 'M' THEN 'Male' " +
+                            "ELSE c.SEX END AS bird_type, " +
+                            "c.REASON AS reason_id, NVL(SUM(c.QTY), 0) AS qty " +
+                            "FROM SUG.SUG_MAI_GPPS_CONSUMPTIONS c " +
+                            "WHERE c.TXN_TYPE = 'RECOVERY' " +
+                            "AND c.FLOCK_ID = :flock AND c.SHED_CODE = :shed " +
+                            "AND NVL(c.STATUS, 'N') <> 'X' AND NVL(c.QTY, 0) > 0 " +
+                            "GROUP BY c.SEX, c.REASON");
+            query.setParameter("flock", flockNo);
+            query.setParameter("shed", shedNo);
+            @SuppressWarnings("unchecked")
+            List<Object[]> rows = query.getResultList();
+            for (Object[] row : rows) {
+                String birdType = row[0] == null ? "" : row[0].toString();
+                String reasonId = row[1] == null ? "" : row[1].toString();
+                long recovered = row[2] instanceof Number
+                        ? ((Number) row[2]).longValue()
+                        : Long.parseLong(row[2].toString());
+                if (recovered <= 0) {
+                    continue;
+                }
+                for (BranchUser.ShedWiseBirdsDetails item : weakStock) {
+                    if (item == null || item.getBirdCategory() == null
+                            || !"WEAK".equalsIgnoreCase(item.getBirdCategory().trim())) {
+                        continue;
+                    }
+                    if (!reasonId.equalsIgnoreCase(nvl(item.getReasonId()))) {
+                        continue;
+                    }
+                    if (!sameBirdType(birdType, item.getBirdType())) {
+                        continue;
+                    }
+                    long current = parseQty(item.getBirdsNo());
+                    long adjusted = Math.max(current - recovered, 0L);
+                    item.setBirdsNo(String.valueOf(adjusted));
+                }
+            }
+        } catch (Exception ignored) {
+            // keep SP result if adjustment query fails
+        }
+    }
+
+    private boolean sameBirdType(String left, String right) {
+        String a = normalizeBirdType(left);
+        String b = normalizeBirdType(right);
+        return a.equals(b);
+    }
+
+    private String normalizeBirdType(String value) {
+        if (value == null) {
+            return "";
+        }
+        String v = value.trim().toUpperCase();
+        if (v.startsWith("F")) {
+            return "FEMALE";
+        }
+        if (v.startsWith("M")) {
+            return "MALE";
+        }
+        return v;
+    }
+
+    private String nvl(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private long parseQty(String qty) {
+        if (qty == null || qty.trim().isEmpty()) {
+            return 0L;
+        }
+        return (long) Double.parseDouble(qty.trim());
+    }
+
+    private double parseOptionalDouble(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return 0d;
+        }
+        return Double.parseDouble(value.trim());
     }
 
     @Override
@@ -495,6 +726,12 @@ public class FarmServiceImpl implements FarmService {
 
                 shedDetailsArrayList.add(shedDetails);
             }
+            applyRecoveryDeductionsToWeakStock(
+                    shedDetailsArrayList,
+                    branchRequest.getFlockID(),
+                    branchRequest.getShedNo()
+            );
+            removeZeroQuantityBirdStock(shedDetailsArrayList);
         } catch (Exception e) {
 
         }
@@ -582,6 +819,7 @@ public class FarmServiceImpl implements FarmService {
         SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
         validateFeedAgainstOnHandStock(branchRequest, data1);
         if (!data1.isEmpty()) {
+            List<SugMaiGppsConsumptions> consumptions = new ArrayList<>(data1.size());
             for (BranchRequest.SugFeedDetails sugFeedDetails : data1) {
                 SugMaiGppsConsumptions maiGppsConsumptions = new SugMaiGppsConsumptions();
                 maiGppsConsumptions.setFARM_CODE(gppsObservationBatchDTO.getBRANCH_CODE());
@@ -599,9 +837,10 @@ public class FarmServiceImpl implements FarmService {
                 maiGppsConsumptions.setTXN_TYPE("FEED");
                 maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
                 maiGppsConsumptions.setITEM_ID(sugFeedDetails.getItemId());
-                sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
+                consumptions.add(maiGppsConsumptions);
             }
-
+            sugMaiGppsConsumptionsRepositories.saveAll(consumptions);
+            feedInventoryService.evictBranchCache(branchRequest.getBranchID());
         }
         try {String mortalityImage = null;
             if (imageFile != null && !imageFile.isEmpty()) {
@@ -643,8 +882,14 @@ public class FarmServiceImpl implements FarmService {
             if (detail.getTotalActualFeed() == null || detail.getTotalActualFeed().trim().isEmpty()) {
                 continue;
             }
-            BigDecimal actualFeed = new BigDecimal(detail.getTotalActualFeed().trim());
+            BigDecimal actualFeed = parseTotalActualFeedGrams(detail.getTotalActualFeed());
             if (actualFeed.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            String grade = detail.getGrade();
+            if (grade != null && "0".equals(grade.trim())
+                    && detail.getBirdCategory() != null
+                    && "WEAK".equalsIgnoreCase(detail.getBirdCategory().trim())) {
                 continue;
             }
             Long itemId = resolveFeedItemId(detail, stockItems);
@@ -673,16 +918,85 @@ public class FarmServiceImpl implements FarmService {
         if (detail.getItemId() != null && detail.getItemId() > 0) {
             return detail.getItemId();
         }
-        String grade = detail.getGrade();
-        if (grade == null || grade.trim().isEmpty() || stockItems == null) {
+        FeedStockItem matched = findBestFeedStockForGrade(detail.getGrade(), stockItems);
+        return matched == null ? null : matched.inventoryItemId;
+    }
+
+    private BigDecimal parseTotalActualFeedGrams(String totalActualFeed) {
+        if (totalActualFeed == null || totalActualFeed.trim().isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        return new BigDecimal(totalActualFeed.trim());
+    }
+
+    /**
+     * Resolves feed grade to inventory item. Prefers exact category/code matches;
+     * avoids loose suffix rules (e.g. grade "3" matching item code "13").
+     */
+    private FeedStockItem findBestFeedStockForGrade(String grade, List<FeedStockItem> stockItems) {
+        if (grade == null || grade.trim().isEmpty() || stockItems == null || stockItems.isEmpty()) {
             return null;
         }
+        FeedStockItem best = null;
+        int bestScore = 0;
         for (FeedStockItem item : stockItems) {
-            if (grade.equalsIgnoreCase(item.itemCode) || grade.equalsIgnoreCase(item.inventoryDesc)) {
-                return item.inventoryItemId;
+            int score = gradeMatchScore(grade, item);
+            if (score > bestScore) {
+                bestScore = score;
+                best = item;
             }
         }
+        if (bestScore >= 70) {
+            return best;
+        }
+        if (stockItems.size() == 1) {
+            return stockItems.get(0);
+        }
         return null;
+    }
+
+    private int gradeMatchScore(String grade, FeedStockItem item) {
+        if (grade == null || item == null) {
+            return 0;
+        }
+        String normalizedGrade = grade.trim();
+        if (normalizedGrade.isEmpty()) {
+            return 0;
+        }
+        String gradeUpper = normalizedGrade.toUpperCase(Locale.ENGLISH);
+        if (equalsIgnoreCaseTrim(normalizedGrade, item.itemCategory)) {
+            return 100;
+        }
+        if (equalsIgnoreCaseTrim(normalizedGrade, item.itemGroup)) {
+            return 95;
+        }
+        if (equalsIgnoreCaseTrim(normalizedGrade, item.itemCode)) {
+            return 90;
+        }
+        if (item.inventoryDesc != null) {
+            String desc = item.inventoryDesc.trim().toUpperCase(Locale.ENGLISH);
+            if (desc.contains("GRADE " + gradeUpper) || desc.contains("GRADE-" + gradeUpper)) {
+                return 85;
+            }
+        }
+        if (item.itemCode != null) {
+            String code = item.itemCode.trim().toUpperCase(Locale.ENGLISH);
+            if (code.equals("G" + gradeUpper) || code.equals("GR" + gradeUpper) || code.equals("GRADE" + gradeUpper)) {
+                return 80;
+            }
+        }
+        return 0;
+    }
+
+    private boolean gradeMatchesFeedItem(String grade, FeedStockItem item) {
+        return gradeMatchScore(grade, item) >= 70;
+    }
+
+    private boolean equalsIgnoreCaseTrim(String left, String right) {
+        if (left == null || right == null) {
+            return false;
+        }
+        return left.trim().equalsIgnoreCase(right.trim());
     }
 
     private String feedStockLabel(BranchRequest.SugFeedDetails detail, Long itemId) {
@@ -719,6 +1033,7 @@ public class FarmServiceImpl implements FarmService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String saveMortalityDetails(BranchRequest branchRequest, List<MultipartFile> imageFile) {
      /*   List<BranchRequest.SugFeedDetails> data=new ArrayList<>();
         data= (List<BranchRequest.SugFeedDetails>) branchRequest.getData();
@@ -755,6 +1070,39 @@ public class FarmServiceImpl implements FarmService {
                 maiGppsConsumptions.setTXN_TYPE("MORTALITY");
                 maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
                 sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
+                long mortalityQty = housingLineStockService.parseQty(sugMortalityDetails.getTotalBirds());
+                String category = sugMortalityDetails.getBirdCategory() == null ? "NORMAL" : sugMortalityDetails.getBirdCategory();
+                boolean weakBird = category.equalsIgnoreCase("WEAK") || category.equalsIgnoreCase("WEEK");
+                if (weakBird) {
+                    housingLineStockService.recordWeakMortality(
+                            gppsObservationBatchDTO.getFLOCK_NO(),
+                            gppsObservationBatchDTO.getBRANCH_CODE(),
+                            branchRequest.getShedNo(),
+                            sugMortalityDetails.getLineNo(),
+                            sugMortalityDetails.getSideNo(),
+                            sugMortalityDetails.getBirdType(),
+                            mortalityQty,
+                            maiGppsConsumptions.getTXN_DATE(),
+                            branchRequest.getUserCode(),
+                            maiGppsConsumptions.getTRANS_ID(),
+                            sugMortalityDetails.getReasonId());
+                } else {
+                    housingLineStockService.reduceNormalBirds(
+                            gppsObservationBatchDTO.getFLOCK_NO(),
+                            gppsObservationBatchDTO.getBRANCH_CODE(),
+                            branchRequest.getShedNo(),
+                            sugMortalityDetails.getLineNo(),
+                            sugMortalityDetails.getSideNo(),
+                            sugMortalityDetails.getBirdType(),
+                            mortalityQty,
+                            "MORTALITY",
+                            maiGppsConsumptions.getTXN_DATE(),
+                            branchRequest.getUserCode(),
+                            maiGppsConsumptions.getTRANS_ID(),
+                            sugMortalityDetails.getReasonId(),
+                            "NORMAL",
+                            null);
+                }
             }
             try {String mortalityImage = null;
                 if (imageFile != null && !imageFile.isEmpty()) {
@@ -902,6 +1250,7 @@ public class FarmServiceImpl implements FarmService {
 //    }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String saveWeekSeperationDetails(BranchRequest branchRequest) {
 
         Object rawData = branchRequest.getData();
@@ -926,6 +1275,14 @@ public class FarmServiceImpl implements FarmService {
                                 item,
                                 BranchRequest.SugWeekBirdDetails.class
                         );
+                if (!isRecoveryWeekBirdEntry(details) && item instanceof java.util.Map<?, ?> map) {
+                    Object lookup = map.get("lookupCode");
+                    Object entryType = map.get("entryType");
+                    Object txnType = map.get("txnType");
+                    if (isRecoveryMarker(lookup) || isRecoveryMarker(entryType) || isRecoveryMarker(txnType)) {
+                        details.setEntryType("RECOVERY");
+                    }
+                }
 
                 data.add(details);
             }
@@ -960,6 +1317,11 @@ public class FarmServiceImpl implements FarmService {
                     );
                 }
 
+                boolean isRecovery = isRecoveryWeekBirdEntry(sugWeekBirdDetails);
+                String consumptionTxnType = isRecovery ? "RECOVERY" : "WEAK";
+                Long recoveryBatchId = Long.valueOf(branchRequest.getBatchID());
+                String housingLineNo = sugWeekBirdDetails.getLineNo();
+                String housingSide = housingLineStockService.canonicalSide(sugWeekBirdDetails.getSideNo());
 
                 /*
                  * FEMALE
@@ -982,14 +1344,15 @@ public class FarmServiceImpl implements FarmService {
                             branchRequest.getShedNo()
                     );
 
-                    maiGppsConsumptions.setLINE_NO(
-                            sugWeekBirdDetails.getLineNo()
-                    );
+                    maiGppsConsumptions.setLINE_NO(housingLineNo);
 
                     maiGppsConsumptions.setSEX("F");
 
                     // FEMALE quantity
                     maiGppsConsumptions.setQTY(femaleQty);
+                    if (isRecovery) {
+                        maiGppsConsumptions.setBIRD_TYPE("NORMAL");
+                    }
 
                     maiGppsConsumptions.setBATCH_ID(
                             Long.valueOf(branchRequest.getBatchID())
@@ -1011,7 +1374,7 @@ public class FarmServiceImpl implements FarmService {
                             Float.parseFloat(branchRequest.getLongitude())
                     );
 
-                    maiGppsConsumptions.setTXN_TYPE("WEAK");
+                    maiGppsConsumptions.setTXN_TYPE(consumptionTxnType);
 
                     maiGppsConsumptions.setTXN_DATE(
                             getTxnDateString(
@@ -1024,13 +1387,72 @@ public class FarmServiceImpl implements FarmService {
                             sugWeekBirdDetails.getReasonType()
                     );
 
-                    maiGppsConsumptions.setSIDE_NO(
-                            sugWeekBirdDetails.getSideNo()
-                    );
+                    maiGppsConsumptions.setSIDE_NO(housingSide);
 
                     sugMaiGppsConsumptionsRepositories.save(
                             maiGppsConsumptions
                     );
+                    String femalePair = String.valueOf(maiGppsConsumptions.getTRANS_ID());
+                    if (isRecovery) {
+                        housingLineStockService.recordWeakOut(
+                                gppsObservationBatchDTO.getFLOCK_NO(),
+                                gppsObservationBatchDTO.getBRANCH_CODE(),
+                                branchRequest.getShedNo(),
+                                housingLineNo,
+                                housingSide,
+                                "F",
+                                femaleQty.longValue(),
+                                maiGppsConsumptions.getTXN_DATE(),
+                                branchRequest.getUserCode(),
+                                maiGppsConsumptions.getTRANS_ID(),
+                                sugWeekBirdDetails.getReasonType(),
+                                femalePair);
+                        housingLineStockService.increaseNormalBirds(
+                                gppsObservationBatchDTO.getFLOCK_NO(),
+                                gppsObservationBatchDTO.getBRANCH_CODE(),
+                                branchRequest.getShedNo(),
+                                housingLineNo,
+                                housingSide,
+                                "F",
+                                femaleQty.longValue(),
+                                maiGppsConsumptions.getTXN_DATE(),
+                                branchRequest.getUserCode(),
+                                maiGppsConsumptions.getTRANS_ID(),
+                                sugWeekBirdDetails.getReasonType(),
+                                femalePair,
+                                null,
+                                recoveryBatchId,
+                                null);
+                    } else {
+                        housingLineStockService.reduceNormalBirds(
+                                gppsObservationBatchDTO.getFLOCK_NO(),
+                                gppsObservationBatchDTO.getBRANCH_CODE(),
+                                branchRequest.getShedNo(),
+                                housingLineNo,
+                                housingSide,
+                                "F",
+                                femaleQty.longValue(),
+                                "WEAK_OUT",
+                                maiGppsConsumptions.getTXN_DATE(),
+                                branchRequest.getUserCode(),
+                                maiGppsConsumptions.getTRANS_ID(),
+                                sugWeekBirdDetails.getReasonType(),
+                                "NORMAL",
+                                femalePair);
+                        housingLineStockService.recordWeakIn(
+                                gppsObservationBatchDTO.getFLOCK_NO(),
+                                gppsObservationBatchDTO.getBRANCH_CODE(),
+                                branchRequest.getShedNo(),
+                                housingLineNo,
+                                housingSide,
+                                "F",
+                                femaleQty.longValue(),
+                                maiGppsConsumptions.getTXN_DATE(),
+                                branchRequest.getUserCode(),
+                                maiGppsConsumptions.getTRANS_ID(),
+                                sugWeekBirdDetails.getReasonType(),
+                                femalePair);
+                    }
                 }
 
 
@@ -1055,14 +1477,15 @@ public class FarmServiceImpl implements FarmService {
                             branchRequest.getShedNo()
                     );
 
-                    maiGppsConsumptions.setLINE_NO(
-                            sugWeekBirdDetails.getLineNo()
-                    );
+                    maiGppsConsumptions.setLINE_NO(housingLineNo);
 
                     maiGppsConsumptions.setSEX("M");
 
                     // IMPORTANT: MALE quantity
                     maiGppsConsumptions.setQTY(maleQty);
+                    if (isRecovery) {
+                        maiGppsConsumptions.setBIRD_TYPE("NORMAL");
+                    }
 
                     maiGppsConsumptions.setBATCH_ID(
                             Long.valueOf(branchRequest.getBatchID())
@@ -1084,7 +1507,7 @@ public class FarmServiceImpl implements FarmService {
                             Float.parseFloat(branchRequest.getLongitude())
                     );
 
-                    maiGppsConsumptions.setTXN_TYPE("WEAK");
+                    maiGppsConsumptions.setTXN_TYPE(consumptionTxnType);
 
                     maiGppsConsumptions.setTXN_DATE(
                             getTxnDateString(
@@ -1097,13 +1520,72 @@ public class FarmServiceImpl implements FarmService {
                             sugWeekBirdDetails.getReasonType()
                     );
 
-                    maiGppsConsumptions.setSIDE_NO(
-                            sugWeekBirdDetails.getSideNo()
-                    );
+                    maiGppsConsumptions.setSIDE_NO(housingSide);
 
                     sugMaiGppsConsumptionsRepositories.save(
                             maiGppsConsumptions
                     );
+                    String malePair = String.valueOf(maiGppsConsumptions.getTRANS_ID());
+                    if (isRecovery) {
+                        housingLineStockService.recordWeakOut(
+                                gppsObservationBatchDTO.getFLOCK_NO(),
+                                gppsObservationBatchDTO.getBRANCH_CODE(),
+                                branchRequest.getShedNo(),
+                                housingLineNo,
+                                housingSide,
+                                "M",
+                                maleQty.longValue(),
+                                maiGppsConsumptions.getTXN_DATE(),
+                                branchRequest.getUserCode(),
+                                maiGppsConsumptions.getTRANS_ID(),
+                                sugWeekBirdDetails.getReasonType(),
+                                malePair);
+                        housingLineStockService.increaseNormalBirds(
+                                gppsObservationBatchDTO.getFLOCK_NO(),
+                                gppsObservationBatchDTO.getBRANCH_CODE(),
+                                branchRequest.getShedNo(),
+                                housingLineNo,
+                                housingSide,
+                                "M",
+                                maleQty.longValue(),
+                                maiGppsConsumptions.getTXN_DATE(),
+                                branchRequest.getUserCode(),
+                                maiGppsConsumptions.getTRANS_ID(),
+                                sugWeekBirdDetails.getReasonType(),
+                                malePair,
+                                null,
+                                recoveryBatchId,
+                                null);
+                    } else {
+                        housingLineStockService.reduceNormalBirds(
+                                gppsObservationBatchDTO.getFLOCK_NO(),
+                                gppsObservationBatchDTO.getBRANCH_CODE(),
+                                branchRequest.getShedNo(),
+                                housingLineNo,
+                                housingSide,
+                                "M",
+                                maleQty.longValue(),
+                                "WEAK_OUT",
+                                maiGppsConsumptions.getTXN_DATE(),
+                                branchRequest.getUserCode(),
+                                maiGppsConsumptions.getTRANS_ID(),
+                                sugWeekBirdDetails.getReasonType(),
+                                "NORMAL",
+                                malePair);
+                        housingLineStockService.recordWeakIn(
+                                gppsObservationBatchDTO.getFLOCK_NO(),
+                                gppsObservationBatchDTO.getBRANCH_CODE(),
+                                branchRequest.getShedNo(),
+                                housingLineNo,
+                                housingSide,
+                                "M",
+                                maleQty.longValue(),
+                                maiGppsConsumptions.getTXN_DATE(),
+                                branchRequest.getUserCode(),
+                                maiGppsConsumptions.getTRANS_ID(),
+                                sugWeekBirdDetails.getReasonType(),
+                                malePair);
+                    }
                 }
             }
         }
@@ -1423,6 +1905,7 @@ public class FarmServiceImpl implements FarmService {
                     maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
                     maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
                     maiGppsConsumptions.setTXN_TYPE("CULLING");
+                    maiGppsConsumptions.setSHED_CODE(branchRequest.getShedNo());
                     sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
                 }
                 if (!sugCullingDetails.getMaleBirdsCount().isEmpty()) {
@@ -1442,6 +1925,7 @@ public class FarmServiceImpl implements FarmService {
                     maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
                     maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
                     maiGppsConsumptions.setTXN_TYPE("CULLING");
+                    maiGppsConsumptions.setSHED_CODE(branchRequest.getShedNo());
                     sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
                 }
 
@@ -1814,7 +2298,7 @@ public class FarmServiceImpl implements FarmService {
                     SugMaiGppsConsumptions maiGppsConsumptions = new SugMaiGppsConsumptions();
                     maiGppsConsumptions.setFARM_CODE(gppsObservationBatchDTO.getBRANCH_CODE());
                     maiGppsConsumptions.setFLOCK_ID(gppsObservationBatchDTO.getFLOCK_NO());
-                    // maiGppsConsumptions.setSHED_CODE(branchRequest.getShedNo());
+                     maiGppsConsumptions.setSHED_CODE(branchRequest.getShedNo());
                     maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
                     maiGppsConsumptions.setQTY(new BigDecimal(sugCullingDetails.getFemaleBirdsCount()));
                     //maiGppsConsumptions.setWEIGHT(BigDecimal.valueOf(Double.parseDouble(sugCullingDetails.getFemaleBirdsWeight())));
@@ -1835,8 +2319,18 @@ public class FarmServiceImpl implements FarmService {
                     {
                         maiGppsConsumptions.setTXN_TYPE(sugCullingDetails.getType());
                     }
-                    maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
-                    maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
+                    if (branchRequest.getLatitude() != null && !branchRequest.getLatitude().isEmpty()) {
+                        try {
+                            maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
+                    if (branchRequest.getLongitude() != null && !branchRequest.getLongitude().isEmpty()) {
+                        try {
+                            maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
                     sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
                 }
                 if( sugCullingDetails.getMaleBirdsCount() != null && !sugCullingDetails.getMaleBirdsCount().isEmpty() && !sugCullingDetails.getMaleBirdsCount().equalsIgnoreCase("0")) {
@@ -1886,8 +2380,18 @@ public class FarmServiceImpl implements FarmService {
                     {
                         maiGppsConsumptions.setTXN_TYPE(sugCullingDetails.getType());
                     }
-                    maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
-                    maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
+                    if (branchRequest.getLatitude() != null && !branchRequest.getLatitude().isEmpty()) {
+                        try {
+                            maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
+                    if (branchRequest.getLongitude() != null && !branchRequest.getLongitude().isEmpty()) {
+                        try {
+                            maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
                     sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
                 }
 
@@ -2072,6 +2576,7 @@ public class FarmServiceImpl implements FarmService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String savePlacementInfoDetails(ArrayList<PlacementRequest> placementRequest1) {
         /*Object rawData = placementRequest;
         List<PlacementRequest> data1 = new ArrayList<>();
@@ -2092,6 +2597,7 @@ public class FarmServiceImpl implements FarmService {
                 data = placementRequest.getData();
 
                 String branch_code = get_branch_code(placementRequest.getBranchID());
+                assertPlacementLines(branch_code, placementRequest.getShedNo(), data);
                 if (!placementRequest.getTotalFemaleQty().isEmpty()) {
                     SugMaiGppsHousingShed sugMaiGppsHousingShed = new SugMaiGppsHousingShed();
                     sugMaiGppsHousingShed.setFLOCK_ID(placementRequest.getFlockID());
@@ -2140,6 +2646,7 @@ public class FarmServiceImpl implements FarmService {
                         maiGppsHousingLine.setBRANCH_ID(Long.valueOf(placementRequest.getBranchID()));
                         maiGppsHousingLine.setSIDE(sugLineDetails.getSide());
                         sugMaiGppsHousingLineRepositories.save(maiGppsHousingLine);
+                        housingLineStockService.recordPlacement(maiGppsHousingLine);
                     }
                     if (!sugLineDetails.getMaleBirdsCount().isEmpty()) {
                         SugMaiGppsHousingLine maiGppsHousingLine = new SugMaiGppsHousingLine();
@@ -2157,6 +2664,7 @@ public class FarmServiceImpl implements FarmService {
                         maiGppsHousingLine.setBRANCH_ID(Long.valueOf(placementRequest.getBranchID()));
                         maiGppsHousingLine.setSIDE(sugLineDetails.getSide());
                         sugMaiGppsHousingLineRepositories.save(maiGppsHousingLine);
+                        housingLineStockService.recordPlacement(maiGppsHousingLine);
                     }
                     sugMaiGppsHousingShedRepositories.updateentry(placementRequest.getFlockID(),placementRequest.getReportNum(),branch_code);
                 }
@@ -2596,7 +3104,7 @@ public class FarmServiceImpl implements FarmService {
 
                 SugMaiGppsItemConsumption sugMaiGppsItemConsumption = new SugMaiGppsItemConsumption();
                 sugMaiGppsItemConsumption.setDEVICE_ID(123456);
-                sugMaiGppsItemConsumption.setTRANS_DATE(new Date());
+                sugMaiGppsItemConsumption.setTRANS_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
                 sugMaiGppsItemConsumption.setTRANS_TYPE(sanitizationEntryDetails.getItemType());
                 //sugMaiGppsItemConsumption.setINVENTORY_ITEM_ID(0);
                 sugMaiGppsItemConsumption.setINVENTORY_ITEM_CODE(sanitizationEntryDetails.getItemCode());
@@ -2604,7 +3112,7 @@ public class FarmServiceImpl implements FarmService {
                 sugMaiGppsItemConsumption.setSTK_QTY(0);
                 sugMaiGppsItemConsumption.setUOM(sanitizationEntryDetails.getUom());
                 sugMaiGppsItemConsumption.setPOSTED_FLAG("N");
-                sugMaiGppsItemConsumption.setFOR_LTR_WATER(Double.parseDouble(sanitizationEntryDetails.getForLtrWater()));
+                sugMaiGppsItemConsumption.setFOR_LTR_WATER(parseOptionalDouble(sanitizationEntryDetails.getForLtrWater()));
                 sugMaiGppsItemConsumption.setINVENTORY_LOCATION_ID(Long.parseLong(String.valueOf(get_inventory_loc_id(gppsObservationBatchDTO.getLOCATION_CODE(),branchRequest.getBranchID()))));
               //  sugMaiGppsItemConsumption.setc(branchRequest.getUserCode());
                 sugMaiGppsItemConsumption.setCREATION_DATE(new Date());
@@ -2641,8 +3149,8 @@ public class FarmServiceImpl implements FarmService {
            // maiGppsConsumptions.setLIGTHING_END_HRS(data.getLightEndTime());
            // maiGppsConsumptions.setSANITIZATION_START_HRS(data.getSanitizationStartTime());
           //  maiGppsConsumptions.setSANITIZATION_END_HRS(data.getSanitizationEndTime());
-            maiGppsConsumptions.setPH_LEVEL(Double.parseDouble(branchRequest.getPhLevel()));
-            maiGppsConsumptions.setPM_LEVEL(Double.parseDouble(branchRequest.getPmLevel()));
+            maiGppsConsumptions.setPH_LEVEL(parseOptionalDouble(branchRequest.getPhLevel()));
+            maiGppsConsumptions.setPM_LEVEL(parseOptionalDouble(branchRequest.getPmLevel()));
             maiGppsConsumptions.setCREATION_DATE(new Date());
 
             maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
@@ -2751,6 +3259,24 @@ public class FarmServiceImpl implements FarmService {
         return count;
 
     }
+    private void assertPlacementLines(String farmCode, String shedNo, List<PlacementRequest.SugLineDetails> lines) {
+        if (lines == null) {
+            return;
+        }
+        java.util.Map<String, long[]> totals = new java.util.LinkedHashMap<>();
+        for (PlacementRequest.SugLineDetails line : lines) {
+            String key = (line.getLineNo() == null ? "" : line.getLineNo()) + "|" + (line.getSide() == null ? "" : line.getSide());
+            long[] qty = totals.computeIfAbsent(key, ignored -> new long[]{0L, 0L});
+            if (line.getFemaleBirdsCount() != null && !line.getFemaleBirdsCount().isEmpty()) {
+                qty[0] += Long.parseLong(line.getFemaleBirdsCount());
+            }
+            if (line.getMaleBirdsCount() != null && !line.getMaleBirdsCount().isEmpty()) {
+                qty[1] += Long.parseLong(line.getMaleBirdsCount());
+            }
+            housingLineStockService.assertPlacementQty(farmCode, shedNo, line.getLineNo(), line.getSide(), qty[0], qty[1]);
+        }
+    }
+
     public String get_branch_code(String branchId)
     {
         String count ="0";
@@ -3516,6 +4042,8 @@ public class FarmServiceImpl implements FarmService {
         Long inventoryItemId;
         String inventoryDesc;
         String itemCode;
+        String itemGroup;
+        String itemCategory;
         Float stockQty;
     }
 
@@ -3576,70 +4104,21 @@ public class FarmServiceImpl implements FarmService {
 
     private List<FeedStockItem> getFeedStockItems(String branchId) {
         List<FeedStockItem> items = new ArrayList<>();
-        if (branchId == null || branchId.trim().isEmpty()) {
-            return items;
-        }
-        try {
-            @SuppressWarnings("unchecked")
-            List<Object[]> rows = entityManager.createNativeQuery(
-                            "select inventory_item_id, item_description, item_code, secondary_transaction_quantity from (" +
-                                    " select a.inventory_item_id as inventory_item_id," +
-                                    "        a.description as item_description," +
-                                    "        a.segment1 as item_code," +
-                                    "        sum(d.secondary_transaction_quantity) as secondary_transaction_quantity" +
-                                    "   from mtl_system_items_b a," +
-                                    "        mtl_item_categories b," +
-                                    "        mtl_categories c," +
-                                    "        mtl_onhand_quantities_detail d," +
-                                    "        mtl_lot_numbers f" +
-                                    "  where b.inventory_item_id = a.inventory_item_id" +
-                                    "    and b.organization_id = a.organization_id" +
-                                    "    and b.category_set_id = 1" +
-                                    "    and c.category_id = b.category_id" +
-                                    "    and d.inventory_item_id = a.inventory_item_id" +
-                                    "    and d.organization_id = a.organization_id" +
-                                    "    and f.organization_id(+) = d.organization_id" +
-                                    "    and f.inventory_item_id(+) = d.inventory_item_id" +
-                                    "    and f.lot_number(+) = d.lot_number" +
-                                    "    and nvl(f.expiration_date, sysdate + 1) > sysdate" +
-                                    "    and (c.segment1 in (select flv.lookup_code from fnd_lookup_values flv" +
-                                    "                         where flv.lookup_type = 'SUG_BREEDER_ITEM_CATEGORY'" +
-                                    "                           and flv.description = 'F'" +
-                                    "                           and flv.enabled_flag = 'Y'" +
-                                    "                           and trunc(sysdate) between flv.start_date_active" +
-                                    "                               and nvl(flv.end_date_active, sysdate))" +
-                                    "         or a.segment1 in (select sa.lookup_code from fnd_lookup_values sa" +
-                                    "                            where sa.lookup_type = 'SUG_GPPS_MEDICIN_ADDL_ITEMS'" +
-                                    "                              and sa.tag = 'FEED'" +
-                                    "                              and sa.enabled_flag = 'Y'" +
-                                    "                              and trunc(sysdate) between sa.start_date_active" +
-                                    "                                  and nvl(sa.end_date_active, sysdate)))" +
-                                    "    and c.disable_date is null" +
-                                    "    and d.organization_id = ?1" +
-                                    "  group by a.inventory_item_id, a.segment1, a.description," +
-                                    "           d.organization_id, d.subinventory_code," +
-                                    "           a.primary_uom_code, d.secondary_uom_code, c.segment1, c.segment2" +
-                                    " having sum(d.secondary_transaction_quantity) > .001) a" +
-                                    " where secondary_transaction_quantity > .001")
-                    .setParameter(1, branchId)
-                    .getResultList();
-            if (rows == null) {
-                return items;
-            }
-            for (Object[] row : rows) {
-                FeedStockItem item = new FeedStockItem();
-                if (row[0] instanceof Number) {
-                    item.inventoryItemId = ((Number) row[0]).longValue();
+        for (TransferPlace.FeedItemDetails feedItem : feedInventoryService.getFeedItemsForBranch(branchId)) {
+            FeedStockItem item = new FeedStockItem();
+            item.inventoryItemId = feedItem.getInventoryItemId();
+            item.inventoryDesc = feedItem.getItemDescription();
+            item.itemCode = feedItem.getItemCode();
+            item.itemGroup = feedItem.getItemGroup();
+            item.itemCategory = feedItem.getItemCategory();
+            if (feedItem.getSecondaryTransactionQuantity() != null) {
+                try {
+                    item.stockQty = Float.parseFloat(feedItem.getSecondaryTransactionQuantity().replace(",", ""));
+                } catch (NumberFormatException ignored) {
+                    item.stockQty = 0f;
                 }
-                item.inventoryDesc = row[1] == null ? null : String.valueOf(row[1]);
-                item.itemCode = row[2] == null ? null : String.valueOf(row[2]);
-                if (row.length > 3 && row[3] instanceof Number) {
-                    item.stockQty = ((Number) row[3]).floatValue();
-                }
-                items.add(item);
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+            items.add(item);
         }
         return items;
     }
@@ -3655,13 +4134,9 @@ public class FarmServiceImpl implements FarmService {
                 }
             }
         }
-        String grade = consumption.getGRADE();
-        if (grade != null && !grade.trim().isEmpty()) {
-            for (FeedStockItem item : stockItems) {
-                if (grade.equalsIgnoreCase(item.itemCode) || grade.equalsIgnoreCase(item.inventoryDesc)) {
-                    return item;
-                }
-            }
+        FeedStockItem matched = findBestFeedStockForGrade(consumption.getGRADE(), stockItems);
+        if (matched != null) {
+            return matched;
         }
         return stockItems.get(0);
     }
@@ -3770,6 +4245,26 @@ public class FarmServiceImpl implements FarmService {
             current = current.getCause();
         }
         return current.getMessage() != null ? current.getMessage() : e.toString();
+    }
+
+    private boolean isRecoveryMarker(Object value) {
+        return value != null && "RECOVERY".equalsIgnoreCase(value.toString().trim());
+    }
+
+    private boolean isRecoveryWeekBirdEntry(BranchRequest.SugWeekBirdDetails details) {
+        if (details == null) {
+            return false;
+        }
+        if (isRecoveryMarker(details.getEntryType())) {
+            return true;
+        }
+        if (isRecoveryMarker(details.getLookupCode())) {
+            return true;
+        }
+        if (isRecoveryMarker(details.getTxnType())) {
+            return true;
+        }
+        return false;
     }
 
     private boolean isFemale(String sex) {
@@ -3915,6 +4410,7 @@ public class FarmServiceImpl implements FarmService {
 
     }
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String saveFlockGradeWiseDetails(ArrayList<PlacementRequest> placementRequest1) {
         /*Object rawData = placementRequest;
         List<PlacementRequest> data1 = new ArrayList<>();
@@ -3935,6 +4431,7 @@ public class FarmServiceImpl implements FarmService {
                 data = placementRequest.getData();
 
                 String branch_code = get_branch_code(placementRequest.getBranchID());
+                assertPlacementLines(branch_code, placementRequest.getShedNo(), data);
                 if (!placementRequest.getTotalFemaleQty().isEmpty()) {
                     SugMaiGppsHousingShed sugMaiGppsHousingShed = new SugMaiGppsHousingShed();
                     sugMaiGppsHousingShed.setFLOCK_ID(placementRequest.getFlockID());
@@ -3986,6 +4483,7 @@ public class FarmServiceImpl implements FarmService {
                         maiGppsHousingLine.setAGE(Long.valueOf(placementRequest.getAge()));
                         maiGppsHousingLine.setSIDE(sugLineDetails.getSide());
                         sugMaiGppsHousingLineRepositories.save(maiGppsHousingLine);
+                        housingLineStockService.recordPlacement(maiGppsHousingLine);
                     }
                     if (!sugLineDetails.getMaleBirdsCount().isEmpty()) {
                         SugMaiGppsHousingLine maiGppsHousingLine = new SugMaiGppsHousingLine();
@@ -4004,6 +4502,7 @@ public class FarmServiceImpl implements FarmService {
                         maiGppsHousingLine.setAGE(Long.valueOf(placementRequest.getAge()));
                         maiGppsHousingLine.setSIDE(sugLineDetails.getSide());
                         sugMaiGppsHousingLineRepositories.save(maiGppsHousingLine);
+                        housingLineStockService.recordPlacement(maiGppsHousingLine);
                     }
                     sugCVBodyWeightDtlRepository.updateentry(placementRequest.getBranchID(),placementRequest.getShedNo(),placementRequest.getAge(),sugLineDetails.getGradeNo());
                    // sugMaiGppsHousingShedRepositories.updateentry(placementRequest.getFlockID(),placementRequest.getReportNum(),branch_code);
@@ -4056,6 +4555,7 @@ public class FarmServiceImpl implements FarmService {
             }
         }
         SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
+        validateMedicineVaccineAgainstPrescribedAndStock(branchRequest, data);
         if (!data.isEmpty()) {
             for (BranchRequest.SugMedicineVaccineDetails sugMedicineVaccineDetails : data) {
                 SugMaiGppsConsumptions maiGppsConsumptions = new SugMaiGppsConsumptions();
@@ -4099,6 +4599,70 @@ public class FarmServiceImpl implements FarmService {
             }
         }
         return "200";
+    }
+
+    /**
+     * Daily medicine/vaccine entry may only consume prescribed schedule lines, within primary on-hand stock.
+     */
+    private void validateMedicineVaccineAgainstPrescribedAndStock(BranchRequest branchRequest,
+                                                                  List<BranchRequest.SugMedicineVaccineDetails> data) {
+        if (data == null || data.isEmpty()) {
+            return;
+        }
+        String scheduleDate = branchRequest.getEntryDate();
+        if (scheduleDate == null || scheduleDate.trim().isEmpty()) {
+            scheduleDate = branchRequest.getTransDate();
+        }
+        ArrayList<BranchUser.MedicineScheduleDetails> prescribed = getDailyMedicineSchedule(
+                branchRequest.getBranchID(), branchRequest.getShedNo(), scheduleDate);
+        Map<String, BranchUser.MedicineScheduleDetails> prescribedByTransId = new HashMap<>();
+        if (prescribed != null) {
+            for (BranchUser.MedicineScheduleDetails row : prescribed) {
+                if (row.getTransId() != null && !row.getTransId().trim().isEmpty()) {
+                    prescribedByTransId.put(row.getTransId().trim(), row);
+                }
+            }
+        }
+        Map<Long, BigDecimal> requestedQtyByItemId = new LinkedHashMap<>();
+        Map<Long, String> labelByItemId = new LinkedHashMap<>();
+        for (BranchRequest.SugMedicineVaccineDetails line : data) {
+            if (line.getTransId() == null || line.getTransId().trim().isEmpty()) {
+                throw new IllegalArgumentException("Prescribed schedule reference is missing");
+            }
+            BranchUser.MedicineScheduleDetails scheduleRow = prescribedByTransId.get(line.getTransId().trim());
+            if (scheduleRow == null) {
+                throw new IllegalArgumentException("Only prescribed medicine/vaccine schedule items can be saved");
+            }
+            if (scheduleRow.getAllocateStatus() != null
+                    && "Y".equalsIgnoreCase(scheduleRow.getAllocateStatus().trim())) {
+                String label = scheduleRow.getItemName() != null ? scheduleRow.getItemName() : scheduleRow.getItemDesc();
+                throw new IllegalArgumentException("Schedule item already completed for " + label);
+            }
+            if (line.getItemId() == null || scheduleRow.getItemId() == null
+                    || !line.getItemId().trim().equals(scheduleRow.getItemId().trim())) {
+                throw new IllegalArgumentException("Item does not match prescribed schedule");
+            }
+            if (line.getQty() == null || line.getQty().trim().isEmpty()) {
+                throw new IllegalArgumentException("Quantity must be greater than zero");
+            }
+            BigDecimal qty = new BigDecimal(line.getQty().trim());
+            if (qty.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("Quantity must be greater than zero");
+            }
+            Long itemId = Long.valueOf(line.getItemId().trim());
+            requestedQtyByItemId.merge(itemId, qty, BigDecimal::add);
+            String label = scheduleRow.getItemName() != null ? scheduleRow.getItemName() : scheduleRow.getItemDesc();
+            labelByItemId.putIfAbsent(itemId, label != null ? label : String.valueOf(itemId));
+        }
+        for (Map.Entry<Long, BigDecimal> entry : requestedQtyByItemId.entrySet()) {
+            Float onHandQty = getOnHandStockQty(entry.getKey(), branchRequest.getBranchID());
+            BigDecimal onHand = onHandQty == null ? BigDecimal.ZERO : BigDecimal.valueOf(onHandQty.doubleValue());
+            if (entry.getValue().compareTo(onHand) > 0) {
+                throw new IllegalArgumentException(
+                        "Actual dosage cannot exceed on-hand stock for " + labelByItemId.get(entry.getKey())
+                                + ". Requested " + strip(entry.getValue()) + ", on-hand " + strip(onHand));
+            }
+        }
     }
 
     @Override
@@ -4424,6 +4988,10 @@ public class FarmServiceImpl implements FarmService {
         maiGppsConsumptions.setLIGTHING_END_HRS(data.getLightEndTime());
         maiGppsConsumptions.setSANITIZATION_START_HRS(data.getSanitizationStartTime());
         maiGppsConsumptions.setSANITIZATION_END_HRS(data.getSanitizationEndTime());
+        maiGppsConsumptions.setFEED_START_TIME(data.getFeedStartTime());
+        maiGppsConsumptions.setFEED_END_TIME(data.getFeedEndTime());
+        maiGppsConsumptions.setLIGHTING_HRS(data.getLightingHrs());
+        maiGppsConsumptions.setCLEANING_HRS(data.getCleanUpHrs());
         maiGppsConsumptions.setTEMP_MAX(Double.parseDouble(data.getTempMax()));
         maiGppsConsumptions.setTEMP_MIN(Double.parseDouble(data.getTempMin()));
         maiGppsConsumptions.setCREATION_DATE(new Date());

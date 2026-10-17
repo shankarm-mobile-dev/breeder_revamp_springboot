@@ -164,16 +164,37 @@ public class FarmController {
             }
         }
         else if(branchRequest.getActivityName().equalsIgnoreCase("MORTALITY")) {
-            responseDto.setResult(farmService.saveMortalityDetails(branchRequest,imageFile));
+            try {
+                responseDto.setResult(farmService.saveMortalityDetails(branchRequest,imageFile));
+            } catch (IllegalArgumentException ex) {
+                responseDto.setMessage(ex.getMessage());
+                responseDto.setStatusCode(400);
+                responseDto.setStatus("Failed");
+                return responseDto;
+            }
         }
         else if(branchRequest.getActivityName().equalsIgnoreCase("EGG COLLECTION")) {
             responseDto.setResult(farmService.saveEggCollectionDetails(branchRequest));
         }
         else if(branchRequest.getActivityName().equalsIgnoreCase("WEAK BIRD SEPARATION")) {
-            responseDto.setResult(farmService.saveWeekSeperationDetails(branchRequest));
+            try {
+                responseDto.setResult(farmService.saveWeekSeperationDetails(branchRequest));
+            } catch (IllegalArgumentException ex) {
+                responseDto.setMessage(ex.getMessage());
+                responseDto.setStatusCode(400);
+                responseDto.setStatus("Failed");
+                return responseDto;
+            }
         }
         else if(branchRequest.getActivityName().equalsIgnoreCase("MEDICINE/VACCINE")) {
-            responseDto.setResult(farmService.saveDailyMedicineVaccine(branchRequest,imageFile));
+            try {
+                farmService.saveDailyMedicineVaccine(branchRequest, imageFile);
+            } catch (IllegalArgumentException ex) {
+                responseDto.setMessage(ex.getMessage());
+                responseDto.setStatusCode(400);
+                responseDto.setStatus("Failed");
+                return responseDto;
+            }
         }
         responseDto.setResult(farmService.getDailyEntrySchedule(branchRequest));
         return responseDto;

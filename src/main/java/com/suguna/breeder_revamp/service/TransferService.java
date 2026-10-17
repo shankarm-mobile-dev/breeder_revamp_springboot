@@ -22,6 +22,8 @@ public interface TransferService {
 
     String saveTransOut(ArrayList<SUGMAIGPPSTRANS_HDRDto> entry);
 
+    String saveShedLineTransfer(ShedLineTransferRequest request);
+
     ArrayList<TransferPlace> getTransferPlanPlace(BranchRequest branchRequest);
 
     ArrayList<BranchUser> getAllBranch(BranchRequest branchRequest);

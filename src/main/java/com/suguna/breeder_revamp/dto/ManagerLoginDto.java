@@ -60,5 +60,8 @@ public class ManagerLoginDto {
         @JsonProperty("ledgerID")
         String ledgerID;
 
+        @JsonProperty("sessionToken")
+        String sessionToken;
+
     }
 }

@@ -245,6 +245,14 @@ public class BranchRequest<T> {
         String lineNo;
         @JsonProperty("sideNo")
         String sideNo;
+        @JsonProperty("entryType")
+        @JsonAlias({"entry_type", "txnEntryType"})
+        String entryType;
+        @JsonProperty("lookupCode")
+        String lookupCode;
+        @JsonProperty("txnType")
+        @JsonAlias({"txn_type"})
+        String txnType;
 
     }
 
@@ -311,6 +319,18 @@ public class BranchRequest<T> {
         String Remarks;
         @JsonProperty("debeaking")
         String debeaking;
+
+        @JsonProperty("feedStartTime")
+        String feedStartTime;
+
+        @JsonProperty("feedEndTime")
+        String feedEndTime;
+
+        @JsonProperty("lightingHrs")
+        Long lightingHrs;
+
+        @JsonProperty("cleanUpHrs")
+        Long cleanUpHrs;
     }
     @Getter
     @Setter

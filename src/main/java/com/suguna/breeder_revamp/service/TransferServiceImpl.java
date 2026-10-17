@@ -39,6 +39,9 @@ public class TransferServiceImpl implements TransferService{
     EntityManager entityManager;
 
     @Autowired
+    FeedInventoryService feedInventoryService;
+
+    @Autowired
     SugMaiGppsTransHdrRepository sugMaiGppsTransHdrRepository;
 
     @Autowired
@@ -61,6 +64,9 @@ public class TransferServiceImpl implements TransferService{
 
     @Autowired
     private FileStorageService fileStorageService;
+
+    @Autowired
+    HousingLineStockService housingLineStockService;
 
     @Override
     public ArrayList<TransferPlace> getTransferPlace(BranchRequest branchRequest) {
@@ -111,25 +117,7 @@ public class TransferServiceImpl implements TransferService{
 
     @Override
     public ArrayList<TransferPlace.FeedItemDetails> getFeedItemMaster(BranchRequest branchRequest) {
-        ArrayList<TransferPlace.FeedItemDetails> feedItemDetailsArrayList = new ArrayList<TransferPlace.FeedItemDetails>();
-        try {
-            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getfeeditemmaster");
-            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
-
-            storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
-            storedProcedureQuery.setParameter(1, branchRequest.getBranchID());
-
-            storedProcedureQuery.execute();
-            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
-
-            while (resultSet.next()) {
-                TransferPlace.FeedItemDetails feedItemDetails = ResultSetMapper.mapResultSetToObject(resultSet, TransferPlace.FeedItemDetails.class);
-                feedItemDetailsArrayList.add(feedItemDetails);
-            }
-        } catch (Exception e) {
-
-        }
-        return feedItemDetailsArrayList;
+        return new ArrayList<>(feedInventoryService.getFeedItemsForBranch(branchRequest.getBranchID()));
     }
 
     @Override
@@ -375,6 +363,119 @@ public class TransferServiceImpl implements TransferService{
         }
         return "200";
     }
+
+    @Override
+    @Transactional
+    public String saveShedLineTransfer(ShedLineTransferRequest request) {
+        if (request == null || request.getLines() == null || request.getLines().isEmpty()) {
+            throw new IllegalArgumentException("Transfer lines are required");
+        }
+        String farmCode = farmCode(request.getBranchID());
+        Date txnDate = parseTransferDate(request.getTxnDate());
+        long pairSeed = System.currentTimeMillis();
+        int index = 0;
+        for (ShedLineTransferRequest.LineMove line : request.getLines()) {
+            long qty = housingLineStockService.parseQty(line.getQty());
+            Long batchId = line.getBatchId() == null || line.getBatchId().isBlank() ? null : Long.valueOf(line.getBatchId().trim());
+            Long age = line.getAge() == null || line.getAge().isBlank() ? null : Long.valueOf(line.getAge().trim());
+            Long branchId = request.getBranchID() == null || request.getBranchID().isBlank() ? null : Long.valueOf(request.getBranchID().trim());
+            housingLineStockService.transferShedLine(
+                    line.getFlockId(),
+                    farmCode,
+                    line.getFromShed(),
+                    line.getFromLine(),
+                    line.getFromSide(),
+                    line.getToShed(),
+                    line.getToLine(),
+                    line.getToSide(),
+                    line.getSex(),
+                    qty,
+                    txnDate,
+                    request.getUserCode(),
+                    branchId,
+                    batchId,
+                    age,
+                    pairSeed + "-" + index);
+            index++;
+        }
+
+        SugMaiGppsTransHdr header = new SugMaiGppsTransHdr();
+        header.setDEVICE_ID(new BigDecimal("123456"));
+        header.setEMPCODE(request.getUserCode());
+        header.setFROM_FARM_ID(new BigDecimal(request.getFromFarmId() == null ? request.getBranchID() : request.getFromFarmId()));
+        header.setFROM_FARM_NAME(farmName(request.getBranchID()));
+        header.setTO_FARM_ID(header.getFROM_FARM_ID());
+        header.setTRANS_TYPE("OUT");
+        header.setTXN_DATE(txnDate);
+        header.setTRANS_REASON(request.getTransferReason());
+        header.setENTRY_CREATION_DATE(new Date());
+        header.setCREATED_DATE(new Date());
+        header.setPOSTED_FLAG("N");
+        header.setPOST_TO_ERP("N");
+        header.setLOCATION_TYPE("SHED");
+        header = sugMaiGppsTransHdrRepository.save(header);
+
+        for (ShedLineTransferRequest.LineMove line : request.getLines()) {
+            SugMaiGppsTransDtl detail = new SugMaiGppsTransDtl();
+            detail.setDEVICE_ID(new BigDecimal("123456"));
+            detail.setTXN_HEADER_ID(header.getTXN_HEADER_ID());
+            detail.setFROM_FARM_ID(header.getFROM_FARM_ID());
+            detail.setTO_FARM_ID(header.getTO_FARM_ID());
+            detail.setFROM_INVENTORY_LOC_DESC(line.getFromShed());
+            detail.setTXN_TYPE("BIRD");
+            detail.setBIRD_TYPE(housingLineStockService.normalizeSex(line.getSex()));
+            detail.setITEM_DESC("NA");
+            detail.setUOM("EA");
+            detail.setQTY(new BigDecimal(line.getQty()));
+            detail.setENTRY_CREATION_DATE(new Date());
+            detail.setCREATED_DATE(new Date());
+            detail.setPOSTED_FLAG("N");
+            detail.setPOST_TO_ERP("N");
+            detail.setLOCATION_TYPE("SHED");
+            detail.setFROM_LINE_NAME(line.getFromLine());
+            detail.setTO_LINE_NAME(line.getToLine());
+            detail.setFROM_SIDE_NAME(line.getFromSide());
+            detail.setTO_SIDE_NAME(line.getToSide());
+            if (line.getAge() != null && !line.getAge().isBlank()) {
+                detail.setAGE(new BigDecimal(line.getAge().trim()));
+            }
+            sugMaiGppsTransDtlRepository.save(detail);
+        }
+        return "200";
+    }
+
+    private String farmCode(String branchId) {
+        Object result = entityManager.createNativeQuery("select a.branch_code from sug_organization_mv a where a.branch_id = :id")
+                .setParameter("id", branchId)
+                .getSingleResult();
+        return result == null ? "" : result.toString();
+    }
+
+    private String farmName(String branchId) {
+        try {
+            Object result = entityManager.createNativeQuery("select a.branch_name from sug_organization_mv a where a.branch_id = :id")
+                    .setParameter("id", branchId)
+                    .getSingleResult();
+            return result == null ? "" : result.toString();
+        } catch (Exception ex) {
+            return "";
+        }
+    }
+
+    private Date parseTransferDate(String value) {
+        if (value == null || value.isBlank()) {
+            return new Date();
+        }
+        String[] patterns = {"dd-MM-yyyy", "dd-MMM-yyyy", "yyyy-MM-dd"};
+        for (String pattern : patterns) {
+            try {
+                return new SimpleDateFormat(pattern, Locale.ENGLISH).parse(value);
+            } catch (ParseException ignored) {
+            }
+        }
+        return new Date();
+    }
+
     public String get_locator_inv_id(String branchid) {
         try {
             Object result = entityManager
@@ -600,15 +701,15 @@ public class TransferServiceImpl implements TransferService{
         try {
             StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.geteggplan_hatchery_details");
             storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
-            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
+            //storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
 
-            storedProcedureQuery.registerStoredProcedureParameter(3, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
             storedProcedureQuery.setParameter(1, branchRequest.getBranchID());
-            storedProcedureQuery.setParameter(2, branchRequest.getHatcheryID());
+            //storedProcedureQuery.setParameter(2, branchRequest.getHatcheryID());
 
 
             storedProcedureQuery.execute();
-            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(3);
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
 
             while (resultSet.next()) {
                 TransferPlace.HatcheryPlanDetails transferInDetails = ResultSetMapper.mapResultSetToObject(resultSet, TransferPlace.HatcheryPlanDetails.class);

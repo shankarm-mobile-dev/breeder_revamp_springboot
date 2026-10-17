@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.suguna.breeder_revamp.dto.*;
 import com.suguna.breeder_revamp.response.ApiResponseList;
 import com.suguna.breeder_revamp.service.AuthenticationServiceImpl;
-import com.suguna.breeder_revamp.service.ShedReadyService;
-import com.suguna.breeder_revamp.service.ShedReadyServiceImpl;
+import com.suguna.breeder_revamp.service.UserSessionService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,6 +20,9 @@ import java.util.Objects;
 public class authentication {
     @Autowired
     AuthenticationServiceImpl authService;
+
+    @Autowired
+    UserSessionService userSessionService;
 
 
 
@@ -125,6 +128,7 @@ public class authentication {
                 loginDto.setStatus("Success");
                 loginDto.setMessage("Login Success");
                 loginDto.setUser_details(authService.getManagerDetails(userRequest.getUserCode()));
+                attachSession(loginDto, userRequest);
                 return loginDto;
             } else {
          /*   loginDto.setStatusCode(201);
@@ -134,6 +138,7 @@ public class authentication {
                 loginDto.setStatus("Success");
                 loginDto.setMessage("Login Success");
                 loginDto.setUser_details(authService.getManagerDetails(userRequest.getUserCode()));
+                attachSession(loginDto, userRequest);
             }
         }
         else {
@@ -146,6 +151,7 @@ public class authentication {
                     loginDto.setStatus("Success");
                     loginDto.setMessage("Login Success");
                     loginDto.setUser_details(userDetailsSetResultDto);
+                    attachSession(loginDto, userRequest);
                 }
                 else {
                     loginDto.setStatusCode(201);
@@ -195,6 +201,7 @@ public class authentication {
                     loginDto.setUser_details(userDetailsSetResultDto);
                 }
             }
+            attachSession(loginDto, userRequest);
             return loginDto;
         }
         else
@@ -204,6 +211,23 @@ public class authentication {
             loginDto.setMessage("Updated not Success");
         }
         return loginDto;
+    }
+
+    @PostMapping("/checkSession")
+    public ResponseEntity<ResponseDto> checkSession(
+            @RequestHeader(value = "X-User-Code", required = false) String userCode,
+            @RequestHeader(value = "X-Session-Token", required = false) String sessionToken) {
+        ResponseDto loginDto = new ResponseDto();
+        if (userSessionService.isValidSession(userCode, sessionToken)) {
+            loginDto.setMessage("Session valid");
+            loginDto.setStatusCode(200);
+            loginDto.setStatus("Success");
+            return ResponseEntity.ok(loginDto);
+        }
+        loginDto.setMessage("You have been logged out because your account was signed in on another device");
+        loginDto.setStatusCode(401);
+        loginDto.setStatus("SESSION_EXPIRED");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(loginDto);
     }
 
     @PostMapping("/createOTP")
@@ -352,5 +376,12 @@ public class authentication {
         loginDto.setStatus("Ok");
         loginDto.setResult(authService.get_supervisor_email(email));
         return loginDto;
+    }
+
+    private void attachSession(ManagerLoginDto loginDto, UserRequest userRequest) {
+        if (loginDto.getStatusCode() == 200 && loginDto.getUser_details() != null && userRequest.getUserCode() != null) {
+            String sessionToken = userSessionService.createOrReplaceSession(userRequest.getUserCode(), userRequest.getDeviceID());
+            loginDto.getUser_details().setSessionToken(sessionToken);
+        }
     }
 }

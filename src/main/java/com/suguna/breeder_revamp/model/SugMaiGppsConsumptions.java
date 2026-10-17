@@ -53,4 +53,8 @@ public class SugMaiGppsConsumptions {
     String SIDE_NO;
     String BIRD_TYPE;
     String DEBEAKING;
+    String FEED_START_TIME;
+    String FEED_END_TIME;
+    Long CLEANING_HRS;
+    Long LIGHTING_HRS;
 }
