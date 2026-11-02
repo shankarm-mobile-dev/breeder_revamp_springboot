@@ -159,46 +159,26 @@ public class ReportServiceImpl implements ReportService{
         return reportResultDto;
     }
 
-    public ArrayList<FarmResultDto.feedstock> getFeedstock(String branchid)throws SQLException{
-        FarmResultDto.feedstock api = new FarmResultDto.feedstock();
-        ArrayList<FarmResultDto.feedstock> Result = new ArrayList<FarmResultDto.feedstock>();
-        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("sug_mai_gppsmob_pkg.getfeedstock");
-        storedProcedureQuery.registerStoredProcedureParameter(1, Long.class, ParameterMode.IN);
-        storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
-        storedProcedureQuery.registerStoredProcedureParameter(3, ArrayList.class, ParameterMode.REF_CURSOR);
-        storedProcedureQuery.setParameter(1, "1");
-        storedProcedureQuery.setParameter(2, branchid);
-        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(3);
-        storedProcedureQuery.execute();
+    public ArrayList<FarmResultDto.feedstock> getFeedstock(String branchid) throws SQLException {
+        ArrayList<FarmResultDto.feedstock> result = new ArrayList<>();
+        result.addAll(loadOnHandStock("SUG_MAI_GPPS_MOB_PKG.getfeeditemmaster", branchid));
+        result.addAll(loadOnHandStock("SUG_MAI_GPPS_MOB_PKG.getmedivaccinemaster", branchid));
+        return result;
+    }
+
+    private ArrayList<FarmResultDto.feedstock> loadOnHandStock(String procedureName, String branchId)
+            throws SQLException {
+        ArrayList<FarmResultDto.feedstock> rows = new ArrayList<>();
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery(procedureName);
+        query.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+        query.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+        query.setParameter(1, branchId);
+        query.execute();
+        ResultSet resultSet = (ResultSet) query.getOutputParameterValue(2);
         while (resultSet.next()) {
-            FarmResultDto.feedstock pojo = null;
-            try {
-                api = ResultSetMapper.mapResultSetToObject(resultSet, FarmResultDto.feedstock.class);
-            } catch (SQLException e) {
-                throw new RuntimeException(e);
-            }
-            Result.add(api);
+            rows.add(ResultSetMapper.mapResultSetToObject(resultSet, FarmResultDto.feedstock.class));
         }
-//        ArrayList<ReportDto.feedStock> Result = new ArrayList<ReportDto.feedStock>();
-//        StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("Sug_Mai_Gppsmgr_Pkg.getfeedstock");
-//        storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
-//        storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
-//        storedProcedureQuery.setParameter(1,branchid);
-//        System.out.println(branchid);
-//        ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
-//        storedProcedureQuery.execute();
-//
-//
-//        while (resultSet.next()) {
-//            try {
-//                api = ResultSetMapper.mapResultSetToObject(resultSet, ReportDto.feedStock.class);
-//            } catch (Exception e) {
-//                throw new RuntimeException();
-//            }
-//
-//            Result.add(api);
-//        }
-        return Result;
+        return rows;
     }
 
     @Override

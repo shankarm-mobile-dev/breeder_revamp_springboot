@@ -355,6 +355,8 @@ public class TransferServiceImpl implements TransferService{
                 } else {
 
                 }
+                markTransPlanHdrInactiveAfterBirdTransOut(FarmDto);
+                applyEggLoadDateAfterTransferOut(FarmDto);
             }
         } catch (Exception e) {
             System.out.println("Error in saveTransOut: " + e.getMessage());
@@ -362,6 +364,196 @@ public class TransferServiceImpl implements TransferService{
             throw e;
         }
         return "200";
+    }
+
+    /**
+     * Bird transfer OUT from plan: mobile sends plan TXN_HEADER_ID as pid/planId — mark plan header inactive.
+     */
+    private void markTransPlanHdrInactiveAfterBirdTransOut(SUGMAIGPPSTRANS_HDRDto farmDto) {
+        if (isTransferIn(farmDto.getTransfer_type())) {
+            return;
+        }
+        if (farmDto.getDetails() == null || farmDto.getDetails().isEmpty()) {
+            return;
+        }
+        boolean hasBird = farmDto.getDetails().stream()
+                .anyMatch(d -> d.getTxn_type() != null && "BIRD".equalsIgnoreCase(d.getTxn_type().trim()));
+        if (!hasBird) {
+            return;
+        }
+        String planHdrId = resolvePidForTransOut(farmDto);
+        if (planHdrId == null || planHdrId.isBlank() || "1".equals(planHdrId.trim())) {
+            return;
+        }
+        try {
+            int updatedRows = sugMaiGppsTransPlanHdrRepository.updateentry(planHdrId.trim(), "I");
+            System.out.println("TRANS_PLAN_HDR STATUS=I TXN_HEADER_ID=" + planHdrId + " updatedRows=" + updatedRows);
+        } catch (Exception e) {
+            System.out.println("Error in markTransPlanHdrInactiveAfterBirdTransOut: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void applyEggLoadDateAfterTransferOut(SUGMAIGPPSTRANS_HDRDto farmDto) {
+        if (farmDto.getDetails() == null || farmDto.getDetails().isEmpty()) {
+            return;
+        }
+        boolean hasEgg = farmDto.getDetails().stream()
+                .anyMatch(d -> d.getTxn_type() != null && "EGG".equalsIgnoreCase(d.getTxn_type().trim()));
+        if (!hasEgg) {
+            return;
+        }
+        String transid = farmDto.getTransid();
+        if (transid == null || transid.isBlank()) {
+            System.out.println("Egg transfer out: transid missing — plan TRANSFER_ENTRY_FLAG not updated");
+            return;
+        }
+        EggLoadDateRequest request = new EggLoadDateRequest();
+        request.setTransid(transid.trim());
+        request.setId(resolvePidForTransOut(farmDto));
+        request.setLoadstartdate(farmDto.getLoadstartdate());
+        request.setLoadenddate(farmDto.getLoadenddate());
+        try {
+            updateEggLoadDate(request);
+        } catch (Exception e) {
+            // Transfer header/lines must still commit; mobile also calls POST /updateLoadDate (PHP flow).
+            System.out.println("applyEggLoadDateAfterTransferOut: " + e.getMessage());
+        }
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
+    public String updateEggLoadDate(EggLoadDateRequest request) {
+        if (request == null || request.getTransid() == null || request.getTransid().isBlank()) {
+            throw new IllegalArgumentException("transid (TRANS_LINE_ID) is required");
+        }
+        Long transLineId = parsePayloadId(request.getTransid().trim());
+
+        int lineRows = executePlanLineFlagUpdate(transLineId);
+        System.out.println("updateEggLoadDate TRANS_LINE_ID=" + transLineId + " rowsUpdated=" + lineRows);
+        if (lineRows == 0) {
+            throw new IllegalStateException(
+                    "No SUG_EGG_COLL_PLAN_LINES row updated for TRANS_LINE_ID=" + transLineId);
+        }
+
+        Long planDtlId = resolvePlanDtlIdForLoadDate(request.getId(), transLineId);
+        if (planDtlId == null) {
+            System.out.println("updateEggLoadDate: PLAN_DTL_ID not resolved — loading dates skipped");
+            entityManager.flush();
+            return "200";
+        }
+
+        long pendingCount = countPendingTransferEntryForPlanDtl(planDtlId);
+        System.out.println("updateEggLoadDate PLAN_DTL_ID=" + planDtlId + " pendingTransferLines=" + pendingCount);
+
+        if (pendingCount == 0
+                && request.getLoadstartdate() != null && !request.getLoadstartdate().isBlank()
+                && request.getLoadenddate() != null && !request.getLoadenddate().isBlank()) {
+            Date loadingStart = parseGateDate(request.getLoadstartdate().trim());
+            Date loadingEnd = parseGateDate(request.getLoadenddate().trim());
+            if (loadingStart == null || loadingEnd == null) {
+                throw new IllegalArgumentException("Invalid loading start or end date/time");
+            }
+            if (loadingEnd.before(loadingStart)) {
+                throw new IllegalArgumentException("Loading end time cannot be earlier than loading start time");
+            }
+            int vehicleRows = executeVehiclePlanLoadingDateUpdate(planDtlId, loadingStart, loadingEnd);
+            System.out.println("updateEggLoadDate vehicle plan rowsUpdated=" + vehicleRows);
+        }
+
+        entityManager.flush();
+        return "200";
+    }
+
+    private int executePlanLineFlagUpdate(Long transLineId) {
+        String[] tables = {"SUG_EGG_COLL_PLAN_LINES", "SUG.SUG_EGG_COLL_PLAN_LINES"};
+        for (String table : tables) {
+            int rows = entityManager.createNativeQuery(
+                            "UPDATE " + table + " SET TRANSFER_ENTRY_FLAG = 'A' WHERE TRANS_LINE_ID = :transLineId")
+                    .setParameter("transLineId", transLineId)
+                    .executeUpdate();
+            if (rows > 0) {
+                return rows;
+            }
+        }
+        return 0;
+    }
+
+    private int executeVehiclePlanLoadingDateUpdate(Long planDtlId, Date loadingStart, Date loadingEnd) {
+        java.sql.Timestamp startTs = new java.sql.Timestamp(loadingStart.getTime());
+        java.sql.Timestamp endTs = new java.sql.Timestamp(loadingEnd.getTime());
+        String[] tables = {"SUG_EGG_VEHICLE_PLAN_DTL", "SUG.SUG_EGG_VEHICLE_PLAN_DTL"};
+        for (String table : tables) {
+            int rows = entityManager.createNativeQuery(
+                            "UPDATE " + table + """
+                                     SET ACTUAL_LOADING_START_DATE = :startDate,
+                                         ACTUAL_LOADING_END_DATE = :endDate
+                                   WHERE PLAN_DTL_ID = :planDtlId""")
+                    .setParameter("startDate", startTs)
+                    .setParameter("endDate", endTs)
+                    .setParameter("planDtlId", planDtlId)
+                    .executeUpdate();
+            if (rows > 0) {
+                return rows;
+            }
+        }
+        return 0;
+    }
+
+    private long countPendingTransferEntryForPlanDtl(Long planDtlId) {
+        String sql = """
+                SELECT COUNT(1)
+                  FROM SUG_EGG_VEHICLE_PLAN_HDR a,
+                       SUG_EGG_VEHICLE_PLAN_DTL b,
+                       SUG_EGG_COLL_PLAN_HDR c,
+                       SUG_EGG_COLL_PLAN_LINES d,
+                       SUG_EGG_COLL_PLAN_LINE_DTL e
+                 WHERE a.TRANS_ID = b.TRANS_ID
+                   AND b.TRANS_ID = c.TRANS_ID
+                   AND e.TRANS_LINE_ID = d.TRANS_LINE_ID
+                   AND e.TRANS_ID = b.TRANS_ID
+                   AND d.TRANSFER_ENTRY_FLAG = 'P'
+                   AND b.PLAN_DTL_ID = :planDtlId
+                """;
+        Object count = entityManager.createNativeQuery(sql)
+                .setParameter("planDtlId", planDtlId)
+                .getSingleResult();
+        if (count instanceof Number) {
+            return ((Number) count).longValue();
+        }
+        return Long.parseLong(String.valueOf(count));
+    }
+
+    private Long resolvePlanDtlIdForLoadDate(String planDtlIdFromPayload, Long transLineId) {
+        if (planDtlIdFromPayload != null && !planDtlIdFromPayload.isBlank() && !"1".equals(planDtlIdFromPayload.trim())) {
+            try {
+                return parsePayloadId(planDtlIdFromPayload.trim());
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        try {
+            Object result = entityManager.createNativeQuery(
+                            "SELECT PLAN_DTL_ID FROM SUG_EGG_VEHICLE_PLAN_DTL WHERE TRANS_LINE_ID = :transLineId AND ROWNUM = 1")
+                    .setParameter("transLineId", transLineId)
+                    .getSingleResult();
+            if (result instanceof Number) {
+                return ((Number) result).longValue();
+            }
+            return Long.parseLong(String.valueOf(result));
+        } catch (Exception e) {
+            try {
+                Object result = entityManager.createNativeQuery(
+                                "SELECT PLAN_DTL_ID FROM SUG.SUG_EGG_VEHICLE_PLAN_DTL WHERE TRANS_LINE_ID = :transLineId AND ROWNUM = 1")
+                        .setParameter("transLineId", transLineId)
+                        .getSingleResult();
+                if (result instanceof Number) {
+                    return ((Number) result).longValue();
+                }
+                return Long.parseLong(String.valueOf(result));
+            } catch (Exception ex) {
+                return null;
+            }
+        }
     }
 
     @Override
@@ -1503,6 +1695,9 @@ public class TransferServiceImpl implements TransferService{
     private String resolvePidForTransOut(SUGMAIGPPSTRANS_HDRDto farmDto) {
         if (farmDto.getPid() != null && !farmDto.getPid().isBlank()) {
             return farmDto.getPid().trim();
+        }
+        if (farmDto.getId() != null && !farmDto.getId().isBlank()) {
+            return farmDto.getId().trim();
         }
         return null;
     }

@@ -22,6 +22,9 @@ public interface TransferService {
 
     String saveTransOut(ArrayList<SUGMAIGPPSTRANS_HDRDto> entry);
 
+    /** PHP UpdateLoadDate — marks plan line transferred and sets vehicle loading times when complete. */
+    String updateEggLoadDate(EggLoadDateRequest request);
+
     String saveShedLineTransfer(ShedLineTransferRequest request);
 
     ArrayList<TransferPlace> getTransferPlanPlace(BranchRequest branchRequest);

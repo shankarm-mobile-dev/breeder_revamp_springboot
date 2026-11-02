@@ -81,4 +81,77 @@ import java.util.Date;
         """, nativeQuery = true)
         int updateTransferEntryFlag(@Param("planDtlId") Long planDtlId);
 
+        @Modifying
+        @Transactional
+        @Query(value = """
+            UPDATE SUG_EGG_COLL_PLAN_LINES
+            SET TRANSFER_ENTRY_FLAG = 'A'
+            WHERE TRANS_LINE_ID = :transLineId
+            """, nativeQuery = true)
+        int updateTransferEntryFlagByTransLineId(@Param("transLineId") Long transLineId);
+
+        @Modifying
+        @Transactional
+        @Query(value = """
+            UPDATE SUG_EGG_COLL_PLAN_LINE_DTL
+            SET TRANSFER_ENTRY_FLAG = 'A'
+            WHERE TRANS_DET_LINE_ID = :transDtlId
+            """, nativeQuery = true)
+        int updateLineDtlTransferEntryFlagByTransDtlId(@Param("transDtlId") Long transDtlId);
+
+        @Modifying
+        @Transactional
+        @Query(value = """
+            UPDATE SUG_EGG_COLL_PLAN_LINES
+            SET TRANSFER_ENTRY_FLAG = 'A'
+            WHERE TRANS_LINE_ID IN (
+                SELECT b.TRANS_LINE_ID
+                FROM SUG_EGG_VEHICLE_PLAN_DTL b
+                WHERE b.PLAN_DTL_ID = :planDtlId
+            )
+            """, nativeQuery = true)
+        int updateTransferEntryFlagByPlanDtlId(@Param("planDtlId") Long planDtlId);
+
+        @Modifying
+        @Transactional
+        @Query(value = """
+            UPDATE SUG_EGG_COLL_PLAN_LINE_DTL
+            SET TRANSFER_ENTRY_FLAG = 'A'
+            WHERE TRANS_DET_LINE_ID IN (
+                SELECT b.TRANS_DTL_ID
+                FROM SUG_EGG_VEHICLE_PLAN_DTL b
+                WHERE b.PLAN_DTL_ID = :planDtlId
+            )
+            """, nativeQuery = true)
+        int updateLineDtlTransferEntryFlagByPlanDtlId(@Param("planDtlId") Long planDtlId);
+
+        @Query(value = """
+            SELECT COUNT(1)
+            FROM SUG_EGG_VEHICLE_PLAN_HDR a,
+                 SUG_EGG_VEHICLE_PLAN_DTL b,
+                 SUG_EGG_COLL_PLAN_HDR c,
+                 SUG_EGG_COLL_PLAN_LINES d,
+                 SUG_EGG_COLL_PLAN_LINE_DTL e
+            WHERE a.TRANS_ID = b.TRANS_ID
+              AND b.TRANS_ID = c.TRANS_ID
+              AND e.TRANS_LINE_ID = d.TRANS_LINE_ID
+              AND e.TRANS_ID = b.TRANS_ID
+              AND d.TRANSFER_ENTRY_FLAG = 'P'
+              AND b.PLAN_DTL_ID = :planDtlId
+            """, nativeQuery = true)
+        long countPendingTransferEntryByPlanDtlId(@Param("planDtlId") Long planDtlId);
+
+        @Modifying
+        @Transactional
+        @Query(value = """
+            UPDATE SUG_EGG_VEHICLE_PLAN_DTL
+            SET ACTUAL_LOADING_START_DATE = :startDate,
+                ACTUAL_LOADING_END_DATE = :endDate
+            WHERE PLAN_DTL_ID = :planDtlId
+            """, nativeQuery = true)
+        int updateActualLoadingDates(
+                @Param("planDtlId") Long planDtlId,
+                @Param("startDate") Date startDate,
+                @Param("endDate") Date endDate);
+
     }

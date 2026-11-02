@@ -6,7 +6,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class LayingReportRequest {
-    String legder,regionId,plantCode,flock,fromAge,toAge,ledger;
+    String regionId,plantCode,flock,fromAge,toAge,ledger;
    /* public Object getLedger() {
     }
 

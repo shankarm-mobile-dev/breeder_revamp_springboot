@@ -29,8 +29,8 @@ public class BreederBsgReportServiceImpl implements BreederBsgReportService {
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sug_rpt_gpps_pkg.breeder_bsg_rpt");
 
             // Input parameter
-            query.registerStoredProcedureParameter("errbuf", String.class, ParameterMode.OUT);
-            query.registerStoredProcedureParameter("retcode", Integer.class, ParameterMode.OUT);
+//            query.registerStoredProcedureParameter("errbuf", String.class, ParameterMode.OUT);
+//            query.registerStoredProcedureParameter("retcode", Integer.class, ParameterMode.OUT);
 
             query.registerStoredProcedureParameter("p_ledger", Integer.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_region_id", Integer.class, ParameterMode.IN);

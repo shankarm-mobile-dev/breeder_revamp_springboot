@@ -34,19 +34,21 @@ public class DailyFarmSummaryServiceImpl implements DailyFarmSummaryService {
             query.registerStoredProcedureParameter("p_company", Integer.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_region_id", Integer.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_branch_CODE", String.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter("p_from_date", java.sql.Timestamp.class, ParameterMode.IN);
-            query.registerStoredProcedureParameter("p_to_date", java.sql.Timestamp.class, ParameterMode.IN);
+            //query.registerStoredProcedureParameter("p_from_date", java.sql.Timestamp.class, ParameterMode.IN);
+            //query.registerStoredProcedureParameter("p_to_date", java.sql.Timestamp.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_mode", String.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("P_FLOCK", String.class, ParameterMode.IN);
 
             // SET values
             query.setParameter("p_company", req.getCompany());
             query.setParameter("p_region_id", req.getRegionId());
             query.setParameter("p_branch_CODE", req.getBranchCode());
 
-            query.setParameter("p_from_date", Timestamp.valueOf(req.getFromDate() + " 00:00:00"));
-            query.setParameter("p_to_date", Timestamp.valueOf(req.getToDate() + " 00:00:00"));
+           // query.setParameter("p_from_date", Timestamp.valueOf(req.getFromDate() + " 00:00:00"));
+           // query.setParameter("p_to_date", Timestamp.valueOf(req.getToDate() + " 00:00:00"));
 
             query.setParameter("p_mode", req.getMode().trim());
+            query.setParameter("P_FLOCK", req.getFlockNo().trim());
 
             query.execute();
 

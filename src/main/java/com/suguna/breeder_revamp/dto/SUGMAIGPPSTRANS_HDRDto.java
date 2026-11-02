@@ -110,6 +110,28 @@ public class SUGMAIGPPSTRANS_HDRDto {
         this.pid = normalizeIdFromPayload(value);
     }
 
+    /** Hatchery plan line id (SUG_EGG_COLL_PLAN_LINES.TRANS_LINE_ID). */
+    @JsonProperty("transid")
+    @JsonAlias({"trans_line_id", "TRANS_LINE_ID"})
+    public String transid;
+
+    /** PLAN_DTL_ID for egg load date (PHP UpdateLoadDate {@code id}). */
+    @JsonProperty("id")
+    @JsonAlias({"PLAN_DTL_ID"})
+    public String id;
+
+    @JsonProperty("trans_dtl_id")
+    @JsonAlias({"transDtlId", "TRANS_DTL_ID"})
+    public String trans_dtl_id;
+
+    @JsonProperty("loadstartdate")
+    @JsonAlias({"load_start_date", "loading_start_date"})
+    public String loadstartdate;
+
+    @JsonProperty("loadenddate")
+    @JsonAlias({"load_end_date", "loading_end_date"})
+    public String loadenddate;
+
     private static String normalizeIdFromPayload(Object value) {
         if (value == null) {
             return null;

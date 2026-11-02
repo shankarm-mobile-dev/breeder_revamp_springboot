@@ -2666,7 +2666,16 @@ public class FarmServiceImpl implements FarmService {
                         sugMaiGppsHousingLineRepositories.save(maiGppsHousingLine);
                         housingLineStockService.recordPlacement(maiGppsHousingLine);
                     }
-                    sugMaiGppsHousingShedRepositories.updateentry(placementRequest.getFlockID(),placementRequest.getReportNum(),branch_code);
+                }
+                int shedAllocatedRows = sugMaiGppsHousingShedRepositories.updateentry(
+                        placementRequest.getFlockID(),
+                        placementRequest.getReportNum(),
+                        branch_code);
+                if (shedAllocatedRows == 0) {
+                    System.out.println("SHED_ALLOCATED update matched 0 rows for flock="
+                            + placementRequest.getFlockID()
+                            + ", reportNum=" + placementRequest.getReportNum()
+                            + ", plantCode=" + branch_code);
                 }
             }
         }

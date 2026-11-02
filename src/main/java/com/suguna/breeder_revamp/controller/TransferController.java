@@ -76,16 +76,47 @@ public class TransferController {
         return responseDto;
     }
 
-    @PostMapping("/saveTransOut")
-    public ResponseDto  saveTransOut(@RequestBody ArrayList<SUGMAIGPPSTRANS_HDRDto> entry) throws Exception{
+    @PostMapping("/updateLoadDate")
+    public ResponseDto updateLoadDate(@RequestBody EggLoadDateRequest request) {
         ResponseDto responseDto = new ResponseDto();
-        responseDto.setMessage("Success");
-        responseDto.setStatusCode(200);
-        responseDto.setStatus("Success");
-        String response = "";
-        // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
-        responseDto.setResult(transferService.saveTransOut(entry));
-        //}
+        try {
+            responseDto.setMessage("Updated Successfully.");
+            responseDto.setStatusCode(201);
+            responseDto.setStatus("Success");
+            responseDto.setResult(transferService.updateEggLoadDate(request));
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            responseDto.setMessage(ex.getMessage());
+            responseDto.setStatusCode(400);
+            responseDto.setStatus("Failed");
+            responseDto.setResult("400");
+        } catch (Exception ex) {
+            responseDto.setMessage(ex.getMessage());
+            responseDto.setStatusCode(500);
+            responseDto.setStatus("Failed");
+            responseDto.setResult("500");
+        }
+        return responseDto;
+    }
+
+    @PostMapping("/saveTransOut")
+    public ResponseDto saveTransOut(@RequestBody ArrayList<SUGMAIGPPSTRANS_HDRDto> entry) {
+        ResponseDto responseDto = new ResponseDto();
+        try {
+            responseDto.setMessage("Success");
+            responseDto.setStatusCode(200);
+            responseDto.setStatus("Success");
+            responseDto.setResult(transferService.saveTransOut(entry));
+        } catch (IllegalArgumentException ex) {
+            responseDto.setMessage(ex.getMessage());
+            responseDto.setStatusCode(400);
+            responseDto.setStatus("Failed");
+            responseDto.setResult("400");
+        } catch (Exception ex) {
+            responseDto.setMessage(ex.getMessage());
+            responseDto.setStatusCode(500);
+            responseDto.setStatus("Failed");
+            responseDto.setResult("500");
+        }
         return responseDto;
     }
 

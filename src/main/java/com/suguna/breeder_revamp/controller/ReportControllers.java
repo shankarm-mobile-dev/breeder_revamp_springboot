@@ -63,7 +63,7 @@ public class ReportControllers {
         return reportService.EGGGRADINGREPORTS(branch_ID);
     }
 
-    @Operation(summary = "Get Feed Stock")
+    @Operation(summary = "Farm on-hand stock (feed, medicine, vaccine, consumables)")
     @GetMapping("/feedstock/{branchid}")
     public ArrayList<FarmResultDto.feedstock> getFeedstock(@PathVariable String branchid) throws Exception{
         return reportService.getFeedstock(branchid);

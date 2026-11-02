@@ -9,8 +9,23 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface SugMaiGppsHousingShedRepositories extends JpaRepository<SugMaiGppsHousingShed,SugMaiGppsHousingShedID> {
-    @Query(value = "UPDATE Sug_Gpps_Transactions a SET a.SHED_ALLOCATED = 'Y' WHERE  a.BATCH_ID=:reportNum and a.LOT_NUMBER=:lotNumber and a.PLANT_CODE=:branch_code and nvl(a.SHED_ALLOCATED,'N') = 'N'", nativeQuery = true)
-    @Modifying
+    @Query(value = """
+            UPDATE SUG.SUG_GPPS_TRANSACTIONS a
+               SET a.SHED_ALLOCATED = 'Y'
+             WHERE a.PLANT_CODE = :branch_code
+               AND a.LOT_NUMBER = :lotNumber
+               AND NVL(a.SHED_ALLOCATED, 'N') = 'N'
+               AND (
+                    TO_CHAR(a.BATCH_ID) = :reportNum
+                    OR EXISTS (
+                        SELECT 1
+                          FROM GME_BATCH_HEADER h
+                         WHERE TO_CHAR(h.BATCH_ID) = :reportNum
+                           AND h.ATTRIBUTE1 = a.LOT_NUMBER
+                    )
+               )
+            """, nativeQuery = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
-    int updateentry(@Param("lotNumber") String lotNumber, @Param("reportNum") String reportNum,@Param("branch_code") String branch_code);
+    int updateentry(@Param("lotNumber") String lotNumber, @Param("reportNum") String reportNum, @Param("branch_code") String branch_code);
 }

@@ -31,9 +31,6 @@ public class LayingReportServiceImpl implements LayingReportService {
             // Step 1: Call procedure
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sug_rpt_gpps_pkg.sug_flk_lyreg_rpt");
 
-            query.registerStoredProcedureParameter("errbuf", String.class, ParameterMode.OUT);
-            query.registerStoredProcedureParameter("retcode", Integer.class, ParameterMode.OUT);
-
             query.registerStoredProcedureParameter("p_ledger", Integer.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_region_id", Integer.class, ParameterMode.IN);
             query.registerStoredProcedureParameter("p_plant_code", String.class, ParameterMode.IN);
