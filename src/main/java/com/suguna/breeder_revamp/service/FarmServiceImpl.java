@@ -2667,16 +2667,34 @@ public class FarmServiceImpl implements FarmService {
                         housingLineStockService.recordPlacement(maiGppsHousingLine);
                     }
                 }
-                int shedAllocatedRows = sugMaiGppsHousingShedRepositories.updateentry(
-                        placementRequest.getFlockID(),
-                        placementRequest.getReportNum(),
-                        branch_code);
-                if (shedAllocatedRows == 0) {
-                    System.out.println("SHED_ALLOCATED update matched 0 rows for flock="
-                            + placementRequest.getFlockID()
-                            + ", reportNum=" + placementRequest.getReportNum()
-                            + ", plantCode=" + branch_code);
+
+                if ("trans".equals(placementRequest.getRefTable())) {
+                    int shedAllocatedRows = sugMaiGppsHousingShedRepositories.updateentry(
+                            placementRequest.getFlockID(),
+                            placementRequest.getReportNum(),
+                            branch_code);
+
+                    if (shedAllocatedRows == 0) {
+                        System.out.println("SHED_ALLOCATED update matched 0 rows for flock="
+                                + placementRequest.getFlockID()
+                                + ", reportNum=" + placementRequest.getReportNum()
+                                + ", plantCode=" + branch_code);
+                    }
+                } else {
+                    int shedAllocatedRows = sugMaiGppsHousingShedRepositories.updatePlacementEntry(
+                            placementRequest.getFlockID(),
+                            placementRequest.getReportNum(),
+                            branch_code);
+
+                    if (shedAllocatedRows == 0) {
+                        System.out.println("SHED_ALLOCATED update matched 0 rows for flock="
+                                + placementRequest.getFlockID()
+                                + ", reportNum=" + placementRequest.getReportNum()
+                                + ", plantCode=" + branch_code);
+                    }
                 }
+
+
             }
         }
         return "200";
@@ -3382,8 +3400,8 @@ public class FarmServiceImpl implements FarmService {
         maiGppsConsumptions.setTXN_DATE(txnDate);
             maiGppsConsumptions.setTXN_TYPE("DAY_CLOSE");
             maiGppsConsumptions.setSTATUS("N");
-            long flockAge = getFlockShedAge(gppsObservationBatchDTO.getFLOCK_NO(), branchRequest.getShedNo(), branchRequest);
-            maiGppsConsumptions.setAGE(flockAge);
+//            long flockAge = getFlockShedAge(gppsObservationBatchDTO.getFLOCK_NO(), branchRequest.getShedNo(), branchRequest);
+            maiGppsConsumptions.setAGE(Long.parseLong(branchRequest.getAge()));
             SugMaiGppsConsumptions savedDayClose = sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
 /*
             try {
@@ -5319,7 +5337,7 @@ public class FarmServiceImpl implements FarmService {
         maiGppsConsumptions.setTXN_TYPE("DAY_CLOSE_CONFIRM");
         maiGppsConsumptions.setSTATUS("N");
         long flockAge = getFlockShedAge(gppsObservationBatchDTO.getFLOCK_NO(), branchRequest.getShedNo(), branchRequest);
-        maiGppsConsumptions.setAGE(flockAge);
+        maiGppsConsumptions.setAGE(Long.valueOf(branchRequest.getAge()));
             SugMaiGppsConsumptions savedDayClose = sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
         final Date txnDateToPost = txnDate;
         final long flockAgeToPost = flockAge;

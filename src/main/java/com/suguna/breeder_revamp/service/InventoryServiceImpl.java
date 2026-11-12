@@ -203,6 +203,8 @@ public class InventoryServiceImpl implements  InventoryService{
                 sugMaiBreederDailyEntryModel.setTXN_CATEGORY("RETURN");
                 sugMaiBreederDailyEntryModel.setINVENTORY_DESC(issueReturnDto.description);
                 sugMaiBreederDailyEntryModel.setLOCATION_CODE(issueReturnDto.location);
+                sugMaiBreederDailyEntryModel.setBIRD_TYPE(issueReturnDto.bird_TYPE);
+
                 sugMaiBreederDailyEntryModel.setPOSTED_FLAG("P");
                 Number nextId = (Number) entityManager.createNativeQuery(
                                 "select sug_mai_breeder_daily_entry_s.nextval from dual")

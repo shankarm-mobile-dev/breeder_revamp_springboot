@@ -28,6 +28,10 @@ public class TransferPlanDto {
     public String flockId;
     @JsonProperty("txnHeaderId")
     public long txnHeaderId;
+    @JsonProperty("farmType")
+    public String farmType;
+    @JsonProperty("lineType")
+    public String lineType;
     @JsonProperty("transferPlanDtls")
     public ArrayList<TransferPlanDtlsDto> transferPlanDtls;
 

@@ -650,6 +650,10 @@ public class BranchUser {
         @Column(name = "REPORT_NUM", type = String.class)
         @JsonProperty("REPORT_NUM")
         String reportNum;
+
+        @Column(name = "REF_TABLE", type = String.class)
+        @JsonProperty("REF_TABLE")
+        String refTable;
     }
     @Getter
     @Setter

@@ -29,4 +29,6 @@ public class SugMaiGppsTransPlanHdr {
     Date UPDATION_DATE;
     String UPDATION_BY;
     String STATUS;
+    String FARM_TYPE;
+    String LINE_TYPE;
 }

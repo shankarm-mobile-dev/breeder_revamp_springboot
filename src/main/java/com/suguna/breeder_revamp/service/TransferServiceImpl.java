@@ -814,6 +814,8 @@ public class TransferServiceImpl implements TransferService{
             sugMaiGppsTransPlanHdr.setTRANS_TYPE(entry.getTransType());
             sugMaiGppsTransPlanHdr.setTRANS_REASON(entry.getTransReason());
             sugMaiGppsTransPlanHdr.setFLOCK_ID(entry.flockId);
+            sugMaiGppsTransPlanHdr.setFARM_TYPE(entry.farmType);
+            sugMaiGppsTransPlanHdr.setLINE_TYPE(entry.lineType);
             sugMaiGppsTransPlanHdr.setTXN_DATE(getTxnDateString(entry.getTransDate(),fromdateFormat1));
             SugMaiGppsTransPlanHdr sugMaiGppsTransPlanHdr1=sugMaiGppsTransPlanHdrRepository.save(sugMaiGppsTransPlanHdr);
             for(TransferPlanDto.TransferPlanDtlsDto transferPlanDtlsDto:entry.getTransferPlanDtls())

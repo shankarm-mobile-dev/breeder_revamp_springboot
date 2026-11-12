@@ -29,6 +29,8 @@ public class PlacementRequest{
     String reportNum;
     @JsonProperty("age")
     String age;
+    @JsonProperty("refTable")
+    String refTable;
     @JsonProperty("data")
     ArrayList<SugLineDetails> data;
 

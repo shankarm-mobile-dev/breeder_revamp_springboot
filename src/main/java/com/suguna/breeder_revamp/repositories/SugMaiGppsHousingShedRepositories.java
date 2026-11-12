@@ -28,4 +28,16 @@ public interface SugMaiGppsHousingShedRepositories extends JpaRepository<SugMaiG
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
     int updateentry(@Param("lotNumber") String lotNumber, @Param("reportNum") String reportNum, @Param("branch_code") String branch_code);
+
+    @Query(value = """
+            UPDATE SUG.sug_gpps_hen_housing_details a
+               SET a.SHED_ALLOCATED = 'Y'
+             WHERE a.PLANT_CODE = :branch_code and
+               a.REPORT_ID=:reportNum
+               AND NVL(a.SHED_ALLOCATED, 'N') = 'N'
+               
+            """, nativeQuery = true)
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
+    int updatePlacementEntry(@Param("lotNumber") String lotNumber, @Param("reportNum") String reportNum, @Param("branch_code") String branch_code);
 }
