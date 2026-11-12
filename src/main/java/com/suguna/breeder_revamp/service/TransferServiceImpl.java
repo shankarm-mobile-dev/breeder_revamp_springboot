@@ -168,10 +168,10 @@ public class TransferServiceImpl implements TransferService{
     }
 
     private Date getTxnDateString(String ipdate, String toformate) {
-        DateFormat formatter;
+        SimpleDateFormat formatter;
         Date date = null;
         try {
-            formatter = new SimpleDateFormat(toformate);
+            formatter = new SimpleDateFormat(toformate,Locale.ENGLISH);
             date = formatter.parse(ipdate);
 
         } catch (ParseException ex) {
@@ -803,8 +803,8 @@ public class TransferServiceImpl implements TransferService{
 
     @Override
     public String saveTransPlan(TransferPlanDto entry) {
-        String fromdateFormat = "DD-MM-YYYY hh:mm:ss";
-        String fromdateFormat1 = "DD-MMM-YYYY";
+        String fromdateFormat = "DD-MM-yyyy hh:mm:ss";
+        String fromdateFormat1 = "DD-MMM-yyyy";
         try {
             SugMaiGppsTransPlanHdr sugMaiGppsTransPlanHdr=new SugMaiGppsTransPlanHdr();
             sugMaiGppsTransPlanHdr.setFROM_FARM_ID(BigDecimal.valueOf(entry.getFromOrgId()));
@@ -1146,8 +1146,8 @@ public class TransferServiceImpl implements TransferService{
     }
     @Override
     public String changeTransPlan(TransferPlanDto entry) {
-        String fromdateFormat = "DD-MM-YYYY hh:mm:ss";
-        String fromdateFormat1 = "DD-MMM-YYYY";
+        String fromdateFormat = "dd-MM-yyyy hh:mm:ss";
+        String fromdateFormat1 = "dd-MMM-yyyy";
         try {
             SugMaiGppsTransPlanHdr sugMaiGppsTransPlanHdr=new SugMaiGppsTransPlanHdr();
             sugMaiGppsTransPlanHdr.setFROM_FARM_ID(BigDecimal.valueOf(entry.getFromOrgId()));
