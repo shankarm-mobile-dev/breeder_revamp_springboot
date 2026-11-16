@@ -210,6 +210,10 @@ public class BranchRequest<T> {
         String preparedBy;
         @JsonProperty("age")
         String age;
+        @JsonProperty("vaccineName")
+        String vaccineName;
+        @JsonProperty("strain")
+        String strain;
     }
 
     @Getter

@@ -26,6 +26,8 @@ public class TransferPlanDto {
     public String transReason;
     @JsonProperty("flockId")
     public String flockId;
+    @JsonProperty("flockNo")
+    public String flockNo;
     @JsonProperty("txnHeaderId")
     public long txnHeaderId;
     @JsonProperty("farmType")

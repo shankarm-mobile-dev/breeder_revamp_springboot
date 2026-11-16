@@ -85,6 +85,14 @@ public class SUGMAIGPPSTRANS_HDRDto {
     @JsonProperty("packmaterial")
     public String packmaterial;
 
+    @JsonProperty("flockNo")
+    @JsonAlias({"FLOCK_NO", "flockId", "flock_id", "flockID"})
+    public String flockNo;
+
+    @JsonProperty("transReason")
+    @JsonAlias({"TRANS_REASON", "transferReason"})
+    public String transReason;
+
     /** Mobile plan detail id (same value used as GATE_IN_ID on gate in/out table). */
     @JsonProperty("pid")
     @JsonAlias({"planId", "plan_dtl_id", "PLAN_DTL_ID", "plan_id", "PLAN_ID"})
@@ -168,6 +176,7 @@ public class SUGMAIGPPSTRANS_HDRDto {
         public BigDecimal from_inventory_location_id;
 
         @JsonProperty("from_inventory_loc_desc")
+        @JsonAlias({"fromShed", "from_shed"})
         public String from_inventory_loc_desc;
         @JsonProperty("from_batch_id")
         public BigDecimal from_batch_id;
@@ -243,6 +252,20 @@ public class SUGMAIGPPSTRANS_HDRDto {
         @JsonProperty("toSide")
         public String toSide;
 
+        @JsonProperty("flockNo")
+        @JsonAlias({"FLOCK_NO", "flockId", "flock_id", "flockID"})
+        public String flockNo;
+
+        @JsonProperty("transReason")
+        @JsonAlias({"TRANS_REASON"})
+        public String transReason;
+
+        public String resolvedFlockNo() {
+            if (flockNo != null && !flockNo.isBlank()) {
+                return flockNo.trim();
+            }
+            return null;
+        }
     }
 }
 

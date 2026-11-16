@@ -1861,6 +1861,205 @@ public class FarmServiceImpl implements FarmService {
 
     }
 
+    private Date parseAllocationScheduleDate(String dateStr) {
+        if (dateStr == null || dateStr.isBlank()) {
+            return null;
+        }
+        try {
+            return convertToDate(dateStr.trim());
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private boolean isSameCalendarDay(Date first, Date second) {
+        if (first == null || second == null) {
+            return false;
+        }
+        LocalDate a = first.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        LocalDate b = second.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        return a.equals(b);
+    }
+
+    private Date extendAllocationScheduleEndDate(Date from, int extraDays) {
+        LocalDate end = from.toInstant().atZone(ZoneId.systemDefault()).toLocalDate().plusDays(extraDays);
+        return Date.from(end.atStartOfDay(ZoneId.systemDefault()).toInstant());
+    }
+
+    private String resolveMedicineScheduleShedNo(
+            String branchID,
+            BranchRequest.MedicineAllocationDetails details,
+            SugGppsObservationBatchDTO batch) {
+        if (details.getShedNo() != null && !details.getShedNo().isBlank()) {
+            return details.getShedNo().trim();
+        }
+        List<String> housingSheds = resolveHousingShedNos(branchID, details.getFlockID(), details.getBatchID());
+        if (!housingSheds.isEmpty()) {
+            return housingSheds.get(0);
+        }
+        if (batch != null && batch.getLOCATION_CODE() != null && !batch.getLOCATION_CODE().isBlank()) {
+            return batch.getLOCATION_CODE().trim();
+        }
+        return resolveShedNoFromBatchId(details.getBatchID());
+    }
+
+    private List<String> resolveHousingShedNos(String branchID, String flockID, String batchID) {
+        List<String> sheds = new ArrayList<>();
+        if (branchID == null || branchID.isBlank() || flockID == null || flockID.isBlank()) {
+            return sheds;
+        }
+        try {
+            long batchIdNum = 0L;
+            if (batchID != null && !batchID.isBlank()) {
+                try {
+                    batchIdNum = Long.parseLong(batchID.trim());
+                } catch (NumberFormatException ignored) {
+                }
+            }
+            @SuppressWarnings("unchecked")
+            List<Object> rows = entityManager.createNativeQuery(
+                            "SELECT DISTINCT t.shed_no "
+                                    + "FROM sug.sug_mai_gpps_housing_shed t "
+                                    + "JOIN sug_organization_mv c ON t.farm_code = c.branch_code "
+                                    + "WHERE c.branch_id = :branchId "
+                                    + "AND (t.flock_id = :flockId "
+                                    + "OR EXISTS (SELECT 1 FROM gme_batch_header h "
+                                    + "           WHERE h.organization_id = c.branch_id "
+                                    + "           AND (:batchId > 0 AND h.batch_id = :batchId) "
+                                    + "           AND (t.flock_id = h.attribute1 "
+                                    + "                OR (h.attribute2 IS NOT NULL "
+                                    + "                    AND t.flock_id = h.attribute1 || '-' || h.attribute2))))")
+                    .setParameter("branchId", Long.valueOf(branchID.trim()))
+                    .setParameter("flockId", flockID.trim())
+                    .setParameter("batchId", batchIdNum)
+                    .getResultList();
+            for (Object row : rows) {
+                if (row != null && !row.toString().isBlank()) {
+                    String shed = row.toString().trim();
+                    if (!sheds.contains(shed)) {
+                        sheds.add(shed);
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return sheds;
+    }
+
+    private Date[] resolveMasterFarmScheduleWindow(
+            String branchID,
+            BranchRequest.MedicineAllocationDetails details,
+            String shedNo) {
+        Date from = parseAllocationScheduleDate(details.getStartDate());
+        Date to = parseAllocationScheduleDate(details.getEndDate());
+        try {
+            BranchUser.DailyEntryCompletedDetails daily = getDailyShedEntryDetails(
+                    branchID, details.getBatchID(), details.getFlockID(), shedNo);
+            if (daily != null && daily.getEntry_DATE() != null && !daily.getEntry_DATE().isBlank()) {
+                Date farmDate = parseAllocationScheduleDate(daily.getEntry_DATE());
+                if (farmDate != null) {
+                    from = farmDate;
+                    to = extendAllocationScheduleEndDate(farmDate, 6);
+                    return new Date[] {from, to};
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        if (from == null) {
+            from = Date.from(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant());
+        }
+        if (to == null || isSameCalendarDay(from, to)) {
+            to = extendAllocationScheduleEndDate(from, 6);
+        }
+        return new Date[] {from, to};
+    }
+
+    private boolean masterVaccineExistsForShed(Long branchId, String flockId, String preparedBy, String shedNo) {
+        if (branchId == null || flockId == null || preparedBy == null || shedNo == null) {
+            return false;
+        }
+        try {
+            Number count = (Number) entityManager.createNativeQuery(
+                            "SELECT COUNT(1) FROM SUG.SUG_MAI_GPPS_ITEM_ALLOCATION a "
+                                    + "WHERE a.BRANCH_ID = :branchId "
+                                    + "AND a.FLOCK_ID = :flockId "
+                                    + "AND a.PREPARED_BY = :preparedBy "
+                                    + "AND UPPER(TRIM(a.SHED_NO)) = UPPER(TRIM(:shedNo))")
+                    .setParameter("branchId", branchId)
+                    .setParameter("flockId", flockId)
+                    .setParameter("preparedBy", preparedBy)
+                    .setParameter("shedNo", shedNo)
+                    .getSingleResult();
+            return count != null && count.longValue() > 0;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private Date toUtilDate(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Date date) {
+            return date;
+        }
+        if (value instanceof java.sql.Timestamp timestamp) {
+            return new Date(timestamp.getTime());
+        }
+        return null;
+    }
+
+    private String normalizeOracleScheduleDateString(String date) {
+        if (date == null || date.isBlank()) {
+            return DateTimeFormatter.ofPattern("dd-MMM-yyyy", Locale.ENGLISH).format(LocalDate.now());
+        }
+        String trimmed = date.trim();
+        DateTimeFormatter[] formatters = new DateTimeFormatter[] {
+                DateTimeFormatter.ofPattern("dd-MMM-yyyy", Locale.ENGLISH),
+                new java.time.format.DateTimeFormatterBuilder()
+                        .parseCaseInsensitive()
+                        .appendPattern("dd-MMM-yyyy")
+                        .toFormatter(Locale.ENGLISH)
+        };
+        for (DateTimeFormatter formatter : formatters) {
+            try {
+                LocalDate parsed = LocalDate.parse(trimmed, formatter);
+                return DateTimeFormatter.ofPattern("dd-MMM-yyyy", Locale.ENGLISH).format(parsed);
+            } catch (Exception ignored) {
+            }
+        }
+        return trimmed;
+    }
+
+    private String extractShedSuffix(String shedNo) {
+        if (shedNo == null || shedNo.isBlank()) {
+            return "";
+        }
+        int idx = shedNo.indexOf(':');
+        if (idx >= 0 && idx < shedNo.length() - 1) {
+            return shedNo.substring(idx + 1).trim();
+        }
+        return shedNo.trim();
+    }
+
+    private String resolveShedNoFromBatchId(String batchID) {
+        if (batchID == null || batchID.isBlank()) {
+            return null;
+        }
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object> rows = entityManager.createNativeQuery(
+                            "SELECT h.attribute4 FROM gme_batch_header h WHERE h.batch_id = :batchId")
+                    .setParameter("batchId", Long.valueOf(batchID.trim()))
+                    .getResultList();
+            if (!rows.isEmpty() && rows.get(0) != null) {
+                return rows.get(0).toString().trim();
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
 
     @Override
     public String saveCullingDetails(BranchRequest branchRequest) {
@@ -2919,8 +3118,10 @@ public class FarmServiceImpl implements FarmService {
         return farmFlockPreviousBreakupDetailsArrayList;
     }
 
+    private static final String MASTER_VACCINE_MARKER = "MASTER_VACCINE|";
+
     @Override
-    public String saveMedicineScheduleDetails(BranchRequest branchRequest) {
+    public Object saveMedicineScheduleDetails(BranchRequest branchRequest) {
      /*   List<BranchRequest.SugFeedDetails> data=new ArrayList<>();
         data= (List<BranchRequest.SugFeedDetails>) branchRequest.getData();
 */
@@ -2938,32 +3139,578 @@ public class FarmServiceImpl implements FarmService {
         }
 
 
+        int savedCount = 0;
+        int skippedCount = 0;
+        int failedCount = 0;
+        int vaccineRequestCount = 0;
+        int vaccineSkippedCount = 0;
+        Map<String, SavedMasterVaccineRow> existingVaccineRows = loadSavedMasterVaccineRows(
+                Long.valueOf(branchRequest.getBranchID()),
+                new Date());
+        String branchId = branchRequest.getBranchID();
+        List<TransferPlace.MedicineVaccineDetails> vaccineMaster =
+                loadMedicineVaccineItemsForMatch(branchId);
+        List<String> unresolvedVaccineNames = new ArrayList<>();
         if (!data.isEmpty()) {
             for (BranchRequest.MedicineAllocationDetails medicineAllocationDetails : data) {
-                List<SugGppsObservationBatchDTO> batchDTOS = getBatchDetails(medicineAllocationDetails.getBatchID());
-                SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
-                SugMaiGppsItemAllocation sugMaiGppsItemAllocation = new SugMaiGppsItemAllocation();
-                sugMaiGppsItemAllocation.setAGE(Long.valueOf(medicineAllocationDetails.getAge()));
-                sugMaiGppsItemAllocation.setFLOCK_ID(medicineAllocationDetails.getFlockID());
-                sugMaiGppsItemAllocation.setSHED_NO(medicineAllocationDetails.getShedNo());
-                sugMaiGppsItemAllocation.setFARM_CODE(gppsObservationBatchDTO.getBRANCH_CODE());
-                sugMaiGppsItemAllocation.setITEM_TYPE(medicineAllocationDetails.getItemType());
-                sugMaiGppsItemAllocation.setITEM_ID(Long.valueOf(medicineAllocationDetails.getItemId()));
-                sugMaiGppsItemAllocation.setUOM(medicineAllocationDetails.getUom());
-                sugMaiGppsItemAllocation.setQTY(BigDecimal.valueOf(Double.parseDouble(medicineAllocationDetails.getQuantity())));
-                sugMaiGppsItemAllocation.setINTAKE_MODE(medicineAllocationDetails.getIntakeMode());
-                sugMaiGppsItemAllocation.setCREATED_BY(branchRequest.getUserCode());
-                sugMaiGppsItemAllocation.setCREATION_DATE(new Date());
-                sugMaiGppsItemAllocation.setDATE_FROM(convertToDate(medicineAllocationDetails.getStartDate()));
-                sugMaiGppsItemAllocation.setDATE_TO(convertToDate(medicineAllocationDetails.getEndDate()));
-                sugMaiGppsItemAllocation.setBRANCH_ID(Long.valueOf(branchRequest.getBranchID()));
-                sugMaiGppsItemAllocation.setPREPARED_BY(medicineAllocationDetails.getPreparedBy());
-                sugMaiGppsItemAllocationRepositories.save(sugMaiGppsItemAllocation);
+                boolean isMasterScheduleLine = medicineAllocationDetails.getVaccineName() != null
+                        && !medicineAllocationDetails.getVaccineName().isBlank();
+                boolean isVaccineLine = medicineAllocationDetails.getItemType() != null
+                        && "VACCINE".equalsIgnoreCase(medicineAllocationDetails.getItemType().trim());
+                if (isMasterScheduleLine || isVaccineLine) {
+                    vaccineRequestCount++;
+                }
+                if (!isMasterScheduleLine
+                        && isVaccineScheduleAlreadySaved(existingVaccineRows, medicineAllocationDetails)) {
+                    skippedCount++;
+                    if (isVaccineLine) {
+                        vaccineSkippedCount++;
+                    }
+                    continue;
+                }
+                try {
+                    String itemIdStr = medicineAllocationDetails.getItemId();
+                    if (itemIdStr == null || itemIdStr.isBlank() || "0".equals(itemIdStr.trim())) {
+                        Long resolvedItemId = resolveVaccineItemId(
+                                branchId,
+                                medicineAllocationDetails.getVaccineName(),
+                                medicineAllocationDetails.getStrain(),
+                                vaccineMaster);
+                        if (resolvedItemId == null) {
+                            failedCount++;
+                            if (medicineAllocationDetails.getVaccineName() != null
+                                    && !medicineAllocationDetails.getVaccineName().isBlank()) {
+                                unresolvedVaccineNames.add(medicineAllocationDetails.getVaccineName().trim());
+                            }
+                            continue;
+                        }
+                        itemIdStr = String.valueOf(resolvedItemId);
+                        medicineAllocationDetails.setItemId(itemIdStr);
+                    }
+
+                    List<SugGppsObservationBatchDTO> batchDTOS = getBatchDetails(medicineAllocationDetails.getBatchID());
+                    if (batchDTOS == null || batchDTOS.isEmpty()) {
+                        failedCount++;
+                        continue;
+                    }
+                    SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
+                    String itemType = medicineAllocationDetails.getItemType();
+                    TransferPlace.MedicineVaccineDetails matchedMaster =
+                            findMasterInventoryItem(itemIdStr, vaccineMaster);
+                    if (matchedMaster != null && matchedMaster.getItemType() != null) {
+                        itemType = matchedMaster.getItemType().toUpperCase(Locale.ROOT).contains("VACCIN")
+                                ? "VACCINE"
+                                : "MEDICINE";
+                    }
+                    if (itemType == null || itemType.isBlank()) {
+                        itemType = isMasterScheduleLine ? "VACCINE" : "MEDICINE";
+                    } else if (itemType.toUpperCase(Locale.ROOT).contains("VACCIN")) {
+                        itemType = "VACCINE";
+                    }
+
+                    List<String> shedsToSave = new ArrayList<>();
+                    if (isMasterScheduleLine) {
+                        shedsToSave.addAll(resolveHousingShedNos(
+                                branchId,
+                                medicineAllocationDetails.getFlockID(),
+                                medicineAllocationDetails.getBatchID()));
+                    }
+                    if (shedsToSave.isEmpty()) {
+                        String singleShed = resolveMedicineScheduleShedNo(
+                                branchId, medicineAllocationDetails, gppsObservationBatchDTO);
+                        if (singleShed != null && !singleShed.isBlank()) {
+                            shedsToSave.add(singleShed);
+                        }
+                    }
+                    if (shedsToSave.isEmpty()) {
+                        failedCount++;
+                        continue;
+                    }
+
+                    Date scheduleFrom;
+                    Date scheduleTo;
+                    if (isMasterScheduleLine) {
+                        Date[] scheduleWindow = resolveMasterFarmScheduleWindow(
+                                branchId,
+                                medicineAllocationDetails,
+                                shedsToSave.get(0));
+                        scheduleFrom = scheduleWindow[0];
+                        scheduleTo = scheduleWindow[1];
+                    } else {
+                        scheduleFrom = parseAllocationScheduleDate(medicineAllocationDetails.getStartDate());
+                        scheduleTo = parseAllocationScheduleDate(medicineAllocationDetails.getEndDate());
+                        if (scheduleFrom == null) {
+                            scheduleFrom = Date.from(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant());
+                        }
+                        if (scheduleTo == null) {
+                            scheduleTo = scheduleFrom;
+                        }
+                    }
+                    String preparedBy = medicineAllocationDetails.getPreparedBy();
+                    if (isMasterScheduleLine) {
+                        preparedBy = buildMasterVaccinePreparedByMarker(
+                                medicineAllocationDetails.getVaccineName(),
+                                medicineAllocationDetails.getStrain());
+                    }
+
+                    int lineSaved = 0;
+                    for (String shedNo : shedsToSave) {
+                        if (isMasterScheduleLine && masterVaccineExistsForShed(
+                                Long.valueOf(branchId),
+                                medicineAllocationDetails.getFlockID(),
+                                preparedBy,
+                                shedNo)) {
+                            continue;
+                        }
+                        SugMaiGppsItemAllocation sugMaiGppsItemAllocation = new SugMaiGppsItemAllocation();
+                        sugMaiGppsItemAllocation.setAGE(Long.valueOf(medicineAllocationDetails.getAge()));
+                        sugMaiGppsItemAllocation.setFLOCK_ID(medicineAllocationDetails.getFlockID());
+                        sugMaiGppsItemAllocation.setSHED_NO(shedNo);
+                        sugMaiGppsItemAllocation.setFARM_CODE(gppsObservationBatchDTO.getBRANCH_CODE());
+                        sugMaiGppsItemAllocation.setITEM_TYPE(itemType);
+                        sugMaiGppsItemAllocation.setITEM_ID(Long.valueOf(itemIdStr));
+                        sugMaiGppsItemAllocation.setUOM(medicineAllocationDetails.getUom());
+                        sugMaiGppsItemAllocation.setQTY(BigDecimal.valueOf(Double.parseDouble(medicineAllocationDetails.getQuantity())));
+                        sugMaiGppsItemAllocation.setINTAKE_MODE(medicineAllocationDetails.getIntakeMode());
+                        sugMaiGppsItemAllocation.setCREATED_BY(branchRequest.getUserCode());
+                        sugMaiGppsItemAllocation.setCREATION_DATE(new Date());
+                        sugMaiGppsItemAllocation.setDATE_FROM(scheduleFrom);
+                        sugMaiGppsItemAllocation.setDATE_TO(scheduleTo);
+                        sugMaiGppsItemAllocation.setBRANCH_ID(Long.valueOf(branchId));
+                        sugMaiGppsItemAllocation.setPREPARED_BY(preparedBy);
+                        sugMaiGppsItemAllocationRepositories.save(sugMaiGppsItemAllocation);
+                        lineSaved++;
+                        savedCount++;
+                    }
+                    if (lineSaved == 0) {
+                        skippedCount++;
+                        if (isMasterScheduleLine || isVaccineLine) {
+                            vaccineSkippedCount++;
+                        }
+                    } else if (isMasterScheduleLine || isVaccineLine) {
+                        existingVaccineRows.put(
+                                resolveVaccineExistingKey(medicineAllocationDetails),
+                                new SavedMasterVaccineRow(
+                                        medicineAllocationDetails.getQuantity(),
+                                        medicineAllocationDetails.getIntakeMode()));
+                    }
+                } catch (Exception ex) {
+                    failedCount++;
+                }
             }
 
         }
 
-        return "200";
+        if (savedCount == 0) {
+            if (vaccineRequestCount > 0 && vaccineSkippedCount == vaccineRequestCount) {
+                throw new IllegalArgumentException(
+                        "All selected vaccines are already saved. Enter quantity only for Pending rows.");
+            }
+            if (failedCount > 0) {
+                String namesHint = unresolvedVaccineNames.isEmpty()
+                        ? ""
+                        : " (e.g. " + String.join(", ", unresolvedVaccineNames) + ")";
+                throw new IllegalArgumentException(
+                        "Unable to match inventory item for one or more pending vaccines"
+                                + namesHint
+                                + ". Check medicine/vaccine master or stock setup.");
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("status", "200");
+        result.put("savedCount", savedCount);
+        result.put("skippedCount", skippedCount);
+        result.put("failedCount", failedCount);
+        return result;
+    }
+
+    private static final class SavedMasterVaccineRow {
+        private final String qty;
+        private final String intakeMode;
+
+        private SavedMasterVaccineRow(String qty, String intakeMode) {
+            this.qty = qty == null ? "" : qty;
+            this.intakeMode = intakeMode == null ? "" : intakeMode;
+        }
+    }
+
+    private String normalizeVaccineToken(String value) {
+        return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String buildMasterVaccinePreparedByMarker(String vaccineName, String strain) {
+        return MASTER_VACCINE_MARKER + normalizeVaccineToken(vaccineName) + "|" + normalizeVaccineToken(strain);
+    }
+
+    private String buildMasterVaccineLineKey(String flockId, String vaccineName, String strain) {
+        return normalizeVaccineToken(flockId) + "|VACCINE|"
+                + normalizeVaccineToken(vaccineName) + "|"
+                + normalizeVaccineToken(strain);
+    }
+
+    private String buildMasterVaccineSavedKey(String flockId, String itemId) {
+        return normalizeVaccineToken(flockId) + "|ITEM|" + (itemId == null ? "" : itemId.trim());
+    }
+
+    private String resolveVaccineExistingKey(BranchRequest.MedicineAllocationDetails details) {
+        if (details.getVaccineName() != null && !details.getVaccineName().isBlank()) {
+            return buildMasterVaccineLineKey(details.getFlockID(), details.getVaccineName(), details.getStrain());
+        }
+        return buildMasterVaccineSavedKey(details.getFlockID(), details.getItemId());
+    }
+
+    private Map<String, SavedMasterVaccineRow> loadSavedMasterVaccineRows(Long branchId, Date scheduleDate) {
+        Map<String, SavedMasterVaccineRow> savedRows = new HashMap<>();
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object[]> rows = entityManager.createNativeQuery(
+                            "SELECT a.FLOCK_ID, a.ITEM_ID, a.QTY, a.INTAKE_MODE, a.PREPARED_BY "
+                                    + "FROM SUG.SUG_MAI_GPPS_ITEM_ALLOCATION a "
+                                    + "WHERE a.BRANCH_ID = :branchId "
+                                    + "AND (UPPER(a.ITEM_TYPE) IN ('VACCINE', 'VACCINES', 'MEDICINE', 'MEDICINES') "
+                                    + "OR a.PREPARED_BY LIKE 'MASTER_VACCINE|%') "
+                                    + "AND (a.PREPARED_BY LIKE 'MASTER_VACCINE|%' "
+                                    + "OR (TRUNC(a.DATE_FROM) <= TRUNC(:scheduleDate) "
+                                    + "AND TRUNC(NVL(a.DATE_TO, :scheduleDate)) >= TRUNC(:scheduleDate)))")
+                    .setParameter("branchId", branchId)
+                    .setParameter("scheduleDate", scheduleDate)
+                    .getResultList();
+            for (Object[] row : rows) {
+                if (row[0] == null || row[1] == null) {
+                    continue;
+                }
+                String flock = row[0].toString();
+                String itemId = row[1].toString();
+                String qty = row[2] == null ? "" : row[2].toString();
+                String intakeMode = row[3] == null ? "" : row[3].toString();
+                String preparedBy = row[4] == null ? "" : row[4].toString();
+                SavedMasterVaccineRow savedRow = new SavedMasterVaccineRow(qty, intakeMode);
+                String lineKey = parseMasterVaccineLineKey(flock, preparedBy);
+                if (lineKey != null) {
+                    savedRows.put(lineKey, savedRow);
+                } else {
+                    savedRows.put(buildMasterVaccineSavedKey(flock, itemId), savedRow);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return savedRows;
+    }
+
+    private String parseMasterVaccineLineKey(String flockId, String preparedBy) {
+        if (preparedBy == null || !preparedBy.startsWith(MASTER_VACCINE_MARKER)) {
+            return null;
+        }
+        String[] parts = preparedBy.split("\\|", 3);
+        if (parts.length < 3) {
+            return null;
+        }
+        String vaccine = parts[1];
+        String strain = parts.length > 2 ? parts[2] : "";
+        return buildMasterVaccineLineKey(flockId, vaccine, strain);
+    }
+
+    private boolean isVaccineScheduleAlreadySaved(
+            Map<String, SavedMasterVaccineRow> existingVaccineRows,
+            BranchRequest.MedicineAllocationDetails details) {
+        if (details == null || details.getFlockID() == null) {
+            return false;
+        }
+        if (details.getVaccineName() != null && !details.getVaccineName().isBlank()) {
+            return existingVaccineRows.containsKey(resolveVaccineExistingKey(details));
+        }
+        if (details.getItemType() == null || !"VACCINE".equalsIgnoreCase(details.getItemType().trim())) {
+            return false;
+        }
+        return existingVaccineRows.containsKey(resolveVaccineExistingKey(details));
+    }
+
+    private void enrichVaccineScheduleSavedStatus(String branchID, ArrayList<BranchUser.FarmFlockVaccineDetails> flocks) {
+        if (flocks == null || flocks.isEmpty()) {
+            return;
+        }
+        Date today = Date.from(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant());
+        Map<String, SavedMasterVaccineRow> savedRows =
+                loadSavedMasterVaccineRows(Long.valueOf(branchID), today);
+        List<TransferPlace.MedicineVaccineDetails> vaccineMaster = loadMedicineVaccineItemsForMatch(branchID);
+        for (BranchUser.FarmFlockVaccineDetails flock : flocks) {
+            if (flock.getVaccineDetails() == null) {
+                continue;
+            }
+            for (BranchUser.VaccineDetails vaccineDetails : flock.getVaccineDetails()) {
+                Long itemId = resolveVaccineItemId(
+                        branchID, vaccineDetails.getVaccine(), vaccineDetails.getStrain(), vaccineMaster);
+                if (itemId != null) {
+                    vaccineDetails.setItemId(String.valueOf(itemId));
+                }
+                if (flock.getFlock() == null) {
+                    vaccineDetails.setScheduleSaved("N");
+                    continue;
+                }
+                SavedMasterVaccineRow saved = savedRows.get(
+                        buildMasterVaccineLineKey(flock.getFlock(), vaccineDetails.getVaccine(), vaccineDetails.getStrain()));
+                if (saved == null && itemId != null) {
+                    saved = savedRows.get(buildMasterVaccineSavedKey(flock.getFlock(), String.valueOf(itemId)));
+                }
+                if (saved != null) {
+                    vaccineDetails.setScheduleSaved("Y");
+                    vaccineDetails.setSavedQty(saved.qty);
+                    vaccineDetails.setSavedIntakeMode(saved.intakeMode);
+                } else {
+                    vaccineDetails.setScheduleSaved("N");
+                }
+            }
+        }
+    }
+
+    private List<TransferPlace.MedicineVaccineDetails> loadMedicineVaccineMaster(String branchID) {
+        ArrayList<TransferPlace.MedicineVaccineDetails> medicineVaccineDetailsArrayList = new ArrayList<>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getmedivaccinemaster");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchID);
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+            while (resultSet.next()) {
+                TransferPlace.MedicineVaccineDetails medicineVaccineDetails =
+                        ResultSetMapper.mapResultSetToObject(resultSet, TransferPlace.MedicineVaccineDetails.class);
+                medicineVaccineDetailsArrayList.add(medicineVaccineDetails);
+            }
+        } catch (Exception ignored) {
+        }
+        return medicineVaccineDetailsArrayList;
+    }
+
+    private List<TransferPlace.MedicineVaccineDetails> loadMedicineVaccineCatalogItems(String branchID) {
+        List<TransferPlace.MedicineVaccineDetails> items = new ArrayList<>();
+        appendMedicineVaccineCatalogRows(items, branchID, "VACCINES", CATALOG_VACCINE_ITEMS_SQL);
+        appendMedicineVaccineCatalogRows(items, branchID, "MEDICINE", CATALOG_MEDICINE_ITEMS_SQL);
+        return items;
+    }
+
+    private static final String CATALOG_VACCINE_ITEMS_SQL =
+            "SELECT DISTINCT a.inventory_item_id, a.segment1, a.description, a.primary_uom_code "
+                    + "FROM mtl_system_items_b a, mtl_item_categories c, mtl_categories d "
+                    + "WHERE c.inventory_item_id = a.inventory_item_id "
+                    + "AND c.organization_id = a.organization_id "
+                    + "AND c.category_set_id = 1 "
+                    + "AND d.category_id = c.category_id "
+                    + "AND a.organization_id = :branchId "
+                    + "AND d.segment1 IN ( "
+                    + "SELECT flv.lookup_code FROM fnd_lookup_values flv "
+                    + "WHERE flv.LOOKUP_TYPE = 'SUG_BREEDER_ITEM_CATEGORY' "
+                    + "AND flv.description IN ('V') "
+                    + "AND flv.enabled_flag = 'Y' "
+                    + "AND TRUNC(SYSDATE) BETWEEN flv.start_date_active AND NVL(flv.end_date_active, SYSDATE)) "
+                    + "AND TRUNC(d.disable_date) IS NULL";
+
+    private static final String CATALOG_MEDICINE_ITEMS_SQL =
+            "SELECT DISTINCT a.inventory_item_id, a.segment1, a.description, a.primary_uom_code "
+                    + "FROM mtl_system_items_b a, mtl_item_categories b, mtl_categories c "
+                    + "WHERE b.inventory_item_id = a.inventory_item_id "
+                    + "AND b.organization_id = a.organization_id "
+                    + "AND b.category_set_id = 1 "
+                    + "AND c.category_id = b.category_id "
+                    + "AND a.organization_id = :branchId "
+                    + "AND (c.SEGMENT1 IN ( "
+                    + "SELECT flv.lookup_code FROM fnd_lookup_values flv "
+                    + "WHERE flv.LOOKUP_TYPE = 'SUG_BREEDER_ITEM_CATEGORY' "
+                    + "AND flv.description = 'M' "
+                    + "AND flv.enabled_flag = 'Y' "
+                    + "AND TRUNC(SYSDATE) BETWEEN flv.start_date_active AND NVL(flv.end_date_active, SYSDATE)) "
+                    + "OR a.segment1 IN ( "
+                    + "SELECT sa.meaning FROM fnd_lookup_values sa "
+                    + "WHERE sa.lookup_type = 'SUG_GPPS_MEDICIN_ADDL_ITEMS' "
+                    + "AND sa.enabled_flag = 'Y' "
+                    + "AND sa.tag = 'MEDICIN' "
+                    + "AND SYSDATE BETWEEN sa.start_date_active AND NVL(sa.end_date_active, SYSDATE + 1))) "
+                    + "AND c.disable_date IS NULL";
+
+    private void appendMedicineVaccineCatalogRows(
+            List<TransferPlace.MedicineVaccineDetails> target,
+            String branchID,
+            String itemType,
+            String sql) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object[]> rows = entityManager.createNativeQuery(sql)
+                    .setParameter("branchId", Long.valueOf(branchID))
+                    .getResultList();
+            for (Object[] row : rows) {
+                TransferPlace.MedicineVaccineDetails item = new TransferPlace.MedicineVaccineDetails();
+                item.setItemType(itemType);
+                item.setInventoryItemId(row[0] == null ? 0L : ((Number) row[0]).longValue());
+                item.setItemCode(row[1] == null ? "" : row[1].toString());
+                item.setItemDescription(row[2] == null ? "" : row[2].toString());
+                item.setPrimaryUomCode(row[3] == null ? "" : row[3].toString());
+                if (item.getInventoryItemId() > 0) {
+                    target.add(item);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private List<TransferPlace.MedicineVaccineDetails> loadMedicineVaccineItemsForMatch(String branchID) {
+        Map<Long, TransferPlace.MedicineVaccineDetails> byItemId = new LinkedHashMap<>();
+        for (TransferPlace.MedicineVaccineDetails item : loadMedicineVaccineCatalogItems(branchID)) {
+            byItemId.put(item.getInventoryItemId(), item);
+        }
+        for (TransferPlace.MedicineVaccineDetails item : loadMedicineVaccineMaster(branchID)) {
+            byItemId.putIfAbsent(item.getInventoryItemId(), item);
+        }
+        return new ArrayList<>(byItemId.values());
+    }
+
+    private String normalizeMasterScheduleName(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.toUpperCase(Locale.ROOT).replace('+', ' ').replaceAll("[^A-Z0-9]", " ").replaceAll("\\s+", " ").trim();
+    }
+
+    private int masterScheduleMatchScore(String term, String desc, String code) {
+        if (term.isEmpty()) {
+            return 0;
+        }
+        if (desc.contains(term) || term.contains(desc)) {
+            return term.length() + 12;
+        }
+        if (code.contains(term) || term.contains(code)) {
+            return term.length() + 10;
+        }
+        String[] tokens = term.split(" ");
+        int hits = 0;
+        for (String token : tokens) {
+            if (token.length() < 2) {
+                continue;
+            }
+            if (desc.contains(token) || code.contains(token)) {
+                hits++;
+            }
+        }
+        return hits == tokens.length ? hits * 6 : 0;
+    }
+
+    private boolean isMasterInventoryType(String itemType) {
+        if (itemType == null) {
+            return false;
+        }
+        String normalized = itemType.toUpperCase(Locale.ROOT);
+        return normalized.contains("VACCIN") || normalized.contains("MEDICIN");
+    }
+
+    private TransferPlace.MedicineVaccineDetails findMasterInventoryItem(
+            String itemId, List<TransferPlace.MedicineVaccineDetails> vaccineMaster) {
+        if (itemId == null || vaccineMaster == null) {
+            return null;
+        }
+        for (TransferPlace.MedicineVaccineDetails item : vaccineMaster) {
+            if (item.getInventoryItemId() > 0 && itemId.equals(String.valueOf(item.getInventoryItemId()))) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    private Long resolveVaccineItemId(
+            String branchID,
+            String vaccineName,
+            String strain,
+            List<TransferPlace.MedicineVaccineDetails> vaccineMaster) {
+        Long itemId = resolveInventoryItemIdByName(vaccineName, vaccineMaster);
+        if (itemId != null) {
+            return itemId;
+        }
+        itemId = resolveInventoryItemIdByName(strain, vaccineMaster);
+        if (itemId != null) {
+            return itemId;
+        }
+        if (vaccineName != null && strain != null) {
+            itemId = resolveInventoryItemIdByName(vaccineName + " " + strain, vaccineMaster);
+            if (itemId != null) {
+                return itemId;
+            }
+        }
+        itemId = lookupInventoryItemIdByCodeOrDescription(branchID, vaccineName);
+        if (itemId != null) {
+            return itemId;
+        }
+        return lookupInventoryItemIdByCodeOrDescription(branchID, strain);
+    }
+
+    private Long lookupInventoryItemIdByCodeOrDescription(String branchID, String term) {
+        if (branchID == null || branchID.isBlank() || term == null || term.isBlank()) {
+            return null;
+        }
+        String trimmed = term.trim();
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object> rows = entityManager.createNativeQuery(
+                            "SELECT inventory_item_id FROM ( "
+                                    + "SELECT a.inventory_item_id, "
+                                    + "CASE WHEN UPPER(a.segment1) = UPPER(:term) THEN 1 "
+                                    + "WHEN UPPER(REPLACE(a.segment1,'+',' ')) = UPPER(REPLACE(:term,'+',' ')) THEN 2 "
+                                    + "WHEN UPPER(a.description) = UPPER(:term) THEN 3 "
+                                    + "ELSE 9 END AS match_rank "
+                                    + "FROM mtl_system_items_b a "
+                                    + "WHERE a.organization_id = :branchId "
+                                    + "AND (UPPER(a.segment1) = UPPER(:term) "
+                                    + "OR UPPER(REPLACE(a.segment1,'+',' ')) = UPPER(REPLACE(:term,'+',' ')) "
+                                    + "OR UPPER(a.description) LIKE '%' || UPPER(:term) || '%' "
+                                    + "OR UPPER(REPLACE(a.description,'+',' ')) LIKE '%' || UPPER(REPLACE(:term,'+',' ')) || '%') "
+                                    + "ORDER BY match_rank) WHERE ROWNUM = 1")
+                    .setParameter("branchId", Long.valueOf(branchID))
+                    .setParameter("term", trimmed)
+                    .getResultList();
+            if (!rows.isEmpty() && rows.get(0) != null) {
+                return ((Number) rows.get(0)).longValue();
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
+    private Long resolveInventoryItemIdByName(String name, List<TransferPlace.MedicineVaccineDetails> vaccineMaster) {
+        if (name == null || name.isBlank() || vaccineMaster == null) {
+            return null;
+        }
+        String lowerName = name.toLowerCase(Locale.ROOT).trim();
+        String normalizedName = normalizeMasterScheduleName(name);
+
+        for (TransferPlace.MedicineVaccineDetails item : vaccineMaster) {
+            if (!isMasterInventoryType(item.getItemType())) {
+                continue;
+            }
+            String desc = item.getItemDescription() == null ? "" : item.getItemDescription().toLowerCase(Locale.ROOT).trim();
+            String code = item.getItemCode() == null ? "" : item.getItemCode().toLowerCase(Locale.ROOT).trim();
+            String descNorm = normalizeMasterScheduleName(item.getItemDescription());
+            String codeNorm = normalizeMasterScheduleName(item.getItemCode());
+            if (desc.equals(lowerName) || code.equals(lowerName)
+                    || (!normalizedName.isEmpty() && (descNorm.equals(normalizedName) || codeNorm.equals(normalizedName)))) {
+                return item.getInventoryItemId();
+            }
+        }
+
+        Long bestItemId = null;
+        int bestScore = 0;
+        for (TransferPlace.MedicineVaccineDetails item : vaccineMaster) {
+            if (!isMasterInventoryType(item.getItemType())) {
+                continue;
+            }
+            String descNorm = normalizeMasterScheduleName(item.getItemDescription());
+            String codeNorm = normalizeMasterScheduleName(item.getItemCode());
+            int score = Math.max(
+                    masterScheduleMatchScore(normalizedName, descNorm, codeNorm),
+                    masterScheduleMatchScore(normalizeMasterScheduleName(lowerName), descNorm, codeNorm));
+            if (score > bestScore) {
+                bestScore = score;
+                bestItemId = item.getInventoryItemId();
+            }
+        }
+        return bestScore >= 6 ? bestItemId : null;
     }
 
     @Override
@@ -4540,7 +5287,9 @@ public class FarmServiceImpl implements FarmService {
     }
     @Override
     public ArrayList<BranchUser.MedicineScheduleDetails> getDailyMedicineSchedule(String branchID,String shedNo,String date) {
-        ArrayList<BranchUser.MedicineScheduleDetails> medicineScheduleDetailsArrayList = new ArrayList<BranchUser.MedicineScheduleDetails>();
+        String normalizedDate = normalizeOracleScheduleDateString(date);
+        String normalizedShed = shedNo == null ? "" : shedNo.trim();
+        Map<String, BranchUser.MedicineScheduleDetails> merged = new LinkedHashMap<>();
 
         try {
             StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getdaily_medicinevaccine_sch");
@@ -4549,21 +5298,110 @@ public class FarmServiceImpl implements FarmService {
             storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(4, ArrayList.class, ParameterMode.REF_CURSOR);
             storedProcedureQuery.setParameter(1, branchID);
-            storedProcedureQuery.setParameter(2, shedNo);
-            storedProcedureQuery.setParameter(3, date);
+            storedProcedureQuery.setParameter(2, normalizedShed);
+            storedProcedureQuery.setParameter(3, normalizedDate);
 
             storedProcedureQuery.execute();
             ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(4);
 
             while (resultSet.next()) {
                 BranchUser.MedicineScheduleDetails medicineScheduleDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.MedicineScheduleDetails.class);
-                medicineScheduleDetailsArrayList.add(medicineScheduleDetails);
-
+                putDailyMedicineScheduleRow(merged, medicineScheduleDetails);
             }
-        } catch (Exception e) {
-
+        } catch (Exception ignored) {
         }
-        return medicineScheduleDetailsArrayList;
+
+        for (BranchUser.MedicineScheduleDetails row :
+                loadDailyMedicineScheduleFromAllocation(branchID, normalizedShed, normalizedDate)) {
+            putDailyMedicineScheduleRow(merged, row);
+        }
+        return new ArrayList<>(merged.values());
+    }
+
+    private void putDailyMedicineScheduleRow(
+            Map<String, BranchUser.MedicineScheduleDetails> merged,
+            BranchUser.MedicineScheduleDetails row) {
+        if (row == null) {
+            return;
+        }
+        String key = row.getTransId();
+        if (key == null || key.isBlank()) {
+            key = String.join("|",
+                    row.getItemId() == null ? "" : row.getItemId(),
+                    row.getFlockId() == null ? "" : row.getFlockId(),
+                    row.getShedNo() == null ? "" : row.getShedNo(),
+                    row.getDateFrom() == null ? "" : row.getDateFrom());
+        }
+        merged.putIfAbsent(key, row);
+    }
+
+    private ArrayList<BranchUser.MedicineScheduleDetails> loadDailyMedicineScheduleFromAllocation(
+            String branchID, String shedNo, String transDate) {
+        ArrayList<BranchUser.MedicineScheduleDetails> rows = new ArrayList<>();
+        if (branchID == null || branchID.isBlank() || shedNo == null || shedNo.isBlank()) {
+            return rows;
+        }
+        Date scheduleDate = parseAllocationScheduleDate(transDate);
+        if (scheduleDate == null) {
+            return rows;
+        }
+        String shedSuffix = extractShedSuffix(shedNo);
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object[]> queryRows = entityManager.createNativeQuery(
+                            "SELECT a.FARM_CODE, a.ITEM_TYPE, a.ITEM_ID, a.FLOCK_ID, a.AGE, a.QTY, "
+                                    + "TO_CHAR(a.DATE_FROM, 'DD-Mon-YYYY') AS DATE_FROM, a.UOM, a.SHED_NO, "
+                                    + "a.INTAKE_MODE, a.PREPARED_BY, b.DESCRIPTION AS item_name, "
+                                    + "b.SEGMENT1 AS item_code, a.TRANS_ID, 'N' AS allocate_status "
+                                    + "FROM SUG.SUG_MAI_GPPS_ITEM_ALLOCATION a "
+                                    + "LEFT JOIN mtl_system_items_b b "
+                                    + "ON b.ORGANIZATION_ID = a.BRANCH_ID AND b.INVENTORY_ITEM_ID = a.ITEM_ID "
+                                    + "WHERE a.BRANCH_ID = :branchId "
+                                    + "AND UPPER(NVL(a.ITEM_TYPE, 'X')) IN ('MEDICINE', 'VACCINE', 'VACCINES', 'MEDICINES') "
+                                    + "AND ( "
+                                    + "  ( "
+                                    + "    (UPPER(TRIM(NVL(a.SHED_NO, ' '))) = UPPER(TRIM(:shedNo)) "
+                                    + "     OR UPPER(TRIM(NVL(a.SHED_NO, ' '))) = UPPER(TRIM(:shedSuffix))) "
+                                    + "    AND TRUNC(:scheduleDate) BETWEEN TRUNC(a.DATE_FROM) "
+                                    + "        AND TRUNC(NVL(a.DATE_TO, :scheduleDate)) "
+                                    + "  ) "
+                                    + "  OR ( "
+                                    + "    a.PREPARED_BY LIKE 'MASTER_VACCINE|%' "
+                                    + "    AND EXISTS ( "
+                                    + "      SELECT 1 FROM sug.sug_mai_gpps_housing_shed t "
+                                    + "      JOIN sug_organization_mv c ON t.farm_code = c.branch_code "
+                                    + "      WHERE c.branch_id = a.BRANCH_ID "
+                                    + "      AND t.flock_id = a.FLOCK_ID "
+                                    + "      AND UPPER(TRIM(t.shed_no)) = UPPER(TRIM(:shedNo))) "
+                                    + "  ) "
+                                    + ")")
+                    .setParameter("branchId", Long.valueOf(branchID.trim()))
+                    .setParameter("scheduleDate", scheduleDate)
+                    .setParameter("shedNo", shedNo.trim())
+                    .setParameter("shedSuffix", shedSuffix)
+                    .getResultList();
+            for (Object[] row : queryRows) {
+                BranchUser.MedicineScheduleDetails details = new BranchUser.MedicineScheduleDetails();
+                details.setFarmCode(row[0] == null ? null : row[0].toString());
+                details.setItemType(row[1] == null ? null : row[1].toString());
+                details.setItemId(row[2] == null ? null : row[2].toString());
+                details.setFlockId(row[3] == null ? null : row[3].toString());
+                details.setAge(row[4] == null ? null : row[4].toString());
+                details.setQty(row[5] == null ? null : row[5].toString());
+                details.setDateFrom(row[6] == null ? null : row[6].toString());
+                details.setUom(row[7] == null ? null : row[7].toString());
+                details.setShedNo(row[8] == null ? null : row[8].toString());
+                details.setIntakeMode(row[9] == null ? null : row[9].toString());
+                details.setPreparedBy(row[10] == null ? null : row[10].toString());
+                details.setItemName(row[11] == null ? null : row[11].toString());
+                details.setItemCode(row[12] == null ? null : row[12].toString());
+                details.setTransId(row[13] == null ? null : row[13].toString());
+                details.setAllocateStatus(row[14] == null ? "N" : row[14].toString());
+                rows.add(details);
+            }
+        } catch (Exception ignored) {
+        }
+        return rows;
     }
     @Override
     public String saveDailyMedicineVaccine(BranchRequest branchRequest, List<MultipartFile> imageFile) {
@@ -5083,6 +5921,7 @@ public class FarmServiceImpl implements FarmService {
         } catch (Exception e) {
 
         }
+        enrichVaccineScheduleSavedStatus(branchID, eggWeightCapturePersonArrayList);
         return eggWeightCapturePersonArrayList;
     }
 

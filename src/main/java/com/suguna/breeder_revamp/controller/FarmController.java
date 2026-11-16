@@ -387,10 +387,14 @@ public class FarmController {
         responseDto.setMessage("Success");
         responseDto.setStatusCode(200);
         responseDto.setStatus("Success");
-        String response = "";
-        // if (branchRequest.getActivityName().equalsIgnoreCase("LIVE BIRD OBSERVATION")) {
-        responseDto.setResult(farmService.saveMedicineScheduleDetails(branchRequest));
-        //}
+        try {
+            responseDto.setResult(farmService.saveMedicineScheduleDetails(branchRequest));
+        } catch (IllegalArgumentException ex) {
+            responseDto.setStatusCode(400);
+            responseDto.setStatus("Failed");
+            responseDto.setMessage(ex.getMessage());
+            responseDto.setResult("400");
+        }
         return responseDto;
     }
 

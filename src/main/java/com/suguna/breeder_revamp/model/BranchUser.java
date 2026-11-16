@@ -1395,6 +1395,15 @@ public class BranchUser {
         @Column(name = "STRAIN", type = String.class)
         @JsonProperty("STRAIN")
         String strain;
+        @Column(name = "ITEM_ID", type = String.class)
+        @JsonProperty("itemId")
+        String itemId;
+        @JsonProperty("scheduleSaved")
+        String scheduleSaved;
+        @JsonProperty("savedQty")
+        String savedQty;
+        @JsonProperty("savedIntakeMode")
+        String savedIntakeMode;
     }
 
     @Getter

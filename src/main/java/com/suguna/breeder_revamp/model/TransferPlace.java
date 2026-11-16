@@ -567,6 +567,9 @@ public class TransferPlace {
         @Column(name = "FLOCK_ID", type = String.class)
         @JsonProperty("FLOCK_ID")
         String FLOCK_ID;
+        @Column(name = "FLOCK_NO", type = String.class)
+        @JsonProperty("FLOCK_NO")
+        String FLOCK_NO;
         @Column(name = "TXN_DATE", type = String.class)
         @JsonProperty("TXN_DATE")
         String TXN_DATE;

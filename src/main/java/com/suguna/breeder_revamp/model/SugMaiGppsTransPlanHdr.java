@@ -24,6 +24,7 @@ public class SugMaiGppsTransPlanHdr {
     long TXN_HEADER_ID;
     String TRANS_TYPE;
     String FLOCK_ID;
+    String FLOCK_NO;
     Date TXN_DATE;
     String TRANS_REASON;
     Date UPDATION_DATE;

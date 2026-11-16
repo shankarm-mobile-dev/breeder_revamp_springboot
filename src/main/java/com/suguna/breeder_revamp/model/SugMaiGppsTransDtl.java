@@ -51,4 +51,10 @@ public class SugMaiGppsTransDtl {
     String TO_LINE_NAME;
     String FROM_SIDE_NAME;
     String TO_SIDE_NAME;
+
+    @Column(name = "TYPE")
+    String TYPE;
+
+    @Column(name = "FLOCK_NO")
+    String FLOCK_NO;
 }

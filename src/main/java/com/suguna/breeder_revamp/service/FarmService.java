@@ -65,7 +65,7 @@ public interface FarmService {
 
     String savePlacementInfoDetails(ArrayList<PlacementRequest> placementRequest);
 
-    String saveMedicineScheduleDetails(BranchRequest branchRequest);
+    Object saveMedicineScheduleDetails(BranchRequest branchRequest);
 
     ArrayList<BranchUser.MedicineScheduleDetails> getMedicineScheduleDetails(String branchID,String flock);
 

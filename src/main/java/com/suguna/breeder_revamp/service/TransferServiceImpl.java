@@ -27,9 +27,11 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Objects;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class TransferServiceImpl implements TransferService{
@@ -67,6 +69,11 @@ public class TransferServiceImpl implements TransferService{
 
     @Autowired
     HousingLineStockService housingLineStockService;
+
+    @Autowired
+    SugMaiBreederDailyEntryRepository sugMaiBreederDailyEntryRepository;
+
+    private static final long DAILY_ENTRY_DEVICE_ID = 123456L;
 
     @Override
     public ArrayList<TransferPlace> getTransferPlace(BranchRequest branchRequest) {
@@ -117,7 +124,25 @@ public class TransferServiceImpl implements TransferService{
 
     @Override
     public ArrayList<TransferPlace.FeedItemDetails> getFeedItemMaster(BranchRequest branchRequest) {
-        return new ArrayList<>(feedInventoryService.getFeedItemsForBranch(branchRequest.getBranchID()));
+        ArrayList<TransferPlace.FeedItemDetails> feedDetailsArrayList = new ArrayList<TransferPlace.FeedItemDetails>();
+        try {
+            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getFeedItemMaster");
+            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
+
+            storedProcedureQuery.registerStoredProcedureParameter(2, ArrayList.class, ParameterMode.REF_CURSOR);
+            storedProcedureQuery.setParameter(1, branchRequest.getBranchID());
+
+            storedProcedureQuery.execute();
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(2);
+
+            while (resultSet.next()) {
+                TransferPlace.FeedItemDetails feedDetails = ResultSetMapper.mapResultSetToObject(resultSet, TransferPlace.FeedItemDetails.class);
+                feedDetailsArrayList.add(feedDetails);
+            }
+        } catch (Exception e) {
+
+        }
+        return feedDetailsArrayList;
     }
 
     @Override
@@ -259,6 +284,7 @@ public class TransferServiceImpl implements TransferService{
                     sugmaigppstransHdrModels.setBOX_NOS(FarmDto.getBoxnumber());
                     sugmaigppstransHdrModels.setPACK_MATERIAL(FarmDto.getPackmaterial());
                     applyPlanDtlIdFromPid(FarmDto, sugmaigppstransHdrModels);
+                    applyBirdTransferHdrFlockAndType(FarmDto, sugmaigppstransHdrModels);
                     SugMaiGppsTransHdr sugmaigppstransHdrModels1=sugMaiGppsTransHdrRepository.save(sugmaigppstransHdrModels);
                     if (isTransferIn(FarmDto.getTransfer_type())) {
                         updateVehicleGateInOutInStatusForTransIn(FarmDto);
@@ -279,8 +305,14 @@ public class TransferServiceImpl implements TransferService{
                             BigDecimal fromFarmId = FarmDto1.getFrom_farm_id() != null
                                     ? FarmDto1.getFrom_farm_id() : FarmDto.getFrom_farm_id();
                             Object[] fromLocation = getFromInventoryLocation(FarmDto1.getFrom_batch_id(), fromFarmId);
-                            if(FarmDto1.getTxn_type().equals("BIRD")) {
-                                if (fromLocation != null) {
+                            if("BIRD".equalsIgnoreCase(String.valueOf(FarmDto1.getTxn_type()).trim())) {
+                                // Prefer payload/gettranfershedmaster inventory id (attribute4=2).
+                                // Do not overwrite with housing attribute4=1 locator when app already sent one.
+                                if (FarmDto1.getFrom_inventory_location_id() != null
+                                        && FarmDto1.getFrom_inventory_location_id().signum() > 0) {
+                                    sugMaiGppsTransDtlModels.setFROM_INVENTORY_LOCATION_ID(FarmDto1.getFrom_inventory_location_id());
+                                    sugMaiGppsTransDtlModels.setFROM_INVENTORY_LOC_DESC(FarmDto1.getFrom_inventory_loc_desc());
+                                } else if (fromLocation != null) {
                                     if (fromLocation[0] instanceof Number) {
                                         sugMaiGppsTransDtlModels.setFROM_INVENTORY_LOCATION_ID(
                                                 BigDecimal.valueOf(((Number) fromLocation[0]).longValue()));
@@ -299,10 +331,13 @@ public class TransferServiceImpl implements TransferService{
                             sugMaiGppsTransDtlModels.setFROM_BATCH_ID(FarmDto1.getFrom_batch_id());
                             sugMaiGppsTransDtlModels.setTO_BATCH_ID(FarmDto1.getTo_batch_id());
                             sugMaiGppsTransDtlModels.setTXN_TYPE(FarmDto1.getTxn_type());
-                            if(FarmDto1.getTxn_type().equals("BIRD"))
+                            if("BIRD".equalsIgnoreCase(String.valueOf(FarmDto1.getTxn_type()).trim()))
                             {
-                                sugMaiGppsTransDtlModels.setBIRD_TYPE(FarmDto1.getBird_type().substring(0, 1));
+                                String birdType = FarmDto1.getBird_type() == null ? "F" : FarmDto1.getBird_type().trim();
+                                sugMaiGppsTransDtlModels.setBIRD_TYPE(birdType.isEmpty() ? "F" : birdType.substring(0, 1).toUpperCase(Locale.ENGLISH));
                                 sugMaiGppsTransDtlModels.setITEM_DESC("NA");
+                                sugMaiGppsTransDtlModels.setFLOCK_NO(detailFlockNo(FarmDto1));
+                                sugMaiGppsTransDtlModels.setTYPE(detailTransReason(FarmDto1));
                             }
                             else
                             {
@@ -311,10 +346,11 @@ public class TransferServiceImpl implements TransferService{
                             }
 
                             sugMaiGppsTransDtlModels.setITEM_ID(FarmDto1.getItem_id());
-                            if(FarmDto1.getLocation_TYPE().equals("HATCHERY")) {
+                            String locType = FarmDto1.getLocation_TYPE();
+                            if("HATCHERY".equalsIgnoreCase(String.valueOf(locType).trim())) {
                                 sugMaiGppsTransDtlModels.setTO_INVENTORY_LOCATION_ID(Long.valueOf(get_locator_inv_id(String.valueOf(FarmDto1.getTo_farm_id()))));
                             }
-                            else
+                            else if (FarmDto1.getTo_inventory_location_id() != null && FarmDto1.getTo_inventory_location_id() > 0)
                             {
                                 sugMaiGppsTransDtlModels.setTO_INVENTORY_LOCATION_ID(FarmDto1.getTo_inventory_location_id());
                             }
@@ -334,8 +370,8 @@ public class TransferServiceImpl implements TransferService{
                             if (!Objects.equals(FarmDto1.getLaydate(), "NA")) {
                                 sugMaiGppsTransDtlModels.setLAY_DATE(getTxnDateString(FarmDto1.getLaydate(), fromdateFormat1));
                             }
-                            if(!FarmDto1.getLocation_TYPE().equals("HATCHERY")) {
-                                sugMaiGppsTransDtlModels.setLOCATION_TYPE(FarmDto1.getLocation_TYPE());
+                            if(!"HATCHERY".equalsIgnoreCase(String.valueOf(locType).trim())) {
+                                sugMaiGppsTransDtlModels.setLOCATION_TYPE(locType);
                             }
                             sugMaiGppsTransDtlModels.setTXN_TIME(FarmDto1.getTXN_TIME());
                             sugMaiGppsTransDtlModels.setBREEDNAME(FarmDto1.getBreedname());
@@ -350,6 +386,15 @@ public class TransferServiceImpl implements TransferService{
 
                         } else {
 
+                        }
+                    }
+                    entityManager.flush();
+                    if (!isTransferIn(FarmDto.getTransfer_type())) {
+                        try {
+                            postBirdTransferOutDailyEntry(sugmaigppstransHdrModels1, FarmDto);
+                        } catch (Exception postEx) {
+                            System.err.println("TRANSFER_ALL failed (transfer saved): " + postEx.getMessage());
+                            postEx.printStackTrace();
                         }
                     }
                 } else {
@@ -605,6 +650,17 @@ public class TransferServiceImpl implements TransferService{
         header.setPOSTED_FLAG("N");
         header.setPOST_TO_ERP("N");
         header.setLOCATION_TYPE("SHED");
+        if (request.getLines() != null && !request.getLines().isEmpty()) {
+            ShedLineTransferRequest.LineMove first = request.getLines().get(0);
+            if (first.getFlockId() != null && !first.getFlockId().isBlank()) {
+                header.setFLOCK_NO(first.getFlockId().trim());
+            }
+        }
+        String shedReason = request.getTransferReason();
+        if (shedReason != null && !shedReason.isBlank()) {
+            header.setTYPE(shedReason.trim());
+            header.setTRANS_REASON(shedReason.trim());
+        }
         header = sugMaiGppsTransHdrRepository.save(header);
 
         for (ShedLineTransferRequest.LineMove line : request.getLines()) {
@@ -614,6 +670,9 @@ public class TransferServiceImpl implements TransferService{
             detail.setFROM_FARM_ID(header.getFROM_FARM_ID());
             detail.setTO_FARM_ID(header.getTO_FARM_ID());
             detail.setFROM_INVENTORY_LOC_DESC(line.getFromShed());
+            if (line.getBatchId() != null && !line.getBatchId().isBlank()) {
+                detail.setFROM_BATCH_ID(new BigDecimal(line.getBatchId().trim()));
+            }
             detail.setTXN_TYPE("BIRD");
             detail.setBIRD_TYPE(housingLineStockService.normalizeSex(line.getSex()));
             detail.setITEM_DESC("NA");
@@ -631,9 +690,806 @@ public class TransferServiceImpl implements TransferService{
             if (line.getAge() != null && !line.getAge().isBlank()) {
                 detail.setAGE(new BigDecimal(line.getAge().trim()));
             }
+            if (line.getFlockId() != null && !line.getFlockId().isBlank()) {
+                detail.setFLOCK_NO(line.getFlockId().trim());
+            }
+            if (request.getTransferReason() != null && !request.getTransferReason().isBlank()) {
+                detail.setTYPE(request.getTransferReason().trim());
+            }
             sugMaiGppsTransDtlRepository.save(detail);
         }
+        postShedLineBirdTransferOutDailyEntry(header, request);
         return "200";
+    }
+
+    private void postBirdTransferOutDailyEntry(SugMaiGppsTransHdr header, SUGMAIGPPSTRANS_HDRDto farmDto) {
+        if (header == null || farmDto == null || farmDto.getDetails() == null || farmDto.getDetails().isEmpty()) {
+            System.out.println("TRANSFER_ALL: skipped (header/details null)");
+            return;
+        }
+        System.out.println("TRANSFER_ALL post start txn_header_id=" + header.getTXN_HEADER_ID()
+                + " details=" + farmDto.getDetails().size());
+        Map<String, BirdTransferBatchAggregate> groups = aggregateBirdTransferBatches(
+                farmDto.getDetails(), farmDto.getFrom_farm_id());
+        if (groups.isEmpty()) {
+            System.out.println("TRANSFER_ALL: no BIRD groups — check txn_type, from_batch_id, flockNo");
+            return;
+        }
+        Date txnDate = header.getTXN_DATE() != null ? header.getTXN_DATE()
+                : getTxnDateString(farmDto.getTxn_date(), "dd-MM-yyyy");
+        if (txnDate == null) {
+            txnDate = new Date();
+        }
+        long txnHeaderId = header.getTXN_HEADER_ID();
+        String branchCodeHeader = farmDto.getFrom_farm_name();
+        for (BirdTransferBatchAggregate group : groups.values()) {
+            insertTransferAllDailyEntryNative(txnHeaderId, txnDate, farmDto.getEmpcode(), group, branchCodeHeader);
+        }
+    }
+
+    private void postShedLineBirdTransferOutDailyEntry(SugMaiGppsTransHdr header, ShedLineTransferRequest request) {
+        if (header == null || request == null || request.getLines() == null || request.getLines().isEmpty()) {
+            return;
+        }
+        Map<String, BirdTransferBatchAggregate> groups = new LinkedHashMap<>();
+        BigDecimal fromFarmId = header.getFROM_FARM_ID();
+        for (ShedLineTransferRequest.LineMove line : request.getLines()) {
+            BigDecimal batchId = parseBatchId(line.getBatchId());
+            String shed = line.getFromShed();
+            String flockNo = line.getFlockId();
+            if (batchId == null && (shed == null || shed.isBlank()) && (flockNo == null || flockNo.isBlank())) {
+                continue;
+            }
+            String key = batchKey(batchId) + "|" + normalizeKey(shed) + "|" + normalizeKey(flockNo);
+            BirdTransferBatchAggregate agg = groups.computeIfAbsent(
+                    key, k -> new BirdTransferBatchAggregate(batchId, fromFarmId, shed, flockNo, null));
+            long qty = housingLineStockService.parseQty(line.getQty());
+            String sex = housingLineStockService.normalizeSex(line.getSex());
+            if ("M".equals(sex)) {
+                agg.transferMale += qty;
+            } else if ("F".equals(sex)) {
+                agg.transferFemale += qty;
+            }
+            if (line.getAge() != null && !line.getAge().isBlank()) {
+                try {
+                    long age = Long.parseLong(line.getAge().trim());
+                    if (age > agg.age) {
+                        agg.age = age;
+                    }
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        }
+        if (groups.isEmpty()) {
+            return;
+        }
+        Date txnDate = header.getTXN_DATE() != null ? header.getTXN_DATE() : new Date();
+        long txnHeaderId = header.getTXN_HEADER_ID();
+        for (BirdTransferBatchAggregate group : groups.values()) {
+            insertTransferAllDailyEntryNative(txnHeaderId, txnDate, request.getUserCode(), group, null);
+        }
+    }
+
+    private Map<String, BirdTransferBatchAggregate> aggregateBirdTransferBatches(
+            List<SUGMAIGPPSTRANS_HDRDto.SugMaiGppsTrans_DtlDto> details,
+            BigDecimal defaultFromFarmId) {
+        Map<String, BirdTransferBatchAggregate> groups = new LinkedHashMap<>();
+        for (SUGMAIGPPSTRANS_HDRDto.SugMaiGppsTrans_DtlDto dtl : details) {
+            if (dtl.getTxn_type() == null || !"BIRD".equalsIgnoreCase(dtl.getTxn_type().trim())) {
+                continue;
+            }
+            BigDecimal fromFarm = dtl.getFrom_farm_id() != null ? dtl.getFrom_farm_id() : defaultFromFarmId;
+            if (fromFarm == null) {
+                continue;
+            }
+            BigDecimal batchId = normalizeBatchId(dtl.getFrom_batch_id());
+            String flockNo = detailFlockNo(dtl);
+            String shed = dtl.getFrom_inventory_loc_desc();
+            BigDecimal invLoc = positiveId(dtl.getFrom_inventory_location_id());
+            final BigDecimal batchIdFinal = batchId;
+            final BigDecimal fromFarmId = fromFarm;
+            final String shedCode = shed;
+            final String flockFinal = flockNo;
+            final BigDecimal invLocFinal = invLoc;
+            String key = batchKey(batchIdFinal) + "|" + normalizeKey(shedCode) + "|" + normalizeKey(flockFinal)
+                    + "|" + batchKey(invLocFinal);
+            BirdTransferBatchAggregate agg = groups.computeIfAbsent(
+                    key, k -> new BirdTransferBatchAggregate(batchIdFinal, fromFarmId, shedCode, flockFinal, invLocFinal));
+            long qty = dtl.getQty() == null ? 0L : dtl.getQty().longValue();
+            String bird = dtl.getBird_type() == null ? "" : dtl.getBird_type().trim().toUpperCase(Locale.ENGLISH);
+            if (bird.startsWith("M")) {
+                agg.transferMale += qty;
+            } else if (bird.startsWith("F")) {
+                agg.transferFemale += qty;
+            }
+            if (dtl.getAge() != null && dtl.getAge().longValue() > agg.age) {
+                agg.age = dtl.getAge().longValue();
+            }
+        }
+        return groups;
+    }
+
+    /**
+     * Insert TRANSFER_ALL with native SQL (same pattern as post_culling_daily_entry).
+     * Uses gettranfershedmaster rules for inventory_location_id / location / flock.
+     */
+    private void insertTransferAllDailyEntryNative(long txnHeaderId,
+                                                   Date txnDate,
+                                                   String empCode,
+                                                   BirdTransferBatchAggregate group,
+                                                   String branchCodeFromHeader) {
+        if (group == null || group.fromFarmId == null) {
+            System.out.println("TRANSFER_ALL skipped: fromFarmId null");
+            return;
+        }
+
+        String flockNo = !isUnresolvedFlock(group.flockNo) ? group.flockNo.trim() : null;
+        if (isUnresolvedFlock(flockNo)) {
+            BatchDailyEntryContext shedCtx = resolveDailyEntryForTransfer(group);
+            if (shedCtx != null && !isUnresolvedFlock(shedCtx.flockNo)) {
+                flockNo = shedCtx.flockNo.trim();
+            }
+            if (isUnresolvedFlock(flockNo)) {
+                flockNo = lookupFlockFromHousing(group.fromFarmId, group.shedCode);
+            }
+        }
+        if (isUnresolvedFlock(flockNo)) {
+            System.out.println("TRANSFER_ALL skipped: flock missing. payloadFlock=" + group.flockNo);
+            return;
+        }
+
+        long entryBatchId = group.batchId != null ? group.batchId.longValue() : 0L;
+        if (entryBatchId <= 0) {
+            entryBatchId = resolveBatchIdForTransfer(
+                    group.fromFarmId, flockNo, group.inventoryLocationId, group.shedCode);
+        }
+        if (entryBatchId <= 0) {
+            System.out.println("TRANSFER_ALL skipped: batch_id unresolved for flock=" + flockNo
+                    + " branch=" + group.fromFarmId + " invLoc=" + group.inventoryLocationId
+                    + " shed=" + group.shedCode + " (payload from_batch_id was 0)");
+            return;
+        }
+
+        if (transferAllDailyEntryExists(txnHeaderId, entryBatchId)) {
+            System.out.println("TRANSFER_ALL already exists mtl_report_id=" + txnHeaderId + " batch_id=" + entryBatchId);
+            return;
+        }
+
+        BatchDailyEntryContext ctx = resolveDailyEntryForTransfer(group);
+        String batchNo = lookupBatchNo(entryBatchId);
+        if (ctx != null && ctx.batchNo != null && !ctx.batchNo.isBlank()) {
+            batchNo = ctx.batchNo;
+        }
+        String locationCode = firstNonBlank(group.shedCode, ctx == null ? null : ctx.locationCode);
+        String branchCode = firstNonBlank(branchCodeFromHeader, ctx == null ? null : ctx.branchCode,
+                lookupBranchName(group.fromFarmId));
+        long branchId = group.fromFarmId.longValue();
+        Long invLocId = null;
+        if (group.inventoryLocationId != null && group.inventoryLocationId.signum() > 0) {
+            invLocId = group.inventoryLocationId.longValue();
+        } else if (ctx != null && ctx.inventoryLocationId != null && ctx.inventoryLocationId > 0) {
+            invLocId = ctx.inventoryLocationId;
+        } else {
+            invLocId = lookupInventoryLocationId(branchId, locationCode);
+        }
+
+        Long dailyTxnId = findDailyHeaderTxnId(flockNo, txnDate, entryBatchId);
+        if (dailyTxnId != null) {
+            markDailyHeaderUnposted(dailyTxnId, txnDate);
+        } else {
+            dailyTxnId = txnHeaderId;
+        }
+
+        Number nextReportId = sugMaiBreederDailyEntryRepository.getNextReportId();
+        long reportId = nextReportId.longValue();
+
+        try {
+            int rows = entityManager.createNativeQuery(
+                            "insert into sug.sug_mai_breeder_daily_entry (" +
+                                    " txn_id, report_id, device_id, branch_id, branch_code, location_code," +
+                                    " inventory_location_id, emp_code, txn_type, txn_date, batch_no, batch_id," +
+                                    " flock_no, age, transfer_male, transfer_female, mtl_report_id," +
+                                    " flock_liquid, posted_flag, entry_creation_date)" +
+                                    " values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'TRANSFER_ALL', ?9, ?10, ?11," +
+                                    " ?12, ?13, ?14, ?15, ?16, 'N', 'N', sysdate)")
+                    .setParameter(1, dailyTxnId)
+                    .setParameter(2, reportId)
+                    .setParameter(3, DAILY_ENTRY_DEVICE_ID)
+                    .setParameter(4, branchId)
+                    .setParameter(5, branchCode)
+                    .setParameter(6, locationCode)
+                    .setParameter(7, invLocId)
+                    .setParameter(8, empCode)
+                    .setParameter(9, txnDate)
+                    .setParameter(10, batchNo)
+                    .setParameter(11, entryBatchId)
+                    .setParameter(12, flockNo)
+                    .setParameter(13, group.age)
+                    .setParameter(14, group.transferMale)
+                    .setParameter(15, group.transferFemale)
+                    .setParameter(16, txnHeaderId)
+                    .executeUpdate();
+            entityManager.flush();
+            System.out.println("TRANSFER_ALL inserted rows=" + rows + " report_id=" + reportId
+                    + " batch_id=" + entryBatchId + " flock=" + flockNo + " branch_id=" + branchId
+                    + " loc=" + locationCode + " inv_loc=" + invLocId);
+        } catch (Exception e) {
+            System.out.println("TRANSFER_ALL SQL insert failed: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private boolean transferAllDailyEntryExists(long txnHeaderId, long batchId) {
+        try {
+            Number count = (Number) entityManager.createNativeQuery(
+                            "select count(1) from sug.sug_mai_breeder_daily_entry a " +
+                                    "where a.txn_type = 'TRANSFER_ALL' " +
+                                    "and a.mtl_report_id = ?1 and a.batch_id = ?2")
+                    .setParameter(1, txnHeaderId)
+                    .setParameter(2, batchId)
+                    .getSingleResult();
+            return count != null && count.longValue() > 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private Long findDailyHeaderTxnId(String flockNo, Date txnDate, long batchId) {
+        if (flockNo == null || txnDate == null) {
+            return null;
+        }
+        try {
+            Object result = entityManager.createNativeQuery(
+                            "select txn_id from (" +
+                                    "select a.txn_id from sug.sug_mai_breeder_daily_entry a " +
+                                    "where a.txn_type = 'HEADER' " +
+                                    "and a.flock_no = ?1 " +
+                                    "and trunc(a.txn_date) = trunc(?2) " +
+                                    "and a.batch_id = ?3 " +
+                                    "order by a.report_id desc) where rownum = 1")
+                    .setParameter(1, flockNo)
+                    .setParameter(2, txnDate)
+                    .setParameter(3, batchId)
+                    .getSingleResult();
+            if (result instanceof Number) {
+                return ((Number) result).longValue();
+            }
+            return Long.parseLong(String.valueOf(result));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void markDailyHeaderUnposted(long dailyTxnId, Date txnDate) {
+        try {
+            entityManager.createNativeQuery(
+                            "update sug.sug_mai_breeder_daily_entry a " +
+                                    "set a.posted_flag = 'N' " +
+                                    "where a.txn_id = ?1 and trunc(a.txn_date) = trunc(?2)")
+                    .setParameter(1, dailyTxnId)
+                    .setParameter(2, txnDate)
+                    .executeUpdate();
+        } catch (Exception e) {
+            System.out.println("markDailyHeaderUnposted: " + e.getMessage());
+        }
+    }
+
+    private static final String TRANSFER_SHED_MASTER_SELECT =
+            " select a.inventory_location_id," +
+                    "        a.organization_id," +
+                    "        a.segment1," +
+                    "        nvl(decode(b.attribute2, null, b.attribute1, b.attribute1 || '-' || b.attribute2), 'none') flock_no," +
+                    "        b.batch_id," +
+                    "        b.batch_no," +
+                    "        c.branch_name";
+
+    private static final String TRANSFER_SHED_MASTER_FROM =
+            "   from mtl_item_locations a" +
+                    "   left join gme_batch_header b" +
+                    "     on b.organization_id = a.organization_id" +
+                    "    and b.attribute4 = a.segment1" +
+                    "    and b.batch_status = 2" +
+                    "   left join sug_organization_mv c" +
+                    "     on c.branch_id = a.organization_id" +
+                    "  where a.disable_date is null" +
+                    "    and a.organization_id = ?1" +
+                    "    and a.segment1 not like '%:TL%'" +
+                    "    and nvl(a.attribute4, 2) = 2" +
+                    "    and upper(a.description) not like '%TRANS%LOSS%'";
+
+    /**
+     * Resolve daily-entry header fields using gettranfershedmaster rules, with batch/flock fallbacks.
+     */
+    private BatchDailyEntryContext resolveDailyEntryForTransfer(BirdTransferBatchAggregate group) {
+        if (group == null || group.fromFarmId == null) {
+            return null;
+        }
+        BatchDailyEntryContext ctx = null;
+        if (group.inventoryLocationId != null) {
+            ctx = lookupTransferShedMaster(group.fromFarmId, null, group.batchId, group.inventoryLocationId);
+        }
+        if (ctx == null && group.shedCode != null && !group.shedCode.isBlank()) {
+            ctx = lookupTransferShedMaster(group.fromFarmId, group.shedCode, group.batchId, null);
+            if (ctx == null) {
+                ctx = lookupTransferShedMaster(group.fromFarmId, group.shedCode, null, null);
+            }
+        }
+        if (ctx == null && group.batchId != null) {
+            ctx = lookupBatchDailyEntryContext(group.fromFarmId, group.batchId);
+        }
+        if (ctx == null && group.flockNo != null && !group.flockNo.isBlank()) {
+            ctx = lookupBatchDailyEntryByFlock(group.fromFarmId, group.flockNo.trim());
+        }
+        if (ctx != null && isUnresolvedFlock(ctx.flockNo) && group.flockNo != null && !group.flockNo.isBlank()) {
+            ctx.flockNo = group.flockNo.trim();
+        }
+        if ((ctx == null || ctx.branchCode == null || ctx.branchCode.isBlank()) && group.fromFarmId != null) {
+            if (ctx == null) {
+                ctx = new BatchDailyEntryContext();
+                ctx.branchId = group.fromFarmId.longValue();
+                ctx.locationCode = group.shedCode;
+            }
+            ctx.branchCode = lookupBranchName(group.fromFarmId);
+        }
+        return ctx;
+    }
+
+    private BatchDailyEntryContext lookupTransferShedMaster(BigDecimal fromFarmId,
+                                                            String shedCode,
+                                                            BigDecimal preferredBatchId,
+                                                            BigDecimal inventoryLocationId) {
+        if (fromFarmId == null) {
+            return null;
+        }
+        String segment1 = shedCode;
+        if ((segment1 == null || segment1.isBlank()) && preferredBatchId != null) {
+            Object[] loc = getFromInventoryLocation(preferredBatchId, fromFarmId);
+            if (loc != null && loc[1] != null) {
+                segment1 = String.valueOf(loc[1]);
+            }
+        }
+        if ((segment1 == null || segment1.isBlank())
+                && (inventoryLocationId == null || inventoryLocationId.signum() <= 0)) {
+            return null;
+        }
+        try {
+            StringBuilder sql = new StringBuilder(
+                    "select inventory_location_id, organization_id, segment1, flock_no, batch_id, batch_no, branch_name from (" +
+                            TRANSFER_SHED_MASTER_SELECT +
+                            ", case when ?3 is not null and b.batch_id = ?3 then 0 else 1 end batch_rank" +
+                            TRANSFER_SHED_MASTER_FROM);
+            if (inventoryLocationId != null && inventoryLocationId.signum() > 0) {
+                sql.append(" and a.inventory_location_id = ?2");
+            } else {
+                sql.append(" and (a.segment1 = ?2 or upper(trim(a.segment1)) = upper(trim(?2)))");
+            }
+            sql.append(" and (?3 is null or b.batch_id is null or b.batch_id = ?3)");
+            sql.append(" order by batch_rank) where rownum = 1");
+
+            var query = entityManager.createNativeQuery(sql.toString())
+                    .setParameter(1, fromFarmId);
+            if (inventoryLocationId != null && inventoryLocationId.signum() > 0) {
+                query.setParameter(2, inventoryLocationId);
+            } else {
+                query.setParameter(2, segment1);
+            }
+            query.setParameter(3, preferredBatchId != null && preferredBatchId.signum() > 0 ? preferredBatchId : null);
+
+            @SuppressWarnings("unchecked")
+            List<Object[]> rows = query.getResultList();
+            if (rows != null && !rows.isEmpty()) {
+                return mapTransferShedMasterRow(rows.get(0));
+            }
+        } catch (Exception e) {
+            System.out.println("lookupTransferShedMaster: " + e.getMessage());
+        }
+        return null;
+    }
+
+    private BatchDailyEntryContext lookupBatchDailyEntryContext(BigDecimal fromFarmId, BigDecimal batchId) {
+        if (fromFarmId == null || batchId == null || batchId.signum() <= 0) {
+            return null;
+        }
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object[]> rows = entityManager.createNativeQuery(
+                            "select a.inventory_location_id, b.organization_id, a.segment1," +
+                                    " decode(b.attribute2, null, b.attribute1, b.attribute1 || '-' || b.attribute2)," +
+                                    " b.batch_id, b.batch_no, c.branch_name" +
+                                    " from gme_batch_header b" +
+                                    " left join mtl_item_locations a" +
+                                    "   on a.organization_id = b.organization_id" +
+                                    "  and (b.attribute4 = a.segment1 or nvl(b.attribute4, a.segment1) = a.segment1)" +
+                                    "  and a.disable_date is null" +
+                                    "  and nvl(a.attribute4, 2) = 2" +
+                                    " left join sug_organization_mv c on c.branch_id = b.organization_id" +
+                                    " where b.batch_id = ?1 and b.organization_id = ?2 and b.batch_status = 2" +
+                                    " and rownum = 1")
+                    .setParameter(1, batchId)
+                    .setParameter(2, fromFarmId)
+                    .getResultList();
+            if (rows != null && !rows.isEmpty()) {
+                return mapTransferShedMasterRow(rows.get(0));
+            }
+        } catch (Exception e) {
+            System.out.println("lookupBatchDailyEntryContext: " + e.getMessage());
+        }
+        return null;
+    }
+
+    private BatchDailyEntryContext lookupBatchDailyEntryByFlock(BigDecimal fromFarmId, String flockNo) {
+        if (fromFarmId == null || flockNo == null || flockNo.isBlank()) {
+            return null;
+        }
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object[]> rows = entityManager.createNativeQuery(
+                            "select a.inventory_location_id, b.organization_id, a.segment1," +
+                                    " decode(b.attribute2, null, b.attribute1, b.attribute1 || '-' || b.attribute2)," +
+                                    " b.batch_id, b.batch_no, c.branch_name" +
+                                    " from gme_batch_header b" +
+                                    " left join mtl_item_locations a" +
+                                    "   on a.organization_id = b.organization_id" +
+                                    "  and b.attribute4 = a.segment1" +
+                                    "  and a.disable_date is null" +
+                                    "  and nvl(a.attribute4, 2) = 2" +
+                                    " left join sug_organization_mv c on c.branch_id = b.organization_id" +
+                                    " where b.organization_id = ?1" +
+                                    " and b.batch_status = 2" +
+                                    " and decode(b.attribute2, null, b.attribute1, b.attribute1 || '-' || b.attribute2) = ?2" +
+                                    " and rownum = 1")
+                    .setParameter(1, fromFarmId)
+                    .setParameter(2, flockNo)
+                    .getResultList();
+            if (rows != null && !rows.isEmpty()) {
+                return mapTransferShedMasterRow(rows.get(0));
+            }
+        } catch (Exception e) {
+            System.out.println("lookupBatchDailyEntryByFlock: " + e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * When mobile sends from_batch_id = 0 (plan transfer), resolve batch from flock + shed master / inv loc.
+     */
+    private long resolveBatchIdForTransfer(BigDecimal farmId,
+                                         String flockNo,
+                                         BigDecimal inventoryLocationId,
+                                         String shedCode) {
+        if (farmId == null) {
+            return 0L;
+        }
+        if (!isUnresolvedFlock(flockNo)) {
+            BatchDailyEntryContext byFlock = lookupBatchDailyEntryByFlock(farmId, flockNo);
+            if (byFlock != null && byFlock.batchId != null && byFlock.batchId > 0) {
+                return byFlock.batchId;
+            }
+        }
+        if (inventoryLocationId != null && inventoryLocationId.signum() > 0) {
+            Long byInv = lookupBatchIdByInventoryLocation(farmId, inventoryLocationId, flockNo);
+            if (byInv != null && byInv > 0) {
+                return byInv;
+            }
+        }
+        BatchDailyEntryContext byShed = lookupTransferShedMaster(
+                farmId, shedCode, null, inventoryLocationId);
+        if (byShed != null && byShed.batchId != null && byShed.batchId > 0) {
+            return byShed.batchId;
+        }
+        return 0L;
+    }
+
+    private Long lookupBatchIdByInventoryLocation(BigDecimal farmId,
+                                                  BigDecimal inventoryLocationId,
+                                                  String flockNo) {
+        try {
+            String sql = "select batch_id from (" +
+                    " select b.batch_id" +
+                    "   from mtl_item_locations a" +
+                    "   join gme_batch_header b" +
+                    "     on b.organization_id = a.organization_id" +
+                    "    and b.attribute4 = a.segment1" +
+                    "    and b.batch_status = 2" +
+                    "  where a.organization_id = ?1" +
+                    "    and a.inventory_location_id = ?2" +
+                    "    and a.disable_date is null" +
+                    "    and nvl(a.attribute4, 2) = 2";
+            if (!isUnresolvedFlock(flockNo)) {
+                sql += "    and decode(b.attribute2, null, b.attribute1, b.attribute1 || '-' || b.attribute2) = ?3";
+            }
+            sql += "  order by b.batch_id desc) where rownum = 1";
+
+            var query = entityManager.createNativeQuery(sql)
+                    .setParameter(1, farmId)
+                    .setParameter(2, inventoryLocationId);
+            if (!isUnresolvedFlock(flockNo)) {
+                query.setParameter(3, flockNo.trim());
+            }
+            Object result = query.getSingleResult();
+            if (result instanceof Number) {
+                return ((Number) result).longValue();
+            }
+            return result == null ? null : Long.parseLong(String.valueOf(result));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String lookupBranchName(BigDecimal branchId) {
+        if (branchId == null) {
+            return null;
+        }
+        try {
+            Object name = entityManager.createNativeQuery(
+                            "select branch_name from sug_organization_mv where branch_id = ?1 and rownum = 1")
+                    .setParameter(1, branchId)
+                    .getSingleResult();
+            return name == null ? null : String.valueOf(name);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String lookupFlockFromHousing(BigDecimal branchId, String shedCode) {
+        if (branchId == null || shedCode == null || shedCode.isBlank()) {
+            return null;
+        }
+        try {
+            Object flock = entityManager.createNativeQuery(
+                            "select flock_id from (" +
+                                    " select h.flock_id from sug.sug_mai_gpps_housing_shed h," +
+                                    "        sug_organization_mv o" +
+                                    "  where o.branch_id = ?1" +
+                                    "    and (h.farm_code = o.branch_code or h.farm_code = o.branch_name)" +
+                                    "    and h.shed_no = ?2" +
+                                    "  order by h.txn_date desc) where rownum = 1")
+                    .setParameter(1, branchId)
+                    .setParameter(2, shedCode.trim())
+                    .getSingleResult();
+            return flock == null ? null : String.valueOf(flock);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private Long lookupInventoryLocationId(long branchId, String locationCode) {
+        if (locationCode == null || locationCode.isBlank()) {
+            return null;
+        }
+        try {
+            Object id = entityManager.createNativeQuery(
+                            "select a.inventory_location_id from mtl_item_locations a" +
+                                    " where a.organization_id = ?1" +
+                                    " and a.disable_date is null" +
+                                    " and nvl(a.attribute4, 2) = 2" +
+                                    " and a.segment1 not like '%:TL%'" +
+                                    " and upper(a.description) not like '%TRANS%LOSS%'" +
+                                    " and (a.segment1 = ?2 or upper(trim(a.segment1)) = upper(trim(?2)))" +
+                                    " and rownum = 1")
+                    .setParameter(1, branchId)
+                    .setParameter(2, locationCode.trim())
+                    .getSingleResult();
+            if (id instanceof Number) {
+                return ((Number) id).longValue();
+            }
+            return id == null ? null : Long.parseLong(String.valueOf(id));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static void mergeContext(BatchDailyEntryContext target, BatchDailyEntryContext source) {
+        if (target == null || source == null) {
+            return;
+        }
+        if ((target.batchNo == null || target.batchNo.isBlank()) && source.batchNo != null) {
+            target.batchNo = source.batchNo;
+        }
+        if ((target.inventoryLocationId == null || target.inventoryLocationId <= 0)
+                && source.inventoryLocationId != null) {
+            target.inventoryLocationId = source.inventoryLocationId;
+        }
+        if ((target.locationCode == null || target.locationCode.isBlank()) && source.locationCode != null) {
+            target.locationCode = source.locationCode;
+        }
+        if ((target.branchCode == null || target.branchCode.isBlank()) && source.branchCode != null) {
+            target.branchCode = source.branchCode;
+        }
+        if (target.branchId <= 0 && source.branchId > 0) {
+            target.branchId = source.branchId;
+        }
+        if (target.batchId == null && source.batchId != null) {
+            target.batchId = source.batchId;
+        }
+    }
+
+    private static String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value.trim();
+            }
+        }
+        return null;
+    }
+
+    private static BigDecimal normalizeBatchId(BigDecimal batchId) {
+        return positiveId(batchId);
+    }
+
+    private static BigDecimal positiveId(BigDecimal id) {
+        if (id == null || id.signum() <= 0) {
+            return null;
+        }
+        return id;
+    }
+
+    private static BigDecimal parseBatchId(String batchId) {
+        if (batchId == null || batchId.isBlank()) {
+            return null;
+        }
+        try {
+            return normalizeBatchId(new BigDecimal(batchId.trim()));
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static String detailFlockNo(SUGMAIGPPSTRANS_HDRDto.SugMaiGppsTrans_DtlDto dtl) {
+        if (dtl == null) {
+            return null;
+        }
+        String flock = dtl.resolvedFlockNo();
+        if (flock != null) {
+            return flock;
+        }
+        if (dtl.flockNo != null && !dtl.flockNo.isBlank()) {
+            return dtl.flockNo.trim();
+        }
+        return null;
+    }
+
+    private static String detailTransReason(SUGMAIGPPSTRANS_HDRDto.SugMaiGppsTrans_DtlDto dtl) {
+        if (dtl == null) {
+            return null;
+        }
+        if (dtl.getTransReason() != null && !dtl.getTransReason().isBlank()) {
+            return dtl.getTransReason().trim();
+        }
+        if (dtl.transReason != null && !dtl.transReason.isBlank()) {
+            return dtl.transReason.trim();
+        }
+        return null;
+    }
+
+    private void applyBirdTransferHdrFlockAndType(SUGMAIGPPSTRANS_HDRDto farmDto, SugMaiGppsTransHdr header) {
+        if (farmDto == null || header == null) {
+            return;
+        }
+        String flock = resolveHeaderFlockNo(farmDto);
+        if (!isUnresolvedFlock(flock)) {
+            header.setFLOCK_NO(flock);
+        }
+        String transferType = resolveHeaderTransferType(farmDto);
+        if (transferType != null && !transferType.isBlank()) {
+            header.setTYPE(transferType.trim());
+            if (header.getTRANS_REASON() == null || header.getTRANS_REASON().isBlank()) {
+                header.setTRANS_REASON(transferType.trim());
+            }
+        }
+    }
+
+    private String resolveHeaderFlockNo(SUGMAIGPPSTRANS_HDRDto farmDto) {
+        if (farmDto.getFlockNo() != null && !farmDto.getFlockNo().isBlank()) {
+            return farmDto.getFlockNo().trim();
+        }
+        if (farmDto.getDetails() == null) {
+            return null;
+        }
+        for (SUGMAIGPPSTRANS_HDRDto.SugMaiGppsTrans_DtlDto dtl : farmDto.getDetails()) {
+            String flock = detailFlockNo(dtl);
+            if (!isUnresolvedFlock(flock)) {
+                return flock;
+            }
+        }
+        return null;
+    }
+
+    private String resolveHeaderTransferType(SUGMAIGPPSTRANS_HDRDto farmDto) {
+        if (farmDto.getTransReason() != null && !farmDto.getTransReason().isBlank()) {
+            return farmDto.getTransReason().trim();
+        }
+        if (farmDto.getTransfer_rsn() != null && !farmDto.getTransfer_rsn().isBlank()) {
+            return farmDto.getTransfer_rsn().trim();
+        }
+        if (farmDto.getDetails() == null) {
+            return null;
+        }
+        for (SUGMAIGPPSTRANS_HDRDto.SugMaiGppsTrans_DtlDto dtl : farmDto.getDetails()) {
+            String reason = detailTransReason(dtl);
+            if (reason != null && !reason.isBlank()) {
+                return reason;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isUnresolvedFlock(String flockNo) {
+        return flockNo == null || flockNo.isBlank() || "none".equalsIgnoreCase(flockNo.trim());
+    }
+
+    private static String batchKey(BigDecimal batchId) {
+        return batchId == null ? "0" : batchId.toPlainString();
+    }
+
+    private static String normalizeKey(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private String lookupBatchNo(long batchId) {
+        try {
+            Object batchNo = entityManager.createNativeQuery(
+                            "select batch_no from gme_batch_header where batch_id = ?1 and rownum = 1")
+                    .setParameter(1, batchId)
+                    .getSingleResult();
+            return batchNo == null ? null : String.valueOf(batchNo);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static BatchDailyEntryContext mapTransferShedMasterRow(Object[] row) {
+        BatchDailyEntryContext ctx = new BatchDailyEntryContext();
+        if (row[0] instanceof Number) {
+            ctx.inventoryLocationId = ((Number) row[0]).longValue();
+        }
+        if (row[1] instanceof Number) {
+            ctx.branchId = ((Number) row[1]).longValue();
+        }
+        ctx.locationCode = row[2] == null ? null : String.valueOf(row[2]);
+        ctx.flockNo = row[3] == null ? null : String.valueOf(row[3]);
+        if (row[4] instanceof Number) {
+            ctx.batchId = ((Number) row[4]).longValue();
+        }
+        ctx.batchNo = row[5] == null ? null : String.valueOf(row[5]);
+        ctx.branchCode = row[6] == null ? null : String.valueOf(row[6]);
+        return ctx;
+    }
+
+    private static final class BirdTransferBatchAggregate {
+        final BigDecimal batchId;
+        final BigDecimal fromFarmId;
+        final String shedCode;
+        final String flockNo;
+        final BigDecimal inventoryLocationId;
+        long transferMale;
+        long transferFemale;
+        long age;
+
+        BirdTransferBatchAggregate(BigDecimal batchId,
+                                   BigDecimal fromFarmId,
+                                   String shedCode,
+                                   String flockNo,
+                                   BigDecimal inventoryLocationId) {
+            this.batchId = batchId;
+            this.fromFarmId = fromFarmId;
+            this.shedCode = shedCode;
+            this.flockNo = flockNo;
+            this.inventoryLocationId = inventoryLocationId;
+        }
+    }
+
+    private static final class BatchDailyEntryContext {
+        String flockNo;
+        String batchNo;
+        String branchCode;
+        String locationCode;
+        Long inventoryLocationId;
+        Long batchId;
+        long branchId;
     }
 
     private String farmCode(String branchId) {
@@ -814,6 +1670,7 @@ public class TransferServiceImpl implements TransferService{
             sugMaiGppsTransPlanHdr.setTRANS_TYPE(entry.getTransType());
             sugMaiGppsTransPlanHdr.setTRANS_REASON(entry.getTransReason());
             sugMaiGppsTransPlanHdr.setFLOCK_ID(entry.flockId);
+            sugMaiGppsTransPlanHdr.setFLOCK_NO(entry.flockNo);
             sugMaiGppsTransPlanHdr.setFARM_TYPE(entry.farmType);
             sugMaiGppsTransPlanHdr.setLINE_TYPE(entry.lineType);
             sugMaiGppsTransPlanHdr.setTXN_DATE(getTxnDateString(entry.getTransDate(),fromdateFormat1));
@@ -1157,6 +2014,7 @@ public class TransferServiceImpl implements TransferService{
             sugMaiGppsTransPlanHdr.setTRANS_TYPE(entry.getTransType());
             sugMaiGppsTransPlanHdr.setTRANS_REASON(entry.getTransReason());
             sugMaiGppsTransPlanHdr.setFLOCK_ID(entry.flockId);
+            sugMaiGppsTransPlanHdr.setFLOCK_NO(entry.flockNo);
             sugMaiGppsTransPlanHdr.setTXN_DATE(getTxnDateString(entry.getTransDate(),fromdateFormat1));
             SugMaiGppsTransPlanHdr sugMaiGppsTransPlanHdr1=sugMaiGppsTransPlanHdrRepository.save(sugMaiGppsTransPlanHdr);
             sugMaiGppsTransPlanHdrRepository.updateentry(String.valueOf(entry.getTxnHeaderId()),"I");

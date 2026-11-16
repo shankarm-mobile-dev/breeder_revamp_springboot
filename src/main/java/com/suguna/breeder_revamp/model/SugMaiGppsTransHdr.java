@@ -43,6 +43,12 @@ public class SugMaiGppsTransHdr {
     BigDecimal BOX_NOS;
     String PACK_MATERIAL;
 
+    @Column(name = "FLOCK_NO")
+    String FLOCK_NO;
+
+    @Column(name = "TYPE")
+    String TYPE;
+
     @Column(name = "PLAN_DTL_ID")
     Long PLAN_DTL_ID;
 }

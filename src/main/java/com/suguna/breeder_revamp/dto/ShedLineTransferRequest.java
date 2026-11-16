@@ -1,5 +1,6 @@
 package com.suguna.breeder_revamp.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
@@ -25,7 +26,8 @@ public class ShedLineTransferRequest {
     @Getter
     @Setter
     public static class LineMove {
-        @JsonProperty("flockId")
+        @JsonProperty("flockNo")
+        @JsonAlias({"flockId", "FLOCK_NO"})
         String flockId;
         @JsonProperty("sex")
         String sex;
