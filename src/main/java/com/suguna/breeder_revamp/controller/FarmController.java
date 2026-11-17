@@ -353,6 +353,72 @@ public class FarmController {
         responseDto.setResult(farmService.getDashboardInfo(branchRequest.getBranchID(),branchRequest.getBranchCode(),branchRequest.getFlockNumber()));
         return responseDto;
     }
+
+    @PostMapping("/getHenWeekInfo")
+    public ResponseDto getHenWeekInfo(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getHenweekinfo(branchRequest.getBranchCode(), branchRequest.getFlockNumber()));
+        return responseDto;
+    }
+
+    @PostMapping("/getFertilityInfo")
+    public ResponseDto getFertilityInfo(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getFertilityinfo(branchRequest.getBranchCode(), branchRequest.getFlockNumber()));
+        return responseDto;
+    }
+
+    @PostMapping("/getHatchabilityInfo")
+    public ResponseDto getHatchabilityInfo(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getHatchabilityinfo(branchRequest.getBranchCode(), branchRequest.getFlockNumber()));
+        return responseDto;
+    }
+
+    @PostMapping("/getMortalityInfo")
+    public ResponseDto getMortalityInfo(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getMortalityinfo(branchRequest.getBranchCode(), branchRequest.getFlockNumber()));
+        return responseDto;
+    }
+
+    @PostMapping("/getFeedInfo")
+    public ResponseDto getFeedInfo(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getFeedinfo(branchRequest.getBranchCode(), branchRequest.getFlockNumber()));
+        return responseDto;
+    }
+
+    @PostMapping("/getBodyWeightUniformity")
+    public ResponseDto getBodyWeightUniformity(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getBodyWeightUniformity(branchRequest.getBranchCode(), branchRequest.getFlockNumber()));
+        return responseDto;
+    }
     @PostMapping("/savePlacementInfoDetails")
     public ResponseDto savePlacementInfoDetails(@RequestBody ArrayList<PlacementRequest> placementRequest) {
         ResponseDto responseDto = new ResponseDto();

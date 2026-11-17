@@ -14,7 +14,9 @@ import jakarta.persistence.StoredProcedureQuery;
 import jakarta.transaction.Transactional;
 import org.hibernate.StaleObjectStateException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -72,6 +74,10 @@ public class TransferServiceImpl implements TransferService{
 
     @Autowired
     SugMaiBreederDailyEntryRepository sugMaiBreederDailyEntryRepository;
+
+    @Autowired
+    @Lazy
+    private TransferServiceImpl self;
 
     private static final long DAILY_ENTRY_DEVICE_ID = 123456L;
 
@@ -252,7 +258,13 @@ public class TransferServiceImpl implements TransferService{
         String fromdateFormat = "DD-MM-YYYY hh:mm:ss";
         String fromdateFormat1 = "dd-MM-yyyy";
         try {
+            if (entry == null || entry.isEmpty()) {
+                throw new IllegalArgumentException("Transfer payload is empty");
+            }
             for (SUGMAIGPPSTRANS_HDRDto FarmDto : entry) {
+                if (FarmDto.getDetails() == null || FarmDto.getDetails().isEmpty()) {
+                    throw new IllegalArgumentException("Transfer details are required");
+                }
                 String HDR = "0";//getSUGMAIGPPSTRANS_HDR(FarmDto.DEVICEID, FarmDto.txn_header_id, FarmDto.entry_creation_date);
                 if (HDR.equals("0")) {
                     SugMaiGppsTransHdr sugmaigppstransHdrModels = new SugMaiGppsTransHdr();
@@ -286,11 +298,6 @@ public class TransferServiceImpl implements TransferService{
                     applyPlanDtlIdFromPid(FarmDto, sugmaigppstransHdrModels);
                     applyBirdTransferHdrFlockAndType(FarmDto, sugmaigppstransHdrModels);
                     SugMaiGppsTransHdr sugmaigppstransHdrModels1=sugMaiGppsTransHdrRepository.save(sugmaigppstransHdrModels);
-                    if (isTransferIn(FarmDto.getTransfer_type())) {
-                        updateVehicleGateInOutInStatusForTransIn(FarmDto);
-                    } else {
-                        updateVehicleGateInOutForTransOut(FarmDto);
-                    }
                     long txn_id=0;
                     txn_id=sugmaigppstransHdrModels1.getTXN_HEADER_ID();
                     for (SUGMAIGPPSTRANS_HDRDto.SugMaiGppsTrans_DtlDto FarmDto1 : FarmDto.getDetails()) {
@@ -328,8 +335,8 @@ public class TransferServiceImpl implements TransferService{
                                 sugMaiGppsTransDtlModels.setFROM_INVENTORY_LOCATION_ID(FarmDto1.getFrom_inventory_location_id());
                                 sugMaiGppsTransDtlModels.setFROM_INVENTORY_LOC_DESC(FarmDto1.getFrom_inventory_loc_desc());
                             }
-                            sugMaiGppsTransDtlModels.setFROM_BATCH_ID(FarmDto1.getFrom_batch_id());
-                            sugMaiGppsTransDtlModels.setTO_BATCH_ID(FarmDto1.getTo_batch_id());
+                            sugMaiGppsTransDtlModels.setFROM_BATCH_ID(normalizeBatchId(FarmDto1.getFrom_batch_id()));
+                            sugMaiGppsTransDtlModels.setTO_BATCH_ID(normalizeBatchId(FarmDto1.getTo_batch_id()));
                             sugMaiGppsTransDtlModels.setTXN_TYPE(FarmDto1.getTxn_type());
                             if("BIRD".equalsIgnoreCase(String.valueOf(FarmDto1.getTxn_type()).trim()))
                             {
@@ -337,11 +344,13 @@ public class TransferServiceImpl implements TransferService{
                                 sugMaiGppsTransDtlModels.setBIRD_TYPE(birdType.isEmpty() ? "F" : birdType.substring(0, 1).toUpperCase(Locale.ENGLISH));
                                 sugMaiGppsTransDtlModels.setITEM_DESC("NA");
                                 sugMaiGppsTransDtlModels.setFLOCK_NO(detailFlockNo(FarmDto1));
-                                sugMaiGppsTransDtlModels.setTYPE(detailTransReason(FarmDto1));
+                                sugMaiGppsTransDtlModels.setTYPE(clipTransHdrTypeColumn(detailTransReason(FarmDto1)));
                             }
                             else
                             {
-                                sugMaiGppsTransDtlModels.setBIRD_TYPE(FarmDto1.getBird_type());
+                                String birdType = FarmDto1.getBird_type();
+                                sugMaiGppsTransDtlModels.setBIRD_TYPE(
+                                        birdType == null || birdType.isBlank() ? null : birdType.trim());
                                 sugMaiGppsTransDtlModels.setITEM_DESC(FarmDto1.getItem_desc());
                             }
 
@@ -365,7 +374,8 @@ public class TransferServiceImpl implements TransferService{
                             sugMaiGppsTransDtlModels.setPOSTED_FLAG(FarmDto1.getPostedflg());
                             sugMaiGppsTransDtlModels.setAGE(FarmDto1.getAge());
                             sugMaiGppsTransDtlModels.setPOST_TO_ERP(FarmDto1.getPost_to_ERP());
-                            sugMaiGppsTransDtlModels.setLOTNUMBER(FarmDto1.getLotnumber());
+                            String lot = FarmDto1.getLotnumber();
+                            sugMaiGppsTransDtlModels.setLOTNUMBER(lot == null || lot.isBlank() ? null : lot.trim());
                            // sugMaiGppsTransDtlModels.setLOCATION_TYPE(FarmDto1.getLocation_TYPE());
                             if (!Objects.equals(FarmDto1.getLaydate(), "NA")) {
                                 sugMaiGppsTransDtlModels.setLAY_DATE(getTxnDateString(FarmDto1.getLaydate(), fromdateFormat1));
@@ -374,7 +384,8 @@ public class TransferServiceImpl implements TransferService{
                                 sugMaiGppsTransDtlModels.setLOCATION_TYPE(locType);
                             }
                             sugMaiGppsTransDtlModels.setTXN_TIME(FarmDto1.getTXN_TIME());
-                            sugMaiGppsTransDtlModels.setBREEDNAME(FarmDto1.getBreedname());
+                            String breed = FarmDto1.getBreedname();
+                            sugMaiGppsTransDtlModels.setBREEDNAME(breed == null || breed.isBlank() ? null : breed.trim());
                             sugMaiGppsTransDtlModels.setFROM_LINE_NAME(FarmDto1.getFromLine());
                             sugMaiGppsTransDtlModels.setTO_LINE_NAME(FarmDto1.getToLine());
                             sugMaiGppsTransDtlModels.setFROM_SIDE_NAME(FarmDto1.getFromSide());
@@ -389,7 +400,20 @@ public class TransferServiceImpl implements TransferService{
                         }
                     }
                     entityManager.flush();
-                    if (!isTransferIn(FarmDto.getTransfer_type())) {
+                    int detailCount = FarmDto.getDetails().size();
+                    System.out.println("saveTransOut OK TXN_HEADER_ID="
+                            + sugmaigppstransHdrModels1.getTXN_HEADER_ID()
+                            + " TRANS_TYPE=" + FarmDto.getTransfer_type()
+                            + " detailLines=" + detailCount);
+                    try {
+                        self.runVehicleGateSideEffectsAfterTransSave(
+                                FarmDto, isTransferIn(FarmDto.getTransfer_type()));
+                    } catch (Exception gateEx) {
+                        System.err.println("Gate side-effect failed (transfer rows committed): "
+                                + gateEx.getMessage());
+                        gateEx.printStackTrace();
+                    }
+                    if (!isTransferIn(FarmDto.getTransfer_type()) && hasBirdTransferDetail(FarmDto)) {
                         try {
                             postBirdTransferOutDailyEntry(sugmaigppstransHdrModels1, FarmDto);
                         } catch (Exception postEx) {
@@ -404,11 +428,39 @@ public class TransferServiceImpl implements TransferService{
                 applyEggLoadDateAfterTransferOut(FarmDto);
             }
         } catch (Exception e) {
-            System.out.println("Error in saveTransOut: " + e.getMessage());
+            String msg = rootCauseMessage(e);
+            System.out.println("Error in saveTransOut: " + msg);
             e.printStackTrace();
-            throw e;
+            throw new IllegalStateException("Transfer save failed: " + msg, e);
         }
         return "200";
+    }
+
+    /**
+     * Gate updates use saveAndFlush; run in a new transaction after HDR/DTL flush so a gate failure
+     * cannot mark the main transfer transaction rollback-only (silent lost rows).
+     */
+    @org.springframework.transaction.annotation.Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void runVehicleGateSideEffectsAfterTransSave(SUGMAIGPPSTRANS_HDRDto farmDto, boolean transferIn) {
+        if (transferIn) {
+            updateVehicleGateInOutInStatusForTransIn(farmDto);
+        } else {
+            updateVehicleGateInOutForTransOut(farmDto);
+        }
+    }
+
+    private static String rootCauseMessage(Throwable throwable) {
+        if (throwable == null) {
+            return "Unknown error";
+        }
+        Throwable root = throwable;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        if (root.getMessage() != null && !root.getMessage().isBlank()) {
+            return root.getMessage().trim();
+        }
+        return throwable.getMessage() != null ? throwable.getMessage().trim() : throwable.toString();
     }
 
     /**
@@ -658,7 +710,7 @@ public class TransferServiceImpl implements TransferService{
         }
         String shedReason = request.getTransferReason();
         if (shedReason != null && !shedReason.isBlank()) {
-            header.setTYPE(shedReason.trim());
+            header.setTYPE(clipTransHdrTypeColumn(shedReason));
             header.setTRANS_REASON(shedReason.trim());
         }
         header = sugMaiGppsTransHdrRepository.save(header);
@@ -694,7 +746,7 @@ public class TransferServiceImpl implements TransferService{
                 detail.setFLOCK_NO(line.getFlockId().trim());
             }
             if (request.getTransferReason() != null && !request.getTransferReason().isBlank()) {
-                detail.setTYPE(request.getTransferReason().trim());
+                detail.setTYPE(clipTransHdrTypeColumn(request.getTransferReason()));
             }
             sugMaiGppsTransDtlRepository.save(detail);
         }
@@ -1369,17 +1421,40 @@ public class TransferServiceImpl implements TransferService{
         if (farmDto == null || header == null) {
             return;
         }
+        if (!hasBirdTransferDetail(farmDto)) {
+            return;
+        }
         String flock = resolveHeaderFlockNo(farmDto);
         if (!isUnresolvedFlock(flock)) {
             header.setFLOCK_NO(flock);
         }
         String transferType = resolveHeaderTransferType(farmDto);
         if (transferType != null && !transferType.isBlank()) {
-            header.setTYPE(transferType.trim());
+            header.setTYPE(clipTransHdrTypeColumn(transferType));
             if (header.getTRANS_REASON() == null || header.getTRANS_REASON().isBlank()) {
                 header.setTRANS_REASON(transferType.trim());
             }
         }
+    }
+
+    private static boolean hasBirdTransferDetail(SUGMAIGPPSTRANS_HDRDto farmDto) {
+        if (farmDto.getDetails() == null || farmDto.getDetails().isEmpty()) {
+            return false;
+        }
+        return farmDto.getDetails().stream()
+                .anyMatch(d -> d.getTxn_type() != null && "BIRD".equalsIgnoreCase(d.getTxn_type().trim()));
+    }
+
+    /** Oracle SUG_MAI_GPPS_TRANS_HDR.TYPE / DTL.TYPE is VARCHAR2(10). */
+    private static String clipTransHdrTypeColumn(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.length() <= 10) {
+            return trimmed;
+        }
+        return trimmed.substring(0, 10);
     }
 
     private String resolveHeaderFlockNo(SUGMAIGPPSTRANS_HDRDto farmDto) {
@@ -2492,7 +2567,7 @@ public class TransferServiceImpl implements TransferService{
             if (updatedRows == 0) {
                 breederVehicleGateInOutRepository.findById(gateInId).ifPresent(gateRow -> {
                     gateRow.setInStatus("Y");
-                    breederVehicleGateInOutRepository.saveAndFlush(gateRow);
+                    breederVehicleGateInOutRepository.save(gateRow);
                 });
             }
             System.out.println("Gate IN_STATUS=Y GATE_IN_ID=" + gateInId + " updatedRows=" + updatedRows);
@@ -2528,7 +2603,7 @@ public class TransferServiceImpl implements TransferService{
                 return;
             }
             gateInOut.setToBranchId(toBranchId);
-            breederVehicleGateInOutRepository.saveAndFlush(gateInOut);
+            breederVehicleGateInOutRepository.save(gateInOut);
             System.out.println("Gate update: GATE_IN_ID=" + gateInId + " TO_BRANCH_ID=" + toBranchId);
         } catch (NumberFormatException e) {
             System.out.println("Invalid pid for gate update: " + pid);
@@ -2545,8 +2620,15 @@ public class TransferServiceImpl implements TransferService{
             return;
         }
         try {
-            Long planDtlId = parsePayloadId(pid);
-            header.setPLAN_DTL_ID(planDtlId);
+            Long pidAsLong = parsePayloadId(pid);
+            // Feed/medicine: planId/pid is vehicle GATE_IN_ID — gate update uses it; do not set TRANS_HDR.PLAN_DTL_ID.
+            if (breederVehicleGateInOutRepository.existsById(pidAsLong)) {
+                return;
+            }
+            // Bird transfer plan: pid is SUG_MAI_GPPS_TRANS_PLAN_HDR.TXN_HEADER_ID (legacy mobile).
+            if (sugMaiGppsTransPlanHdrRepository.existsById(pidAsLong)) {
+                header.setPLAN_DTL_ID(pidAsLong);
+            }
         } catch (NumberFormatException e) {
             System.out.println("Invalid pid for PLAN_DTL_ID: " + pid);
         }

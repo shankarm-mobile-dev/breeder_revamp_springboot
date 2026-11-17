@@ -2758,12 +2758,6 @@ public class FarmServiceImpl implements FarmService {
 
             while (resultSet.next()) {
                 BranchUser.DashboardDetails shedDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.DashboardDetails.class);
-                shedDetails.setHenWeekDetails(getHenweekinfo(branchCode,shedDetails.getFlockNumber()));
-                shedDetails.setFertilityDetails(getFertilityinfo(branchCode,shedDetails.getFlockNumber()));
-                shedDetails.setHatchabilityDetails(getHatchabilityinfo(branchCode,shedDetails.getFlockNumber()));
-                shedDetails.setMortalityDetails(getMortalityinfo(branchCode,shedDetails.getFlockNumber()));
-                shedDetails.setFeedDetails(getFeedinfo(branchCode,shedDetails.getFlockNumber()));
-                shedDetails.setBodyWeightUniformity(getBodyWeightUniformity(branchCode,shedDetails.getFlockNumber()));
                 shedDetailsArrayList.add(shedDetails);
             }
         } catch (Exception e) {
@@ -2899,6 +2893,7 @@ public class FarmServiceImpl implements FarmService {
         return "200";
     }
 
+    @Override
     public ArrayList<BranchUser.HenWeekDetails> getHenweekinfo(String branchID,String shedNo) {
         ArrayList<BranchUser.HenWeekDetails> shedDetailsArrayList = new ArrayList<BranchUser.HenWeekDetails>();
         try {
@@ -2922,6 +2917,7 @@ public class FarmServiceImpl implements FarmService {
         }
         return shedDetailsArrayList;
     }
+    @Override
     public ArrayList<BranchUser.FertilityDetails> getFertilityinfo(String branchID,String shedNo) {
         ArrayList<BranchUser.FertilityDetails> shedDetailsArrayList = new ArrayList<BranchUser.FertilityDetails>();
         try {
@@ -2946,6 +2942,7 @@ public class FarmServiceImpl implements FarmService {
         return shedDetailsArrayList;
     }
 
+    @Override
     public ArrayList<BranchUser.HatchabilityDetails> getHatchabilityinfo(String branchID,String shedNo) {
         ArrayList<BranchUser.HatchabilityDetails> shedDetailsArrayList = new ArrayList<BranchUser.HatchabilityDetails>();
         try {
@@ -2970,6 +2967,7 @@ public class FarmServiceImpl implements FarmService {
         return shedDetailsArrayList;
     }
 
+    @Override
     public ArrayList<BranchUser.MortalityDetails> getMortalityinfo(String branchID,String shedNo) {
         ArrayList<BranchUser.MortalityDetails> shedDetailsArrayList = new ArrayList<BranchUser.MortalityDetails>();
         try {
@@ -2993,6 +2991,7 @@ public class FarmServiceImpl implements FarmService {
         }
         return shedDetailsArrayList;
     }
+    @Override
     public ArrayList<BranchUser.FeedDetails> getFeedinfo(String branchID,String shedNo) {
         ArrayList<BranchUser.FeedDetails> shedDetailsArrayList = new ArrayList<BranchUser.FeedDetails>();
         try {
@@ -3016,6 +3015,7 @@ public class FarmServiceImpl implements FarmService {
         }
         return shedDetailsArrayList;
     }
+    @Override
     public ArrayList<BranchUser.BodyWeightUniformity> getBodyWeightUniformity(String branchID,String shedNo) {
         ArrayList<BranchUser.BodyWeightUniformity> shedDetailsArrayList = new ArrayList<BranchUser.BodyWeightUniformity>();
         try {
@@ -5656,7 +5656,7 @@ public class FarmServiceImpl implements FarmService {
         BranchUser.DailyEntryCompletedDetails standardDetailsArrayList = new BranchUser.DailyEntryCompletedDetails();
         String Standard="";
         try {
-            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getshedentry_details");
+                StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getshedentry_details");
             storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);

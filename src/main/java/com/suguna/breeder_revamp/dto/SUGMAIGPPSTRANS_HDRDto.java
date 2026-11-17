@@ -4,13 +4,11 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 
 @Getter
-@Setter
 public class SUGMAIGPPSTRANS_HDRDto {
     @JsonProperty("DEVICEID")
     public String DEVICEID;
@@ -151,13 +149,36 @@ public class SUGMAIGPPSTRANS_HDRDto {
         return text;
     }
 
+    /** Mobile often sends "" for optional decimals; coerce like legacy PHP payloads. */
+    static BigDecimal bigDecimalFromPayload(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof BigDecimal bd) {
+            return bd;
+        }
+        if (value instanceof Number number) {
+            return BigDecimal.valueOf(number.doubleValue());
+        }
+        if (value instanceof String text) {
+            if (text.isBlank()) {
+                return null;
+            }
+            try {
+                return new BigDecimal(text.trim());
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
     @JsonProperty("details")
     ArrayList<SUGMAIGPPSTRANS_HDRDto.SugMaiGppsTrans_DtlDto> details;
 
 
 
     @Getter
-    @Setter
     public static class SugMaiGppsTrans_DtlDto {
         @JsonProperty("DEVICEID")
         public String DEVICEID;
@@ -181,11 +202,26 @@ public class SUGMAIGPPSTRANS_HDRDto {
         @JsonProperty("from_batch_id")
         public BigDecimal from_batch_id;
 
+        @JsonSetter("from_batch_id")
+        public void setFrom_batch_id(Object value) {
+            this.from_batch_id = bigDecimalFromPayload(value);
+        }
+
         @JsonProperty("to_inventory_location_id")
         public Long to_inventory_location_id;
 
+        @JsonSetter("to_inventory_location_id")
+        public void setTo_inventory_location_id(Object value) {
+            this.to_inventory_location_id = longFromPayload(value);
+        }
+
         @JsonProperty("to_batch_id")
         public BigDecimal to_batch_id;
+
+        @JsonSetter("to_batch_id")
+        public void setTo_batch_id(Object value) {
+            this.to_batch_id = bigDecimalFromPayload(value);
+        }
 
         @JsonProperty("txn_type")
         public String txn_type;
@@ -208,11 +244,27 @@ public class SUGMAIGPPSTRANS_HDRDto {
 
         @JsonProperty("days")
         public BigDecimal days;
+
+        @JsonSetter("days")
+        public void setDays(Object value) {
+            this.days = bigDecimalFromPayload(value);
+        }
+
         @JsonProperty("receiving_qty")
         public BigDecimal receiving_qty;
 
+        @JsonSetter("receiving_qty")
+        public void setReceiving_qty(Object value) {
+            this.receiving_qty = bigDecimalFromPayload(value);
+        }
+
         @JsonProperty("diff_qty")
         public BigDecimal diff_qty;
+
+        @JsonSetter("diff_qty")
+        public void setDiff_qty(Object value) {
+            this.diff_qty = bigDecimalFromPayload(value);
+        }
         @JsonProperty("entry_creation_date")
         public String entry_creation_date;
 
@@ -223,6 +275,11 @@ public class SUGMAIGPPSTRANS_HDRDto {
         public String postedflg;
         @JsonProperty("age")
         public BigDecimal age;
+
+        @JsonSetter("age")
+        public void setAge(Object value) {
+            this.age = bigDecimalFromPayload(value);
+        }
 
         @JsonProperty("post_to_ERP")
         public String post_to_ERP;
@@ -263,6 +320,26 @@ public class SUGMAIGPPSTRANS_HDRDto {
         public String resolvedFlockNo() {
             if (flockNo != null && !flockNo.isBlank()) {
                 return flockNo.trim();
+            }
+            return null;
+        }
+
+        private static Long longFromPayload(Object value) {
+            if (value == null) {
+                return null;
+            }
+            if (value instanceof Number number) {
+                return number.longValue();
+            }
+            if (value instanceof String text) {
+                if (text.isBlank()) {
+                    return null;
+                }
+                try {
+                    return new BigDecimal(text.trim()).longValue();
+                } catch (NumberFormatException ignored) {
+                    return null;
+                }
             }
             return null;
         }

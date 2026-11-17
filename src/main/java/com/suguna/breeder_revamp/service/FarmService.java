@@ -63,6 +63,18 @@ public interface FarmService {
 
     ArrayList<BranchUser.DashboardDetails> getDashboardInfo(String branchID, String branchCode, String flockNumber);
 
+    ArrayList<BranchUser.HenWeekDetails> getHenweekinfo(String branchCode, String flockNumber);
+
+    ArrayList<BranchUser.FertilityDetails> getFertilityinfo(String branchCode, String flockNumber);
+
+    ArrayList<BranchUser.HatchabilityDetails> getHatchabilityinfo(String branchCode, String flockNumber);
+
+    ArrayList<BranchUser.MortalityDetails> getMortalityinfo(String branchCode, String flockNumber);
+
+    ArrayList<BranchUser.FeedDetails> getFeedinfo(String branchCode, String flockNumber);
+
+    ArrayList<BranchUser.BodyWeightUniformity> getBodyWeightUniformity(String branchCode, String flockNumber);
+
     String savePlacementInfoDetails(ArrayList<PlacementRequest> placementRequest);
 
     Object saveMedicineScheduleDetails(BranchRequest branchRequest);

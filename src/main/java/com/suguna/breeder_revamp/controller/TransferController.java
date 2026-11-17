@@ -4,7 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.suguna.breeder_revamp.dto.*;
 import com.suguna.breeder_revamp.service.TransferService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -99,25 +101,31 @@ public class TransferController {
     }
 
     @PostMapping("/saveTransOut")
-    public ResponseDto saveTransOut(@RequestBody ArrayList<SUGMAIGPPSTRANS_HDRDto> entry) {
+    public ResponseEntity<ResponseDto> saveTransOut(@RequestBody ArrayList<SUGMAIGPPSTRANS_HDRDto> entry) {
         ResponseDto responseDto = new ResponseDto();
         try {
             responseDto.setMessage("Success");
             responseDto.setStatusCode(200);
             responseDto.setStatus("Success");
             responseDto.setResult(transferService.saveTransOut(entry));
+            return ResponseEntity.ok(responseDto);
         } catch (IllegalArgumentException ex) {
             responseDto.setMessage(ex.getMessage());
             responseDto.setStatusCode(400);
             responseDto.setStatus("Failed");
             responseDto.setResult("400");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(responseDto);
         } catch (Exception ex) {
-            responseDto.setMessage(ex.getMessage());
+            String message = ex.getMessage();
+            if (message == null || message.isBlank()) {
+                message = "Transfer save failed";
+            }
+            responseDto.setMessage(message);
             responseDto.setStatusCode(500);
             responseDto.setStatus("Failed");
             responseDto.setResult("500");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(responseDto);
         }
-        return responseDto;
     }
 
     @PostMapping("/saveShedLineTransfer")
