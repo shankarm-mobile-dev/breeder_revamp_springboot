@@ -6,6 +6,7 @@ import com.suguna.breeder_revamp.model.TransferPlace;
 import org.springframework.web.multipart.MultipartFile;
 
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,6 +31,8 @@ public interface TransferService {
     ArrayList<TransferPlace> getTransferPlanPlace(BranchRequest branchRequest);
 
     ArrayList<BranchUser> getAllBranch(BranchRequest branchRequest);
+
+    ArrayList<BranchUser.FarmFlockDetails> getFlockDetails(String branchID);
 
     String saveTransPlan(TransferPlanDto entry);
 
@@ -79,4 +82,6 @@ public interface TransferService {
     String getTransOutPriceCheck(String fromId, String toId, String itemId, String transDate, String flockID);
 
     ArrayList<TransferPlace.OtherItemDetails> getOtherItemDetails(BranchRequest branchRequest);
+
+    InventoryLocationResponseDto getInventoryLocation(BigDecimal fromBatchId, BigDecimal fromFarmId);
 }

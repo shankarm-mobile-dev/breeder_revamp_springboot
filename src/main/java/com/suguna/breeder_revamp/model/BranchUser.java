@@ -1340,6 +1340,14 @@ public class BranchUser {
         String RECEIVER_NAME;
         @JsonProperty("ITEMS")
         ArrayList<IfftApprovalDtlDetails> ITEMS;
+
+        @Column(name = "FROM_FARM_ID", type = String.class)
+        @JsonProperty("FROM_FARM_ID")
+        String FROM_FARM_ID;
+
+        @Column(name = "TO_FARM_ID", type = String.class)
+        @JsonProperty("TO_FARM_ID")
+        String TO_FARM_ID;
     }
     @Getter
     @Setter

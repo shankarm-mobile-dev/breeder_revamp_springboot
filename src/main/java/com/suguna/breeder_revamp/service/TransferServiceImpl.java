@@ -34,6 +34,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class TransferServiceImpl implements TransferService{
@@ -219,14 +221,13 @@ public class TransferServiceImpl implements TransferService{
         try {
             @SuppressWarnings("unchecked")
             List<Object[]> rows = entityManager.createNativeQuery(
-                            "select a.inventory_location_id, a.segment1 as inventory_loc_desc " +
+                            "select a.inventory_location_id, a.segment1 as inventory_loc_desc, b.batch_id " +
                                     "  from mtl_item_locations a," +
                                     "       gme_batch_header b," +
                                     "       sug_organization_mv c," +
                                     "       hr_locations_all e" +
                                     " where b.organization_id = a.organization_id" +
                                     "   and nvl(b.attribute4, a.segment1) = a.segment1" +
-                                    "   and b.batch_status = 2" +
                                     "   and a.organization_id = c.branch_id" +
                                     "   and b.organization_id = c.branch_id" +
                                     "   and b.attribute_category <> 'None'" +
@@ -248,6 +249,30 @@ public class TransferServiceImpl implements TransferService{
             return rows.get(0);
         } catch (Exception e) {
             e.printStackTrace();
+            return null;
+        }
+    }
+
+    @Override
+    public InventoryLocationResponseDto getInventoryLocation(BigDecimal fromBatchId, BigDecimal fromFarmId) {
+        Object[] row = getFromInventoryLocation(fromBatchId, fromFarmId);
+        if (row == null || row.length < 2) {
+            return null;
+        }
+        BigDecimal invLocId = row[0] != null ? new BigDecimal(row[0].toString()) : null;
+        String invLocDesc = row[1] != null ? row[1].toString() : null;
+        BigDecimal resBatchId = row.length > 2 && row[2] != null ? new BigDecimal(row[2].toString()) : null;
+
+        return new InventoryLocationResponseDto(invLocId, invLocDesc, resBatchId);
+    }
+
+    private BigDecimal parseBigDecimal(String val) {
+        if (val == null || val.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return new BigDecimal(val.trim());
+        } catch (Exception e) {
             return null;
         }
     }
@@ -283,7 +308,7 @@ public class TransferServiceImpl implements TransferService{
                     sugmaigppstransHdrModels.setVEHICLE_NO(FarmDto.getVehicle_no());
                     sugmaigppstransHdrModels.setOUT_PASS_NO(FarmDto.getOut_pass_no());
                     sugmaigppstransHdrModels.setRECEIVER_NAME(FarmDto.getReceiver_name());
-                    sugmaigppstransHdrModels.setTRANS_REASON(FarmDto.getTransfer_rsn());
+                    sugmaigppstransHdrModels.setTRANS_REASON(resolveHeaderTransferType(FarmDto));
                     sugmaigppstransHdrModels.setENTRY_CREATION_DATE(new Date());
                     sugmaigppstransHdrModels.setCREATED_DATE(new Date());
                     sugmaigppstransHdrModels.setPOSTED_FLAG(FarmDto.getPostedflg());
@@ -296,7 +321,13 @@ public class TransferServiceImpl implements TransferService{
                     sugmaigppstransHdrModels.setBOX_NOS(FarmDto.getBoxnumber());
                     sugmaigppstransHdrModels.setPACK_MATERIAL(FarmDto.getPackmaterial());
                     applyPlanDtlIdFromPid(FarmDto, sugmaigppstransHdrModels);
-                    applyBirdTransferHdrFlockAndType(FarmDto, sugmaigppstransHdrModels);
+                    if (isBirdTransferOut(FarmDto) || isBirdTransferIn(FarmDto)) {
+                        applyBirdTransferHdrFlockAndType(FarmDto, sugmaigppstransHdrModels);
+                    }
+                    if (isTransferIn(FarmDto.getTransfer_type())) {
+                        enrichTransferInHdrFromOut(FarmDto, sugmaigppstransHdrModels);
+                        sugmaigppstransHdrModels.setPOST_TO_ERP("N");
+                    }
                     SugMaiGppsTransHdr sugmaigppstransHdrModels1=sugMaiGppsTransHdrRepository.save(sugmaigppstransHdrModels);
                     long txn_id=0;
                     txn_id=sugmaigppstransHdrModels1.getTXN_HEADER_ID();
@@ -309,8 +340,7 @@ public class TransferServiceImpl implements TransferService{
                             //sugMaiGppsTransDtlModels.setTXN_LINE_ID(new BigDecimal(FarmDto1.txn_line_id));
                             sugMaiGppsTransDtlModels.setFROM_FARM_ID(FarmDto1.getFrom_farm_id());
                             sugMaiGppsTransDtlModels.setTO_FARM_ID(FarmDto1.getTo_farm_id());
-                            BigDecimal fromFarmId = FarmDto1.getFrom_farm_id() != null
-                                    ? FarmDto1.getFrom_farm_id() : FarmDto.getFrom_farm_id();
+                            BigDecimal fromFarmId =  FarmDto.getFrom_farm_id();
                             Object[] fromLocation = getFromInventoryLocation(FarmDto1.getFrom_batch_id(), fromFarmId);
                             if("BIRD".equalsIgnoreCase(String.valueOf(FarmDto1.getTxn_type()).trim())) {
                                 // Prefer payload/gettranfershedmaster inventory id (attribute4=2).
@@ -413,18 +443,18 @@ public class TransferServiceImpl implements TransferService{
                                 + gateEx.getMessage());
                         gateEx.printStackTrace();
                     }
-                    if (!isTransferIn(FarmDto.getTransfer_type()) && hasBirdTransferDetail(FarmDto)) {
+                    if (isBirdTransferOut(FarmDto)) {
                         try {
                             postBirdTransferOutDailyEntry(sugmaigppstransHdrModels1, FarmDto);
                         } catch (Exception postEx) {
                             System.err.println("TRANSFER_ALL failed (transfer saved): " + postEx.getMessage());
                             postEx.printStackTrace();
                         }
+                        markTransPlanHdrInactiveAfterBirdTransOut(FarmDto, sugmaigppstransHdrModels1);
                     }
                 } else {
 
                 }
-                markTransPlanHdrInactiveAfterBirdTransOut(FarmDto);
                 applyEggLoadDateAfterTransferOut(FarmDto);
             }
         } catch (Exception e) {
@@ -466,28 +496,191 @@ public class TransferServiceImpl implements TransferService{
     /**
      * Bird transfer OUT from plan: mobile sends plan TXN_HEADER_ID as pid/planId — mark plan header inactive.
      */
-    private void markTransPlanHdrInactiveAfterBirdTransOut(SUGMAIGPPSTRANS_HDRDto farmDto) {
-        if (isTransferIn(farmDto.getTransfer_type())) {
+    private void markTransPlanHdrInactiveAfterBirdTransOut(SUGMAIGPPSTRANS_HDRDto farmDto,
+                                                           SugMaiGppsTransHdr savedTransHdr) {
+        if (!isBirdTransferOut(farmDto)) {
             return;
         }
-        if (farmDto.getDetails() == null || farmDto.getDetails().isEmpty()) {
+        Long planHdrId = resolveBirdTransferPlanHdrTxnId(farmDto, savedTransHdr);
+        if (planHdrId == null || planHdrId <= 0) {
+            System.out.println("TRANS_PLAN_HDR STATUS=I skipped: plan header not resolved. pid="
+                    + resolvePidForTransOut(farmDto) + " birdPlanTxnHeaderId="
+                    + farmDto.getBirdPlanTxnHeaderId() + " planId="
+                    + farmDto.getPlanId() + " plan_dtl_id="
+                    + (savedTransHdr != null ? savedTransHdr.getPLAN_DTL_ID() : null));
             return;
         }
-        boolean hasBird = farmDto.getDetails().stream()
-                .anyMatch(d -> d.getTxn_type() != null && "BIRD".equalsIgnoreCase(d.getTxn_type().trim()));
-        if (!hasBird) {
-            return;
+        if (!sugMaiGppsTransPlanHdrRepository.existsById(planHdrId)) {
+            Long fallback = lookupActiveBirdTransPlanHdrByTransfer(farmDto);
+            if (fallback != null) {
+                System.out.println("TRANS_PLAN_HDR STATUS=I: remapped unknown plan id " + planHdrId + " -> " + fallback);
+                planHdrId = fallback;
+            }
         }
-        String planHdrId = resolvePidForTransOut(farmDto);
-        if (planHdrId == null || planHdrId.isBlank() || "1".equals(planHdrId.trim())) {
+        if (!sugMaiGppsTransPlanHdrRepository.existsById(planHdrId)) {
+            System.out.println("TRANS_PLAN_HDR STATUS=I skipped: no plan header TXN_HEADER_ID=" + planHdrId);
             return;
         }
         try {
-            int updatedRows = sugMaiGppsTransPlanHdrRepository.updateentry(planHdrId.trim(), "I");
+            int updatedRows = entityManager.createNativeQuery(
+                            "update sug.sug_mai_gpps_trans_plan_hdr h" +
+                                    " set h.status = 'I', h.updation_date = sysdate" +
+                                    " where h.txn_header_id = ?1" +
+                                    " and nvl(upper(trim(h.status)), 'A') <> 'I'")
+                    .setParameter(1, planHdrId)
+                    .executeUpdate();
+            if (updatedRows == 0) {
+                updatedRows = sugMaiGppsTransPlanHdrRepository.updateentry(String.valueOf(planHdrId), "I");
+            }
+            entityManager.flush();
             System.out.println("TRANS_PLAN_HDR STATUS=I TXN_HEADER_ID=" + planHdrId + " updatedRows=" + updatedRows);
         } catch (Exception e) {
             System.out.println("Error in markTransPlanHdrInactiveAfterBirdTransOut: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * pid/planId from mobile is usually SUG_MAI_GPPS_TRANS_PLAN_HDR.TXN_HEADER_ID (txnHeaderId).
+     * Fallback: TRANS_HDR.PLAN_DTL_ID or plan line TXN_LINE_ID → parent header.
+     */
+    private Long resolveBirdTransferPlanHdrTxnId(SUGMAIGPPSTRANS_HDRDto farmDto, SugMaiGppsTransHdr savedTransHdr) {
+        for (String candidate : resolveBirdPlanTxnHeaderIdCandidates(farmDto, savedTransHdr)) {
+            try {
+                long id = parsePayloadId(candidate);
+                if (isVehicleGateInId(id) && !sugMaiGppsTransPlanHdrRepository.existsById(id)) {
+                    continue;
+                }
+                if (sugMaiGppsTransPlanHdrRepository.existsById(id)) {
+                    return id;
+                }
+                Long hdrFromLine = lookupBirdTransPlanHdrIdByPlanLineId(id);
+                if (hdrFromLine != null && sugMaiGppsTransPlanHdrRepository.existsById(hdrFromLine)) {
+                    return hdrFromLine;
+                }
+            } catch (NumberFormatException ignored) {
+                // try next candidate
+            }
+        }
+        Long byFlockRoute = lookupActiveBirdTransPlanHdrByTransfer(farmDto);
+        if (byFlockRoute != null) {
+            return byFlockRoute;
+        }
+        return null;
+    }
+
+    private boolean isVehicleGateInId(long id) {
+        try {
+            return breederVehicleGateInOutRepository.existsById(id);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private List<String> resolveBirdPlanTxnHeaderIdCandidates(SUGMAIGPPSTRANS_HDRDto farmDto,
+                                                              SugMaiGppsTransHdr savedTransHdr) {
+        List<String> candidates = new ArrayList<>();
+        if (farmDto.getBirdPlanTxnHeaderId() != null && !farmDto.getBirdPlanTxnHeaderId().isBlank()) {
+            candidates.add(farmDto.getBirdPlanTxnHeaderId().trim());
+        }
+        String pid = resolvePidForTransOut(farmDto);
+        if (farmDto.getPlanId() != null && !farmDto.getPlanId().isBlank()) {
+            String planId = farmDto.getPlanId().trim();
+            if (!candidates.contains(planId) && !(isVehicleGateInIdSafe(planId)
+                    && !sugMaiGppsTransPlanHdrExists(planId))) {
+                candidates.add(planId);
+            }
+        }
+        if (savedTransHdr != null && savedTransHdr.getPLAN_DTL_ID() != null
+                && savedTransHdr.getPLAN_DTL_ID() > 0) {
+            String planRef = String.valueOf(savedTransHdr.getPLAN_DTL_ID());
+            if (!candidates.contains(planRef)) {
+                candidates.add(planRef);
+            }
+        }
+        if (pid != null && !pid.isBlank() && !"1".equals(pid.trim())
+                && !(isVehicleGateInIdSafe(pid) && !sugMaiGppsTransPlanHdrExists(pid))) {
+            if (!candidates.contains(pid.trim())) {
+                candidates.add(pid.trim());
+            }
+        }
+        return candidates;
+    }
+
+    private boolean isVehicleGateInIdSafe(String idText) {
+        try {
+            return isVehicleGateInId(parsePayloadId(idText));
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    private boolean sugMaiGppsTransPlanHdrExists(String idText) {
+        try {
+            return sugMaiGppsTransPlanHdrRepository.existsById(parsePayloadId(idText));
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    private Long lookupActiveBirdTransPlanHdrByTransfer(SUGMAIGPPSTRANS_HDRDto farmDto) {
+        if (farmDto == null || farmDto.getFrom_farm_id() == null) {
+            return null;
+        }
+        String flock = resolveHeaderFlockNo(farmDto);
+        if (isUnresolvedFlock(flock)) {
+            return null;
+        }
+        BigDecimal toFarm = farmDto.getTo_farm_id();
+        if (toFarm == null && farmDto.getDetails() != null) {
+            for (SUGMAIGPPSTRANS_HDRDto.SugMaiGppsTrans_DtlDto dtl : farmDto.getDetails()) {
+                if (dtl.getTo_farm_id() != null) {
+                    toFarm = dtl.getTo_farm_id();
+                    break;
+                }
+            }
+        }
+        try {
+            var query = entityManager.createNativeQuery(
+                            "select txn_header_id from (" +
+                                    " select h.txn_header_id" +
+                                    "   from sug.sug_mai_gpps_trans_plan_hdr h" +
+                                    "  where h.from_farm_id = ?1" +
+                                    "    and nvl(upper(trim(h.status)), 'A') = 'A'" +
+                                    "    and (upper(trim(nvl(h.trans_type, ' '))) = 'BIRD'" +
+                                    "         or h.flock_no is not null or h.flock_id is not null)" +
+                                    "    and (h.flock_no = ?2 or h.flock_id = ?2)" +
+                                    (toFarm != null ? "    and h.to_farm_id = ?3" : "") +
+                                    "  order by h.txn_header_id desc)" +
+                                    " where rownum = 1")
+                    .setParameter(1, farmDto.getFrom_farm_id())
+                    .setParameter(2, flock.trim());
+            if (toFarm != null) {
+                query.setParameter(3, toFarm);
+            }
+            Object result = query.getSingleResult();
+            if (result instanceof Number) {
+                return ((Number) result).longValue();
+            }
+            return result == null ? null : Long.parseLong(String.valueOf(result));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private Long lookupBirdTransPlanHdrIdByPlanLineId(long planLineOrHdrId) {
+        try {
+            Object hdrId = entityManager.createNativeQuery(
+                            "select d.txn_header_id from sug.sug_mai_gpps_trans_plan_dtl d" +
+                                    " where d.txn_line_id = ?1 and rownum = 1")
+                    .setParameter(1, planLineOrHdrId)
+                    .getSingleResult();
+            if (hdrId instanceof Number) {
+                return ((Number) hdrId).longValue();
+            }
+            return hdrId == null ? null : Long.parseLong(String.valueOf(hdrId));
+        } catch (Exception e) {
+            return null;
         }
     }
 
@@ -755,6 +948,10 @@ public class TransferServiceImpl implements TransferService{
     }
 
     private void postBirdTransferOutDailyEntry(SugMaiGppsTransHdr header, SUGMAIGPPSTRANS_HDRDto farmDto) {
+        if (!isBirdTransferOut(farmDto)) {
+            System.out.println("TRANSFER_ALL: skipped (not bird transfer OUT)");
+            return;
+        }
         if (header == null || farmDto == null || farmDto.getDetails() == null || farmDto.getDetails().isEmpty()) {
             System.out.println("TRANSFER_ALL: skipped (header/details null)");
             return;
@@ -862,8 +1059,8 @@ public class TransferServiceImpl implements TransferService{
     }
 
     /**
-     * Insert TRANSFER_ALL with native SQL (same pattern as post_culling_daily_entry).
-     * Uses gettranfershedmaster rules for inventory_location_id / location / flock.
+     * Insert TRANSFER_ALL with native SQL (same pattern as post_day_close_daily_entry for
+     * location_code / inventory_location_id — housing locator nvl(attribute4,1)=1, not transfer shed master).
      */
     private void insertTransferAllDailyEntryNative(long txnHeaderId,
                                                    Date txnDate,
@@ -907,22 +1104,49 @@ public class TransferServiceImpl implements TransferService{
             return;
         }
 
-        BatchDailyEntryContext ctx = resolveDailyEntryForTransfer(group);
         String batchNo = lookupBatchNo(entryBatchId);
-        if (ctx != null && ctx.batchNo != null && !ctx.batchNo.isBlank()) {
-            batchNo = ctx.batchNo;
-        }
-        String locationCode = firstNonBlank(group.shedCode, ctx == null ? null : ctx.locationCode);
-        String branchCode = firstNonBlank(branchCodeFromHeader, ctx == null ? null : ctx.branchCode,
-                lookupBranchName(group.fromFarmId));
         long branchId = group.fromFarmId.longValue();
+        String shedCode = group.shedCode != null ? group.shedCode.trim() : null;
+
+        String shedFromBatch = lookupShedNoFromBatchHeader(entryBatchId, group.fromFarmId, flockNo);
+        String locationCode = firstNonBlank(shedFromBatch, shedCode);
+
+        BatchDailyEntryContext dayCloseLoc =
+                lookupDayCloseStyleLocationForDailyEntry(group.fromFarmId, flockNo, locationCode, entryBatchId);
+        String branchCode = firstNonBlank(branchCodeFromHeader, lookupBranchName(group.fromFarmId));
         Long invLocId = null;
-        if (group.inventoryLocationId != null && group.inventoryLocationId.signum() > 0) {
-            invLocId = group.inventoryLocationId.longValue();
-        } else if (ctx != null && ctx.inventoryLocationId != null && ctx.inventoryLocationId > 0) {
-            invLocId = ctx.inventoryLocationId;
-        } else {
-            invLocId = lookupInventoryLocationId(branchId, locationCode);
+        if (dayCloseLoc != null) {
+            if (shedFromBatch == null || shedFromBatch.isBlank()) {
+                if (dayCloseLoc.locationCode != null && !dayCloseLoc.locationCode.isBlank()) {
+                    locationCode = dayCloseLoc.locationCode.trim();
+                }
+            }
+            if (dayCloseLoc.inventoryLocationId != null && dayCloseLoc.inventoryLocationId > 0) {
+                invLocId = dayCloseLoc.inventoryLocationId;
+            }
+            if (dayCloseLoc.batchNo != null && !dayCloseLoc.batchNo.isBlank()) {
+                batchNo = dayCloseLoc.batchNo;
+            }
+            if (dayCloseLoc.branchCode != null && !dayCloseLoc.branchCode.isBlank()) {
+                branchCode = dayCloseLoc.branchCode.trim();
+            }
+        }
+        if (invLocId == null || invLocId <= 0) {
+            Object[] housingLoc = getFromInventoryLocation(BigDecimal.valueOf(entryBatchId), group.fromFarmId);
+            if (housingLoc != null) {
+                if (housingLoc[0] instanceof Number) {
+                    invLocId = ((Number) housingLoc[0]).longValue();
+                }
+                if ((locationCode == null || locationCode.isBlank()) && housingLoc[1] != null) {
+                    locationCode = String.valueOf(housingLoc[1]).trim();
+                }
+            }
+        }
+        if (locationCode == null || locationCode.isBlank()) {
+            locationCode = shedCode;
+        }
+        if (invLocId == null || invLocId <= 0) {
+            invLocId = lookupInventoryLocationByShedAndBranch(branchId, locationCode);
         }
 
         Long dailyTxnId = findDailyHeaderTxnId(flockNo, txnDate, entryBatchId);
@@ -1305,28 +1529,143 @@ public class TransferServiceImpl implements TransferService{
         }
     }
 
-    private Long lookupInventoryLocationId(long branchId, String locationCode) {
-        if (locationCode == null || locationCode.isBlank()) {
+    /**
+     * Shed for daily entry: GME_BATCH_HEADER.ATTRIBUTE4 for batch + flock (+ org).
+     * Example: batch 9283318, flock 12155GHA1126237 → BI5:SHED 02.
+     */
+    private String lookupShedNoFromBatchHeader(long batchId, BigDecimal organizationId, String flockNo) {
+        if (batchId <= 0 || organizationId == null || isUnresolvedFlock(flockNo)) {
+            return null;
+        }
+        try {
+            Object shed = entityManager.createNativeQuery(
+                            "select a.attribute4 from gme_batch_header a" +
+                                    " where a.batch_id = ?1" +
+                                    " and a.organization_id = ?2" +
+                                    " and a.batch_status = 2" +
+                                    " and decode(a.attribute2, null, a.attribute1, a.attribute1 || '-' || a.attribute2) = ?3" +
+                                    " and rownum = 1")
+                    .setParameter(1, batchId)
+                    .setParameter(2, organizationId)
+                    .setParameter(3, flockNo.trim())
+                    .getSingleResult();
+            if (shed == null) {
+                return null;
+            }
+            String text = String.valueOf(shed).trim();
+            return text.isEmpty() ? null : text;
+        } catch (Exception e) {
+            try {
+                Object shed = entityManager.createNativeQuery(
+                                "select a.attribute4 from gme_batch_header a" +
+                                        " where a.batch_id = ?1" +
+                                        " and a.organization_id = ?2" +
+                                        " and a.attribute1 = ?3" +
+                                        " and rownum = 1")
+                        .setParameter(1, batchId)
+                        .setParameter(2, organizationId)
+                        .setParameter(3, flockNo.trim())
+                        .getSingleResult();
+                return shed == null ? null : String.valueOf(shed).trim();
+            } catch (Exception ignored) {
+                return null;
+            }
+        }
+    }
+
+    /**
+     * Same as post_day_close_daily_entry fn_inventory_loc — segment1 + organization_id only.
+     */
+    private Long lookupInventoryLocationByShedAndBranch(long branchId, String shedSegment) {
+        if (shedSegment == null || shedSegment.isBlank() || branchId <= 0) {
             return null;
         }
         try {
             Object id = entityManager.createNativeQuery(
-                            "select a.inventory_location_id from mtl_item_locations a" +
-                                    " where a.organization_id = ?1" +
-                                    " and a.disable_date is null" +
-                                    " and nvl(a.attribute4, 2) = 2" +
-                                    " and a.segment1 not like '%:TL%'" +
-                                    " and upper(a.description) not like '%TRANS%LOSS%'" +
-                                    " and (a.segment1 = ?2 or upper(trim(a.segment1)) = upper(trim(?2)))" +
-                                    " and rownum = 1")
-                    .setParameter(1, branchId)
-                    .setParameter(2, locationCode.trim())
+                            "select inventory_location_id from (" +
+                                    " select t.inventory_location_id" +
+                                    "   from mtl_item_locations t" +
+                                    "  where t.segment1 = ?1" +
+                                    "    and t.organization_id = ?2" +
+                                    "    and t.disable_date is null" +
+                                    "  order by t.inventory_location_id) where rownum = 1")
+                    .setParameter(1, shedSegment.trim())
+                    .setParameter(2, branchId)
                     .getSingleResult();
             if (id instanceof Number) {
                 return ((Number) id).longValue();
             }
             return id == null ? null : Long.parseLong(String.valueOf(id));
         } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Resolves branch_code (branch_name), segment1 location_code, inventory_location_id, batch_no
+     * using the same join/filters as post_day_close_daily_entry / post_culling_daily_entry.
+     */
+    private BatchDailyEntryContext lookupDayCloseStyleLocationForDailyEntry(BigDecimal branchId,
+                                                                            String flockNo,
+                                                                            String shedCode,
+                                                                            long batchId) {
+        if (branchId == null || isUnresolvedFlock(flockNo)) {
+            return null;
+        }
+        String shed = shedCode == null ? null : shedCode.trim();
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object[]> rows = entityManager.createNativeQuery(
+                            "select branch_name, segment1, inventory_location_id, batch_no from (" +
+                                    " select c.branch_name," +
+                                    "        a.segment1," +
+                                    "        a.inventory_location_id," +
+                                    "        b.batch_no," +
+                                    "        case when ?4 > 0 and b.batch_id = ?4 then 0 when ?4 > 0 then 1 else 0 end batch_rank," +
+                                    "        case when ?3 is not null and a.segment1 = ?3 then 0 else 1 end shed_rank" +
+                                    "   from mtl_item_locations  a," +
+                                    "        gme_batch_header    b," +
+                                    "        sug_organization_mv c," +
+                                    "        hr_locations_all    e" +
+                                    "  where b.organization_id = a.organization_id" +
+                                    "    and nvl(b.attribute4, a.segment1) = a.segment1" +
+                                    "    and b.batch_status = 2" +
+                                    "    and a.organization_id = c.branch_id" +
+                                    "    and b.organization_id = c.branch_id" +
+                                    "    and b.attribute_category <> 'None'" +
+                                    "    and a.organization_id = e.inventory_organization_id" +
+                                    "    and e.location_id = c.hr_location_id" +
+                                    "    and not exists (select 1 from fm_form_mst x" +
+                                    "                     where x.formula_no like '%CONVERSION%'" +
+                                    "                       and x.formula_id = b.formula_id)" +
+                                    "    and b.batch_id not in (select aa.batch_id from sug.sug_mai_breeder_daily_entry aa" +
+                                    "                            where aa.txn_type = 'WBC')" +
+                                    "    and nvl(a.attribute4, 1) = 1" +
+                                    "    and decode(b.attribute2, null, b.attribute1, b.attribute1 || '-' || b.attribute2) = ?1" +
+                                    "    and b.organization_id = ?2" +
+                                    "  order by batch_rank, shed_rank)" +
+                                    " where rownum = 1")
+                    .setParameter(1, flockNo.trim())
+                    .setParameter(2, branchId)
+                    .setParameter(3, shed)
+                    .setParameter(4, batchId)
+                    .getResultList();
+            if (rows == null || rows.isEmpty()) {
+                return null;
+            }
+            Object[] row = rows.get(0);
+            BatchDailyEntryContext ctx = new BatchDailyEntryContext();
+            ctx.branchCode = row[0] == null ? null : String.valueOf(row[0]);
+            ctx.locationCode = row[1] == null ? null : String.valueOf(row[1]);
+            if (row[2] instanceof Number) {
+                ctx.inventoryLocationId = ((Number) row[2]).longValue();
+            }
+            ctx.batchNo = row[3] == null ? null : String.valueOf(row[3]);
+            ctx.branchId = branchId.longValue();
+            ctx.flockNo = flockNo.trim();
+            return ctx;
+        } catch (Exception e) {
+            System.out.println("lookupDayCloseStyleLocationForDailyEntry: " + e.getMessage());
             return null;
         }
     }
@@ -1418,10 +1757,8 @@ public class TransferServiceImpl implements TransferService{
     }
 
     private void applyBirdTransferHdrFlockAndType(SUGMAIGPPSTRANS_HDRDto farmDto, SugMaiGppsTransHdr header) {
-        if (farmDto == null || header == null) {
-            return;
-        }
-        if (!hasBirdTransferDetail(farmDto)) {
+        if (farmDto == null || header == null
+                || (!isBirdTransferOut(farmDto) && !isBirdTransferIn(farmDto))) {
             return;
         }
         String flock = resolveHeaderFlockNo(farmDto);
@@ -1763,6 +2100,19 @@ public class TransferServiceImpl implements TransferService{
                 sugMaiGppsTransPlanDtl.setTO_LINE_NAME(transferPlanDtlsDto.toLine);
                 sugMaiGppsTransPlanDtl.setFROM_SIDE_NAME(transferPlanDtlsDto.fromSide);
                 sugMaiGppsTransPlanDtl.setTO_SIDE_NAME(transferPlanDtlsDto.toSide);
+
+                String invLocDesc = transferPlanDtlsDto.getInventoryLocationDesc() != null && !transferPlanDtlsDto.getInventoryLocationDesc().isBlank()
+                        ? transferPlanDtlsDto.getInventoryLocationDesc()
+                        : transferPlanDtlsDto.getInventoryLocDesc();
+                sugMaiGppsTransPlanDtl.setERP_INVENTORY_DESC(invLocDesc);
+
+                if (transferPlanDtlsDto.getInventoryLocationId() != null && !transferPlanDtlsDto.getInventoryLocationId().isBlank()) {
+                    try {
+                        sugMaiGppsTransPlanDtl.setERP_INVENTORY_ID(new BigDecimal(transferPlanDtlsDto.getInventoryLocationId().trim()));
+                    } catch (Exception e) {
+                        // ignore parsing error
+                    }
+                }
                 sugMaiGppsTransPlanDtlRepository.save(sugMaiGppsTransPlanDtl);
             }
         } catch (Exception e) {
@@ -2106,6 +2456,19 @@ public class TransferServiceImpl implements TransferService{
                 sugMaiGppsTransPlanDtl.setTO_LINE_NAME(transferPlanDtlsDto.toLine);
                 sugMaiGppsTransPlanDtl.setFROM_SIDE_NAME(transferPlanDtlsDto.fromSide);
                 sugMaiGppsTransPlanDtl.setTO_SIDE_NAME(transferPlanDtlsDto.toSide);
+
+                String invLocDesc = transferPlanDtlsDto.getInventoryLocationDesc() != null && !transferPlanDtlsDto.getInventoryLocationDesc().isBlank()
+                        ? transferPlanDtlsDto.getInventoryLocationDesc()
+                        : transferPlanDtlsDto.getInventoryLocDesc();
+                sugMaiGppsTransPlanDtl.setERP_INVENTORY_DESC(invLocDesc);
+
+                if (transferPlanDtlsDto.getInventoryLocationId() != null && !transferPlanDtlsDto.getInventoryLocationId().isBlank()) {
+                    try {
+                        sugMaiGppsTransPlanDtl.setERP_INVENTORY_ID(new BigDecimal(transferPlanDtlsDto.getInventoryLocationId().trim()));
+                    } catch (Exception e) {
+                        // ignore parsing error
+                    }
+                }
                 sugMaiGppsTransPlanDtlRepository.save(sugMaiGppsTransPlanDtl);
             }
         } catch (Exception e) {
@@ -2546,6 +2909,137 @@ public class TransferServiceImpl implements TransferService{
         return transferType != null && "IN".equalsIgnoreCase(transferType.trim());
     }
 
+    private boolean isBirdTransferIn(SUGMAIGPPSTRANS_HDRDto farmDto) {
+        return farmDto != null
+                && isTransferIn(farmDto.getTransfer_type())
+                && hasBirdTransferDetail(farmDto);
+    }
+
+    /**
+     * Copy header fields from the matching transfer OUT row when mobile transfer IN payload is sparse.
+     */
+    private void enrichTransferInHdrFromOut(SUGMAIGPPSTRANS_HDRDto farmDto, SugMaiGppsTransHdr header) {
+        if (farmDto == null || header == null) {
+            return;
+        }
+        findSourceTransferOutHdr(farmDto).ifPresent(out -> copyMissingTransferInHdrFieldsFromOut(header, out));
+    }
+
+    private Optional<SugMaiGppsTransHdr> findSourceTransferOutHdr(SUGMAIGPPSTRANS_HDRDto farmDto) {
+        if (farmDto == null || !isTransferIn(farmDto.getTransfer_type())) {
+            return Optional.empty();
+        }
+        if (farmDto.getTxn_header_id() != null && !farmDto.getTxn_header_id().isBlank()) {
+            try {
+                long outHdrId = Long.parseLong(farmDto.getTxn_header_id().trim());
+                return sugMaiGppsTransHdrRepository.findById(outHdrId)
+                        .filter(h -> h.getTRANS_TYPE() != null
+                                && "OUT".equalsIgnoreCase(h.getTRANS_TYPE().trim()));
+            } catch (NumberFormatException ignored) {
+                // fall through to key-based lookup
+            }
+        }
+        if (farmDto.getFrom_farm_id() == null
+                || farmDto.getTo_farm_id() == null
+                || farmDto.getOut_pass_no() == null
+                || farmDto.getOut_pass_no().isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            @SuppressWarnings("unchecked")
+            List<SugMaiGppsTransHdr> rows = entityManager.createQuery(
+                            "select h from SugMaiGppsTransHdr h where h.TRANS_TYPE = 'OUT' "
+                                    + "and h.FROM_FARM_ID = :fromFarm and h.TO_FARM_ID = :toFarm "
+                                    + "and h.OUT_PASS_NO = :outPass "
+                                    + "and (:vehicleNo is null or h.VEHICLE_NO = :vehicleNo) "
+                                    + "order by h.TXN_HEADER_ID desc",
+                            SugMaiGppsTransHdr.class)
+                    .setParameter("fromFarm", farmDto.getFrom_farm_id())
+                    .setParameter("toFarm", farmDto.getTo_farm_id())
+                    .setParameter("outPass", farmDto.getOut_pass_no().trim())
+                    .setParameter("vehicleNo", blankToNull(farmDto.getVehicle_no()))
+                    .setMaxResults(1)
+                    .getResultList();
+            return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
+        } catch (Exception e) {
+            System.out.println("findSourceTransferOutHdr: " + e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private static boolean isUnsetHdrText(String value) {
+        if (value == null || value.isBlank()) {
+            return true;
+        }
+        String normalized = value.trim().toUpperCase(Locale.ENGLISH);
+        return "NA".equals(normalized) || "N/A".equals(normalized);
+    }
+
+    private void copyMissingTransferInHdrFieldsFromOut(SugMaiGppsTransHdr inHdr, SugMaiGppsTransHdr outHdr) {
+        if (inHdr.getTRANS_REASON() == null || inHdr.getTRANS_REASON().isBlank()) {
+            inHdr.setTRANS_REASON(outHdr.getTRANS_REASON());
+        }
+        if (isUnsetHdrText(inHdr.getVEHICLE_TYPE())) {
+            inHdr.setVEHICLE_TYPE(outHdr.getVEHICLE_TYPE());
+        }
+        if (isUnsetHdrText(inHdr.getTRANS_MODE())) {
+            inHdr.setTRANS_MODE(outHdr.getTRANS_MODE());
+        }
+        if (isUnsetHdrText(inHdr.getPACK_MATERIAL())) {
+            inHdr.setPACK_MATERIAL(outHdr.getPACK_MATERIAL());
+        }
+        if ((inHdr.getTRAY_NOS() == null || inHdr.getTRAY_NOS().signum() == 0)
+                && outHdr.getTRAY_NOS() != null && outHdr.getTRAY_NOS().signum() > 0) {
+            inHdr.setTRAY_NOS(outHdr.getTRAY_NOS());
+        }
+        if ((inHdr.getBOX_NOS() == null || inHdr.getBOX_NOS().signum() == 0)
+                && outHdr.getBOX_NOS() != null && outHdr.getBOX_NOS().signum() > 0) {
+            inHdr.setBOX_NOS(outHdr.getBOX_NOS());
+        }
+        if (inHdr.getPLAN_DTL_ID() == null && outHdr.getPLAN_DTL_ID() != null && outHdr.getPLAN_DTL_ID() > 0) {
+            inHdr.setPLAN_DTL_ID(outHdr.getPLAN_DTL_ID());
+        }
+        if (isUnresolvedFlock(inHdr.getFLOCK_NO()) && !isUnresolvedFlock(outHdr.getFLOCK_NO())) {
+            inHdr.setFLOCK_NO(outHdr.getFLOCK_NO());
+        }
+        if (inHdr.getTYPE() == null || inHdr.getTYPE().isBlank()) {
+            inHdr.setTYPE(outHdr.getTYPE());
+        }
+    }
+
+    private void applyPlanDtlIdForTransferIn(SUGMAIGPPSTRANS_HDRDto farmDto, SugMaiGppsTransHdr header) {
+        Long planDtlId = resolveMaterialTransferPlanDtlId(farmDto);
+        if (planDtlId != null && planDtlId > 0) {
+            header.setPLAN_DTL_ID(planDtlId);
+            return;
+        }
+        findSourceTransferOutHdr(farmDto).ifPresent(out -> {
+            if (out.getPLAN_DTL_ID() != null && out.getPLAN_DTL_ID() > 0) {
+                header.setPLAN_DTL_ID(out.getPLAN_DTL_ID());
+            }
+        });
+    }
+
+    /**
+     * Bird farm transfer OUT via saveTransOut only (at least one BIRD line, transfer_type OUT).
+     * Does not apply to transfer IN, feed/medicine/egg-only payloads, or saveShedLineTransfer.
+     */
+    private boolean isBirdTransferOut(SUGMAIGPPSTRANS_HDRDto farmDto) {
+        if (farmDto == null || isTransferIn(farmDto.getTransfer_type())) {
+            return false;
+        }
+        String transType = farmDto.getTransfer_type();
+        if (transType != null && !transType.isBlank()
+                && !"OUT".equalsIgnoreCase(transType.trim())) {
+            return false;
+        }
+        return hasBirdTransferDetail(farmDto);
+    }
+
     /**
      * transfer_type IN: planId/pid = GATE_IN_ID → set IN_STATUS = Y on receiving transfer post.
      */
@@ -2614,24 +3108,66 @@ public class TransferServiceImpl implements TransferService{
     }
 
     private void applyPlanDtlIdFromPid(SUGMAIGPPSTRANS_HDRDto farmDto, SugMaiGppsTransHdr header) {
-        String pid = resolvePidForTransOut(farmDto);
-        if (pid == null || pid.isBlank()) {
-            System.out.println("pid missing in saveTransOut payload for PLAN_DTL_ID");
+        if (farmDto == null || header == null) {
             return;
         }
-        try {
-            Long pidAsLong = parsePayloadId(pid);
-            // Feed/medicine: planId/pid is vehicle GATE_IN_ID — gate update uses it; do not set TRANS_HDR.PLAN_DTL_ID.
-            if (breederVehicleGateInOutRepository.existsById(pidAsLong)) {
-                return;
-            }
-            // Bird transfer plan: pid is SUG_MAI_GPPS_TRANS_PLAN_HDR.TXN_HEADER_ID (legacy mobile).
-            if (sugMaiGppsTransPlanHdrRepository.existsById(pidAsLong)) {
-                header.setPLAN_DTL_ID(pidAsLong);
-            }
-        } catch (NumberFormatException e) {
-            System.out.println("Invalid pid for PLAN_DTL_ID: " + pid);
+        if (isTransferIn(farmDto.getTransfer_type())) {
+            applyPlanDtlIdForTransferIn(farmDto, header);
+            return;
         }
+        if (isBirdTransferOut(farmDto)) {
+            Long planHdrId = resolveBirdTransferPlanHdrTxnId(farmDto, null);
+            if (planHdrId != null && planHdrId > 0) {
+                header.setPLAN_DTL_ID(planHdrId);
+            }
+            return;
+        }
+        if (hasMaterialTransferDetail(farmDto)) {
+            Long planDtlId = resolveMaterialTransferPlanDtlId(farmDto);
+            if (planDtlId != null && planDtlId > 0) {
+                header.setPLAN_DTL_ID(planDtlId);
+                System.out.println("TRANS_HDR PLAN_DTL_ID=" + planDtlId + " (material transfer OUT)");
+            }
+        }
+    }
+
+    private static final Set<String> MATERIAL_TRANSFER_TXN_TYPES = Set.of(
+            "FEED", "MEDICINE", "VACCINE", "OTHERS", "OTHER");
+
+    private static boolean hasMaterialTransferDetail(SUGMAIGPPSTRANS_HDRDto farmDto) {
+        if (farmDto.getDetails() == null || farmDto.getDetails().isEmpty()) {
+            return false;
+        }
+        return farmDto.getDetails().stream().anyMatch(TransferServiceImpl::isMaterialTransferTxnType);
+    }
+
+    private static boolean isMaterialTransferTxnType(SUGMAIGPPSTRANS_HDRDto.SugMaiGppsTrans_DtlDto dtl) {
+        if (dtl == null || dtl.getTxn_type() == null) {
+            return false;
+        }
+        return MATERIAL_TRANSFER_TXN_TYPES.contains(dtl.getTxn_type().trim().toUpperCase(Locale.ENGLISH));
+    }
+
+    /**
+     * Feed / medicine / vaccine / others: mobile sends {@code planId} / {@code pid} (vehicle plan / gate id).
+     */
+    private Long resolveMaterialTransferPlanDtlId(SUGMAIGPPSTRANS_HDRDto farmDto) {
+        if (farmDto.getPlanId() != null && !farmDto.getPlanId().isBlank() && !"1".equals(farmDto.getPlanId().trim())) {
+            try {
+                return parsePayloadId(farmDto.getPlanId().trim());
+            } catch (NumberFormatException ignored) {
+                // try pid
+            }
+        }
+        String pid = resolvePidForTransOut(farmDto);
+        if (pid != null && !pid.isBlank() && !"1".equals(pid.trim())) {
+            try {
+                return parsePayloadId(pid);
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
     }
 
     private String resolvePidForTransOut(SUGMAIGPPSTRANS_HDRDto farmDto) {

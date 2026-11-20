@@ -399,6 +399,10 @@ public class BranchRequest<T> {
         String in_or_out;
         @JsonProperty("remarks")
         String remarks;
+        @JsonProperty("fromFarmId")
+        String fromFarmId;
+        @JsonProperty("toFarmId")
+        String toFarmId;
     }
     @Getter
     @Setter

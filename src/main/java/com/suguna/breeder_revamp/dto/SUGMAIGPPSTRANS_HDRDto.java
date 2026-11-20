@@ -91,10 +91,22 @@ public class SUGMAIGPPSTRANS_HDRDto {
     @JsonAlias({"TRANS_REASON", "transferReason"})
     public String transReason;
 
-    /** Mobile plan detail id (same value used as GATE_IN_ID on gate in/out table). */
+    /**
+     * Vehicle gate {@code GATE_IN_ID} (feed/medicine) or legacy single id.
+     * For bird transfer with vehicle, use {@link #birdPlanTxnHeaderId} for {@code TRANS_PLAN_HDR}.
+     */
     @JsonProperty("pid")
-    @JsonAlias({"planId", "plan_dtl_id", "PLAN_DTL_ID", "plan_id", "PLAN_ID"})
+    @JsonAlias({"plan_dtl_id", "PLAN_DTL_ID", "plan_id", "PLAN_ID"})
     public String pid;
+
+    /** {@code SUG_MAI_GPPS_TRANS_PLAN_HDR.TXN_HEADER_ID} — not the vehicle gate id. */
+    @JsonProperty("birdPlanTxnHeaderId")
+    @JsonAlias({"planTxnHeaderId", "bird_plan_hdr_id", "PLAN_HDR_ID", "planHdrId"})
+    public String birdPlanTxnHeaderId;
+
+    /** Optional alias; if set, does not override {@link #pid}. */
+    @JsonProperty("planId")
+    public String planId;
 
     @JsonSetter("pid")
     public void setPidFromPayload(Object value) {
@@ -113,7 +125,12 @@ public class SUGMAIGPPSTRANS_HDRDto {
 
     @JsonSetter("planId")
     public void setPlanIdFromPayload(Object value) {
-        this.pid = normalizeIdFromPayload(value);
+        this.planId = normalizeIdFromPayload(value);
+    }
+
+    @JsonSetter("birdPlanTxnHeaderId")
+    public void setBirdPlanTxnHeaderIdFromPayload(Object value) {
+        this.birdPlanTxnHeaderId = normalizeIdFromPayload(value);
     }
 
     /** Hatchery plan line id (SUG_EGG_COLL_PLAN_LINES.TRANS_LINE_ID). */

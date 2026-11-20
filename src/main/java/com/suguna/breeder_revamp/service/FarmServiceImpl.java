@@ -344,16 +344,17 @@ public class FarmServiceImpl implements FarmService {
             return "N";
         }
         try {
+            Date txnDate = getTxnDateString(entryDate, fromdateFormat1);
             Number count = (Number) entityManager.createNativeQuery(
                             "SELECT COUNT(1) FROM SUG.SUG_MAI_GPPS_CONSUMPTIONS a " +
                                     "WHERE a.SHED_CODE = :shedNo " +
                                     "AND a.BATCH_ID = :batchId " +
                                     "AND UPPER(TRIM(NVL(a.TXN_TYPE, ' '))) = UPPER(TRIM(:txnType)) " +
-                                    "AND a.TXN_DATE = :entryDate")
+                                    "AND TRUNC(NVL(a.TXN_DATE, a.CREATION_DATE)) = TRUNC(:entryDate)")
                     .setParameter("shedNo", shedNo)
                     .setParameter("batchId", Long.valueOf(batchId))
                     .setParameter("txnType", txnType)
-                    .setParameter("entryDate", entryDate)
+                    .setParameter("entryDate", txnDate)
                     .getSingleResult();
             return count.longValue() > 0 ? "Y" : "N";
         } catch (Exception e) {
@@ -377,23 +378,147 @@ public class FarmServiceImpl implements FarmService {
                 shedDetails.setQuestion(getObservationCategoryDetails(shedDetails.getCategoryId(),branchRequest));
                 shedDetailsArrayList.add(shedDetails);
             }
+            applySavedObservationFlags(shedDetailsArrayList, branchRequest);
         } catch (Exception e) {
 
         }
         return shedDetailsArrayList;
     }
 
+    private void applySavedObservationFlags(ArrayList<BranchUser.ObservationCategory> categories, BranchRequest branchRequest) {
+        Map<String, String> savedFlags = loadSavedObservationFlags(branchRequest);
+        if (savedFlags.isEmpty()) {
+            return;
+        }
+        for (BranchUser.ObservationCategory category : categories) {
+            if (category.getQuestion() == null) {
+                continue;
+            }
+            for (BranchUser.ObservationCategoryDetails question : category.getQuestion()) {
+                String observationId = question.getCategoryId();
+                if (observationId == null) {
+                    continue;
+                }
+                String flag = savedFlags.get(observationId);
+                if (flag != null && !flag.isEmpty()) {
+                    question.setCategoryFlag(flag);
+                }
+            }
+        }
+    }
+
+    private Map<String, String> loadSavedObservationFlags(BranchRequest branchRequest) {
+        Map<String, String> flags = new HashMap<>();
+        Long transId = findObservationHeaderTransId(branchRequest);
+        if (transId == null) {
+            return flags;
+        }
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object[]> rows = entityManager.createNativeQuery(
+                            "select a.OBSERVATION_ID, a.OBSERVATION_FLAG " +
+                                    "from SUG_GPPS_OBSERVATION_DETAILS a where a.TRANS_ID = :transId")
+                    .setParameter("transId", transId)
+                    .getResultList();
+            for (Object[] row : rows) {
+                if (row[0] == null) {
+                    continue;
+                }
+                String observationId = String.valueOf(row[0]);
+                String flag = row[1] == null ? "-" : String.valueOf(row[1]);
+                flags.put(observationId, flag);
+            }
+        } catch (Exception e) {
+            return flags;
+        }
+        return flags;
+    }
+
+    private Long findObservationHeaderTransId(BranchRequest branchRequest) {
+        Date txnDate = getTxnDateString(branchRequest.getEntryDate(), fromdateFormat1);
+        if (txnDate == null) {
+            return null;
+        }
+        try {
+            Object result = entityManager.createNativeQuery(
+                            "select h.TRANS_ID from SUG_GPPS_OBSERVATION_HEADER h " +
+                                    "where h.SHED_NO = :shedNo and h.BATCH_ID = :batchId " +
+                                    "and trunc(h.TRANS_DATE) = trunc(:txnDate) " +
+                                    "order by h.TRANS_ID desc fetch first 1 rows only")
+                    .setParameter("shedNo", branchRequest.getShedNo())
+                    .setParameter("batchId", branchRequest.getBatchID())
+                    .setParameter("txnDate", txnDate)
+                    .getSingleResult();
+            if (result instanceof BigDecimal bigDecimal) {
+                return bigDecimal.longValue();
+            }
+            if (result instanceof Number number) {
+                return number.longValue();
+            }
+            return Long.valueOf(String.valueOf(result));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private boolean resolveObservationYesFlag(BigDecimal observationId, Object rawData) {
+        if (rawData == null) {
+            return false;
+        }
+        String observationIdValue = String.valueOf(observationId);
+        if (rawData instanceof List<?> list) {
+            if (list.isEmpty()) {
+                return false;
+            }
+            Object first = list.get(0);
+            if (first instanceof String) {
+                return list.stream().anyMatch(item -> observationIdValue.equals(String.valueOf(item)));
+            }
+            for (Object item : list) {
+                if (!(item instanceof Map<?, ?> map)) {
+                    continue;
+                }
+                Object idValue = map.get("observationId");
+                if (idValue == null || !observationIdValue.equals(String.valueOf(idValue))) {
+                    continue;
+                }
+                Object flagValue = map.get("observationFlag");
+                if (flagValue == null) {
+                    return false;
+                }
+                return "true".equalsIgnoreCase(String.valueOf(flagValue));
+            }
+        }
+        return false;
+    }
+
+    private boolean hasObservationPayload(Object rawData) {
+        if (rawData instanceof List<?> list) {
+            return !list.isEmpty();
+        }
+        return false;
+    }
+
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String saveObservationDetails(BranchRequest branchRequest) {
         try {
-            List<String> data = new ArrayList<>();
-            data = (List<String>) branchRequest.getData();
-            if (!data.isEmpty()) {
-                List<SugGppsObservationDTO> observationDTOS = getObservations();
-                List<SugGppsObservationBatchDTO> batchDTOS = getBatchDetails(branchRequest.getBatchID());
-                if (!batchDTOS.isEmpty()) {
-                    Long transid;
-                    SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
+            Object rawData = branchRequest.getData();
+            if (!hasObservationPayload(rawData)) {
+                return "200";
+            }
+            List<SugGppsObservationDTO> observationDTOS = getObservations();
+            List<SugGppsObservationBatchDTO> batchDTOS = getBatchDetails(branchRequest.getBatchID());
+            if (!batchDTOS.isEmpty()) {
+                Long transid;
+                SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
+                Long existingTransId = findObservationHeaderTransId(branchRequest);
+                if (existingTransId != null) {
+                    transid = existingTransId;
+                    entityManager.createNativeQuery("delete from SUG_GPPS_OBSERVATION_DETAILS where TRANS_ID = :transId")
+                            .setParameter("transId", transid)
+                            .executeUpdate();
+                } else {
                     SugGppsObservationHeader sugGppsObservationHeader = new SugGppsObservationHeader();
                     sugGppsObservationHeader.setLEDGER_ID((gppsObservationBatchDTO.getLEDGER_ID()));
                     sugGppsObservationHeader.setTRANS_DATE(getTxnDateString(branchRequest.getEntryDate(),fromdateFormat1));
@@ -406,23 +531,18 @@ public class FarmServiceImpl implements FarmService {
                     sugGppsObservationHeader.setLOCATION_CODE(gppsObservationBatchDTO.getLOCATION_CODE());
                     sugGppsObservationHeader.setCREATION_DATE(new Date());
                     sugGppsObservationHeader.setSHED_NO(branchRequest.getShedNo());
-                    SugGppsObservationHeader sugGppsObservationHeader1 = sugGppsObservationHeaderRepositories.save(sugGppsObservationHeader);
-                    transid = sugGppsObservationHeader1.getTRANS_ID();
-                    for (SugGppsObservationDTO sugGppsObservationDTO : observationDTOS) {
-                        String value = "false";
-                        if (data.contains(String.valueOf(sugGppsObservationDTO.getObservationId()))) {
-                            value = "true";
-                        }
-                        SugGppsObservationDetails sugGppsObservationDetails = new SugGppsObservationDetails();
-                        sugGppsObservationDetails.setTRANS_ID(transid);
-                        sugGppsObservationDetails.setCATEGORY_ID(sugGppsObservationDTO.getCategoryId());
-                        sugGppsObservationDetails.setOBSERVATION_ID(sugGppsObservationDTO.getObservationId());
-                       // sugGppsObservationDetails.setTRANS_ID(Long.valueOf(1));
-                        sugGppsObservationDetails.setCREATION_DATE(new Date());
-                        sugGppsObservationDetails.setOBSERVATION_FLAG(value);
-                        sugGppsObservationDetailsRepositories.save(sugGppsObservationDetails);
-
-                    }
+                    SugGppsObservationHeader savedHeader = sugGppsObservationHeaderRepositories.save(sugGppsObservationHeader);
+                    transid = savedHeader.getTRANS_ID();
+                }
+                for (SugGppsObservationDTO sugGppsObservationDTO : observationDTOS) {
+                    String value = resolveObservationYesFlag(sugGppsObservationDTO.getObservationId(), rawData) ? "true" : "false";
+                    SugGppsObservationDetails sugGppsObservationDetails = new SugGppsObservationDetails();
+                    sugGppsObservationDetails.setTRANS_ID(transid);
+                    sugGppsObservationDetails.setCATEGORY_ID(sugGppsObservationDTO.getCategoryId());
+                    sugGppsObservationDetails.setOBSERVATION_ID(sugGppsObservationDTO.getObservationId());
+                    sugGppsObservationDetails.setCREATION_DATE(new Date());
+                    sugGppsObservationDetails.setOBSERVATION_FLAG(value);
+                    sugGppsObservationDetailsRepositories.save(sugGppsObservationDetails);
                 }
             }
             return "200";
@@ -1619,7 +1739,6 @@ public class FarmServiceImpl implements FarmService {
                 } catch (Exception e) {
                     // throw new RuntimeException(e);
                 }
-                shedDetails.setFarmFlockDetails(getFeedAllocationPreviousDetails(branchID,shedDetails.getFlock()));
                 shedDetailsArrayList.add(shedDetails);
             }
         } catch (Exception e) {
@@ -1628,6 +1747,11 @@ public class FarmServiceImpl implements FarmService {
         details.setFarmFlockDetails(shedDetailsArrayList);
         details.setGardeMstDetails(getgrademst(branchID));
         return details;
+    }
+
+    @Override
+    public ArrayList<BranchUser.FarmFlockPreviousDetails> getFeedAllocationHistory(String branchID, String flockID) {
+        return getFeedAllocationPreviousDetails(branchID, flockID);
     }
 
     public ArrayList<BranchUser.GardeMstDetails> getgrademst(String branchID) {
@@ -1733,6 +1857,7 @@ public class FarmServiceImpl implements FarmService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String saveFeedAllocationDetails(BranchRequest branchRequest) {
      /*   List<BranchRequest.SugFeedDetails> data=new ArrayList<>();
         data= (List<BranchRequest.SugFeedDetails>) branchRequest.getData();
@@ -1752,7 +1877,6 @@ public class FarmServiceImpl implements FarmService {
             data = mapper.convertValue(rawData, BranchRequest.SugFeedAllocationDetails.class);
         }
         SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
-        sugMaiGppsItemAllocationRepositories.updatefeedallocationentry(branchRequest.getFlockID());
         if (!data.getFemale().isEmpty()) {
             for (BranchRequest.SugFeedAllocationDetails.FeedAllocationDetails sugFeedDetails : data.getFemale()) {
                 SugMaiGppsItemAllocation sugMaiGppsItemAllocation = new SugMaiGppsItemAllocation();
@@ -1791,8 +1915,10 @@ public class FarmServiceImpl implements FarmService {
                 sugMaiGppsItemAllocation.setBRANCH_ID(Long.valueOf(branchRequest.getBranchID()));
                 sugMaiGppsItemAllocationRepositories.save(sugMaiGppsItemAllocation);
             }
+            sugMaiGppsItemAllocationRepositories.updatefeedallocationentry(branchRequest.getFlockID());
 
         }
+        entityManager.flush();
         return "200";
     }
 
@@ -3069,7 +3195,6 @@ public class FarmServiceImpl implements FarmService {
 
     public ArrayList<BranchUser.FarmFlockPreviousDetails> getFeedAllocationPreviousDetails(String branchID,String flock) {
         ArrayList<BranchUser.FarmFlockPreviousDetails> farmFlockPreviousDetailsArrayList = new ArrayList<BranchUser.FarmFlockPreviousDetails>();
-
         try {
             StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getFeedAllocationDetails");
             storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
@@ -3926,9 +4051,15 @@ public class FarmServiceImpl implements FarmService {
             maiGppsConsumptions.setPH_LEVEL(parseOptionalDouble(branchRequest.getPhLevel()));
             maiGppsConsumptions.setPM_LEVEL(parseOptionalDouble(branchRequest.getPmLevel()));
             maiGppsConsumptions.setCREATION_DATE(new Date());
-
+            maiGppsConsumptions.setTXN_DATE(getTxnDateString(branchRequest.getEntryDate(), fromdateFormat1));
             maiGppsConsumptions.setCREATED_BY(branchRequest.getUserCode());
             maiGppsConsumptions.setTXN_TYPE("WATER_SANITIZER");
+            if (branchRequest.getLatitude() != null && !branchRequest.getLatitude().isBlank()) {
+                maiGppsConsumptions.setLATITUDE(Float.parseFloat(branchRequest.getLatitude()));
+            }
+            if (branchRequest.getLongitude() != null && !branchRequest.getLongitude().isBlank()) {
+                maiGppsConsumptions.setLONGITUDE(Float.parseFloat(branchRequest.getLongitude()));
+            }
             sugMaiGppsConsumptionsRepositories.save(maiGppsConsumptions);
 
         }
@@ -5775,13 +5906,17 @@ public class FarmServiceImpl implements FarmService {
             storedProcedureQuery.registerStoredProcedureParameter(4, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(5, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(6, String.class, ParameterMode.IN);
-            storedProcedureQuery.registerStoredProcedureParameter(7, String.class, ParameterMode.OUT);
+            storedProcedureQuery.registerStoredProcedureParameter(7, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(8, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(9, String.class, ParameterMode.OUT);
             storedProcedureQuery.setParameter(1, branchRequest.getHeader_id());
             storedProcedureQuery.setParameter(2, branchRequest.getOutpass_no());
             storedProcedureQuery.setParameter(3, branchRequest.getDate());
             storedProcedureQuery.setParameter(4,branchRequest.getStatus());
             storedProcedureQuery.setParameter(5,branchRequest.getIn_or_out());
-            storedProcedureQuery.setParameter(6,branchRequest.getRemarks());
+            storedProcedureQuery.setParameter(6,branchRequest.getToFarmId());
+            storedProcedureQuery.setParameter(7,branchRequest.getFromFarmId());
+            storedProcedureQuery.setParameter(8,branchRequest.getRemarks());
             storedProcedureQuery.execute();
             String output = (String) storedProcedureQuery.getOutputParameterValue(7);
             if (output.trim().equalsIgnoreCase("1")) {

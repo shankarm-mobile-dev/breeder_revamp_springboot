@@ -246,29 +246,52 @@ public class HousingLineStockService {
             throw new IllegalArgumentException("Transfer quantity must be greater than zero");
         }
         String sexCode = normalizeSex(sex);
-        if (fromShed.equals(toShed) && fromLine.equals(toLine) && sameSide(fromSide, toSide)) {
-            throw new IllegalArgumentException("Source and destination line cannot be the same");
+        boolean hasSource = fromShed != null && !fromShed.trim().isEmpty()
+                && fromLine != null && !fromLine.trim().isEmpty();
+
+        LineRow source = null;
+        long sourceClose = 0L;
+
+        if (hasSource) {
+            if (fromShed.equals(toShed) && fromLine.equals(toLine) && sameSide(fromSide, toSide)) {
+                throw new IllegalArgumentException("Source and destination line cannot be the same");
+            }
+            source = lockLine(flockId, farmCode, fromShed, fromLine, fromSide, sexCode);
+            if (source == null) {
+                throw new IllegalArgumentException("Source housing line not found for " + fromShed + " / " + fromLine);
+            }
+            if (source.opQty < qty) {
+                throw new IllegalArgumentException("Transfer quantity exceeds source line stock " + source.opQty);
+            }
         }
+
         assertDestinationFlock(farmCode, flockId, toShed);
-        LineRow source = lockLine(flockId, farmCode, fromShed, fromLine, fromSide, sexCode);
-        if (source == null) {
-            throw new IllegalArgumentException("Source housing line not found for " + fromShed + " / " + fromLine);
-        }
-        if (source.opQty < qty) {
-            throw new IllegalArgumentException("Transfer quantity exceeds source line stock " + source.opQty);
-        }
         long destCurrent = lineSexTotal(flockId, farmCode, toShed, toLine, toSide);
         assertIncomingFits(farmCode, toShed, toLine, toSide, destCurrent, qty);
 
-        long sourceClose = source.opQty - qty;
-        updateLineQty(source.txnId, qty, sourceClose);
-        reduceShed(flockId, farmCode, fromShed, sexCode, qty);
+        if (hasSource && source != null) {
+            sourceClose = source.opQty - qty;
+            updateLineQty(source.txnId, qty, sourceClose);
+            reduceShed(flockId, farmCode, fromShed, sexCode, qty);
+        }
 
         LineRow destination = lockLine(flockId, farmCode, toShed, toLine, toSide, sexCode);
         long destBefore;
         long destTxnId;
-        String grade = source.grade == null ? "3" : source.grade;
+        String grade = (source != null && source.grade != null) ? source.grade : "3";
+        Long refBranchId = branchId != null ? branchId : (source != null ? source.branchId : null);
+        Long refBatchId = batchId != null ? batchId : (source != null ? source.batchId : null);
+
         if (destination == null) {
+            if (source == null) {
+                LineRow sibling = lockLine(flockId, farmCode, toShed, toLine, toSide,
+                        "F".equals(sexCode) ? "M" : "F");
+                if (sibling != null) {
+                    if (refBranchId == null) refBranchId = sibling.branchId;
+                    if (refBatchId == null) refBatchId = sibling.batchId;
+                    grade = sibling.grade == null ? grade : sibling.grade;
+                }
+            }
             destBefore = 0L;
             SugMaiGppsHousingLine created = new SugMaiGppsHousingLine();
             created.setFLOCK_ID(flockId);
@@ -284,8 +307,8 @@ public class HousingLineStockService {
             created.setCL_QTY(qty);
             created.setCREATED_BY(createdBy);
             created.setCREATION_DATE(new Date());
-            created.setBATCH_ID(batchId == null ? source.batchId : batchId);
-            created.setBRANCH_ID(branchId == null ? source.branchId : branchId);
+            created.setBATCH_ID(refBatchId == null ? 0L : refBatchId);
+            created.setBRANCH_ID(refBranchId == null ? 0L : refBranchId);
             created.setAGE(age);
             created = housingLineRepositories.save(created);
             destTxnId = created.getTXN_ID();
@@ -293,15 +316,20 @@ public class HousingLineStockService {
             destBefore = destination.opQty;
             destTxnId = destination.txnId;
             updateLineQty(destination.txnId, qty, destination.opQty + qty);
-            grade = destination.grade;
+            grade = destination.grade == null ? grade : destination.grade;
+            if (refBranchId == null) refBranchId = destination.branchId;
+            if (refBatchId == null) refBatchId = destination.batchId;
         }
-        increaseShed(flockId, farmCode, toShed, sexCode, qty, txnDate, createdBy,
-                branchId == null ? source.branchId : branchId,
-                batchId == null ? source.batchId : batchId, age);
 
-        LineRow sourceHist = source;
-        writeHistory(sourceHist, "TRANSFER_OUT", "OUT", "NORMAL", qty, source.opQty, sourceClose,
-                txnDate, createdBy, null, null, pairId, fromLine, fromSide, toLine, toSide, fromShed, toShed, null, null, null);
+        increaseShed(flockId, farmCode, toShed, sexCode, qty, txnDate, createdBy,
+                refBranchId == null ? 0L : refBranchId,
+                refBatchId == null ? 0L : refBatchId, age);
+
+        if (hasSource && source != null) {
+            LineRow sourceHist = source;
+            writeHistory(sourceHist, "TRANSFER_OUT", "OUT", "NORMAL", qty, source.opQty, sourceClose,
+                    txnDate, createdBy, null, null, pairId, fromLine, fromSide, toLine, toSide, fromShed, toShed, null, null, null);
+        }
 
         LineRow destHist = new LineRow();
         destHist.txnId = destTxnId;
@@ -312,8 +340,8 @@ public class HousingLineStockService {
         destHist.side = toSide;
         destHist.sex = sexCode;
         destHist.grade = grade;
-        destHist.branchId = branchId == null ? source.branchId : branchId;
-        destHist.batchId = batchId == null ? source.batchId : batchId;
+        destHist.branchId = refBranchId == null ? 0L : refBranchId;
+        destHist.batchId = refBatchId == null ? 0L : refBatchId;
         writeHistory(destHist, "TRANSFER_IN", "IN", "NORMAL", qty, destBefore, destBefore + qty,
                 txnDate, createdBy, null, null, pairId, fromLine, fromSide, toLine, toSide, fromShed, toShed, null, null, null);
     }

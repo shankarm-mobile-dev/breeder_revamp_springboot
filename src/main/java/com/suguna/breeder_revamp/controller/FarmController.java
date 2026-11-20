@@ -210,6 +210,20 @@ public class FarmController {
         responseDto.setResult(farmService.getFeedAllocationDetails(branchRequest.getBranchID()));
         return responseDto;
     }
+
+    @PostMapping("/getFeedAllocationHistory")
+    public ResponseDto getFeedAllocationHistory(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto = new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(farmService.getFeedAllocationHistory(
+                branchRequest.getBranchID(),
+                branchRequest.getFlockID()));
+        return responseDto;
+    }
+
     @PostMapping("/saveFeedAllocationDetails")
     public ResponseDto saveFeedAllocationDetails(@RequestBody BranchRequest branchRequest) {
         ResponseDto responseDto = new ResponseDto();

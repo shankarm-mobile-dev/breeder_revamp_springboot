@@ -2,6 +2,7 @@ package com.suguna.breeder_revamp.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.suguna.breeder_revamp.dto.*;
+import com.suguna.breeder_revamp.model.BranchUser;
 import com.suguna.breeder_revamp.service.TransferService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -10,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -198,6 +200,18 @@ public class TransferController {
         responseDto.setResult(transferService.getAllBranch(branchRequest));
         return responseDto;
     }
+
+    @PostMapping("/getFlockAndShedLines")
+    public ResponseDto getFlockDetails(@RequestBody BranchRequest branchRequest)
+    {
+        ResponseDto responseDto=new ResponseDto();
+        responseDto.setMessage("");
+        responseDto.setStatusCode(200);
+        responseDto.setStatus("Success");
+        responseDto.setResult(transferService.getFlockDetails(branchRequest.getBranchID()));
+        return responseDto;
+    }
+
 
     @PostMapping("/getEggGateInDetails")
     public ResponseDto getEggGateInDetails(@RequestBody BranchRequest branchRequest)
@@ -577,5 +591,40 @@ public class TransferController {
         responseDto.setStatus("Success");
         responseDto.setResult(transferService.getOtherItemDetails(branchRequest));
         return responseDto;
+    }
+
+    @PostMapping("/getFromInventoryLocation")
+    public ResponseDto getFromInventoryLocation(@RequestBody InventoryLocationRequestDto request) {
+        ResponseDto responseDto = new ResponseDto();
+        try {
+            BigDecimal fromBatchId = request != null ? request.getFromBatchId() : null;
+            BigDecimal fromFarmId = request != null ? request.getFromFarmId() : null;
+            InventoryLocationResponseDto result = transferService.getInventoryLocation(fromBatchId, fromFarmId);
+            if (result != null) {
+                responseDto.setMessage("Inventory location fetched successfully");
+                responseDto.setStatusCode(200);
+                responseDto.setStatus("Success");
+                responseDto.setResult(result);
+            } else {
+                responseDto.setMessage("No inventory location found for specified batch and farm ID");
+                responseDto.setStatusCode(404);
+                responseDto.setStatus("Failed");
+                responseDto.setResult(null);
+            }
+        } catch (Exception ex) {
+            responseDto.setMessage("Error fetching inventory location: " + ex.getMessage());
+            responseDto.setStatusCode(500);
+            responseDto.setStatus("Failed");
+            responseDto.setResult(null);
+        }
+        return responseDto;
+    }
+
+    @GetMapping("/getFromInventoryLocation")
+    public ResponseDto getFromInventoryLocationQuery(
+            @RequestParam(value = "fromBatchId", required = false) BigDecimal fromBatchId,
+            @RequestParam(value = "fromFarmId", required = false) BigDecimal fromFarmId) {
+        InventoryLocationRequestDto request = new InventoryLocationRequestDto(fromBatchId, fromFarmId);
+        return getFromInventoryLocation(request);
     }
 }

@@ -1,5 +1,6 @@
 package com.suguna.breeder_revamp.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
@@ -37,6 +38,8 @@ public class TransferPlanDto {
     @JsonProperty("transferPlanDtls")
     public ArrayList<TransferPlanDtlsDto> transferPlanDtls;
 
+    @Getter
+    @Setter
     public static class TransferPlanDtlsDto{
         @JsonProperty("itemType")
         public String itemType;
@@ -58,5 +61,15 @@ public class TransferPlanDto {
         @JsonProperty("toSide")
         public String toSide;
 
+        @JsonProperty("inventoryLocationId")
+        @JsonAlias({"inventoryLocationId", "inventory_location_id", "ERP_INVENTORY_LOCATION_ID", "ERP_INVENTORY_ID"})
+        public String inventoryLocationId;
+
+        @JsonProperty("inventoryLocationDesc")
+        @JsonAlias({"inventoryLocationDesc", "inventoryLocDesc", "inventory_location_desc", "ERP_INVENTORY_LOCATION_DESC", "ERP_INVENTORY_DESC"})
+        public String inventoryLocationDesc;
+
+        @JsonProperty("inventoryLocDesc")
+        public String inventoryLocDesc;
     }
 }

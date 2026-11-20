@@ -630,6 +630,14 @@ public class TransferPlace {
         @JsonProperty("TO_SIDE_NAME")
         String TO_SIDE_NAME;
 
+        @Column(name = "ERP_INVENTORY_LOCATION_ID", type = String.class)
+        @JsonProperty("ERP_INVENTORY_LOCATION_ID")
+        String ERP_INVENTORY_LOCATION_ID;
+
+        @Column(name = "ERP_INVENTORY_LOCATION_DESC", type = String.class)
+        @JsonProperty("ERP_INVENTORY_LOCATION_DESC")
+        String ERP_INVENTORY_LOCATION_DESC;
+
     }
     @Getter
     @Setter
