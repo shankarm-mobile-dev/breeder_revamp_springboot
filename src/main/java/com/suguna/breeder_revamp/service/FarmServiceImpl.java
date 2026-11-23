@@ -1739,6 +1739,7 @@ public class FarmServiceImpl implements FarmService {
                 } catch (Exception e) {
                     // throw new RuntimeException(e);
                 }
+                shedDetails.setFarmFlockDetails(getFeedAllocationPreviousDetails(branchID,shedDetails.getFlock()));
                 shedDetailsArrayList.add(shedDetails);
             }
         } catch (Exception e) {
@@ -1747,11 +1748,6 @@ public class FarmServiceImpl implements FarmService {
         details.setFarmFlockDetails(shedDetailsArrayList);
         details.setGardeMstDetails(getgrademst(branchID));
         return details;
-    }
-
-    @Override
-    public ArrayList<BranchUser.FarmFlockPreviousDetails> getFeedAllocationHistory(String branchID, String flockID) {
-        return getFeedAllocationPreviousDetails(branchID, flockID);
     }
 
     public ArrayList<BranchUser.GardeMstDetails> getgrademst(String branchID) {
@@ -1877,6 +1873,8 @@ public class FarmServiceImpl implements FarmService {
             data = mapper.convertValue(rawData, BranchRequest.SugFeedAllocationDetails.class);
         }
         SugGppsObservationBatchDTO gppsObservationBatchDTO = batchDTOS.get(0);
+        sugMaiGppsItemAllocationRepositories.updatefeedallocationentry(branchRequest.getFlockID());
+
         if (!data.getFemale().isEmpty()) {
             for (BranchRequest.SugFeedAllocationDetails.FeedAllocationDetails sugFeedDetails : data.getFemale()) {
                 SugMaiGppsItemAllocation sugMaiGppsItemAllocation = new SugMaiGppsItemAllocation();
@@ -1915,7 +1913,6 @@ public class FarmServiceImpl implements FarmService {
                 sugMaiGppsItemAllocation.setBRANCH_ID(Long.valueOf(branchRequest.getBranchID()));
                 sugMaiGppsItemAllocationRepositories.save(sugMaiGppsItemAllocation);
             }
-            sugMaiGppsItemAllocationRepositories.updatefeedallocationentry(branchRequest.getFlockID());
 
         }
         entityManager.flush();
@@ -3193,26 +3190,52 @@ public class FarmServiceImpl implements FarmService {
         return Standard;
     }
 
-    public ArrayList<BranchUser.FarmFlockPreviousDetails> getFeedAllocationPreviousDetails(String branchID,String flock) {
-        ArrayList<BranchUser.FarmFlockPreviousDetails> farmFlockPreviousDetailsArrayList = new ArrayList<BranchUser.FarmFlockPreviousDetails>();
+    public ArrayList<BranchUser.FarmFlockPreviousDetails> getFeedAllocationPreviousDetails(String branchID, String flock) {
+        ArrayList<BranchUser.FarmFlockPreviousDetails> farmFlockPreviousDetailsArrayList = new ArrayList<>();
         try {
-            StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getFeedAllocationDetails");
-            storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
-            storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
-            storedProcedureQuery.registerStoredProcedureParameter(3, ArrayList.class, ParameterMode.REF_CURSOR);
-            storedProcedureQuery.setParameter(1, branchID);
-            storedProcedureQuery.setParameter(2, flock);
-            storedProcedureQuery.execute();
-            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(3);
-
-            while (resultSet.next()) {
-                BranchUser.FarmFlockPreviousDetails farmFlockPreviousDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.FarmFlockPreviousDetails.class);
-                farmFlockPreviousDetails.setGradeWiseDetails(getFeedAllocationPreviousBreakupDetails(branchID,flock,farmFlockPreviousDetails.getAge()));
-                farmFlockPreviousDetailsArrayList.add(farmFlockPreviousDetails);
-
+            ArrayList<BranchUser.FarmFlockPreviousBreakupDetails> allBreakupRows =
+                    getFeedAllocationPreviousBreakupDetails(branchID, flock, null);
+            if (allBreakupRows.isEmpty()) {
+                return farmFlockPreviousDetailsArrayList;
             }
-        } catch (Exception e) {
 
+            LinkedHashMap<String, BranchUser.FarmFlockPreviousDetails> groupedByAge = new LinkedHashMap<>();
+            for (BranchUser.FarmFlockPreviousBreakupDetails row : allBreakupRows) {
+                if (row == null || row.getAge() == null || row.getAge().isBlank()) {
+                    continue;
+                }
+                String ageKey = row.getAge().trim();
+                BranchUser.FarmFlockPreviousDetails ageGroup = groupedByAge.computeIfAbsent(ageKey, age -> {
+                    BranchUser.FarmFlockPreviousDetails header = new BranchUser.FarmFlockPreviousDetails();
+                    header.setAge(age);
+                    header.setDateFrom(row.getDateFrom());
+                    header.setDateTo(row.getDateTo());
+                    header.setGradeWiseDetails(new ArrayList<>());
+                    return header;
+                });
+                if ((ageGroup.getDateFrom() == null || ageGroup.getDateFrom().isBlank())
+                        && row.getDateFrom() != null && !row.getDateFrom().isBlank()) {
+                    ageGroup.setDateFrom(row.getDateFrom());
+                }
+                if ((ageGroup.getDateTo() == null || ageGroup.getDateTo().isBlank())
+                        && row.getDateTo() != null && !row.getDateTo().isBlank()) {
+                    ageGroup.setDateTo(row.getDateTo());
+                }
+                ageGroup.getGradeWiseDetails().add(row);
+            }
+
+            farmFlockPreviousDetailsArrayList.addAll(groupedByAge.values());
+            farmFlockPreviousDetailsArrayList.sort((a, b) -> {
+                try {
+                    return Integer.compare(
+                            Integer.parseInt(b.getAge()),
+                            Integer.parseInt(a.getAge()));
+                } catch (NumberFormatException e) {
+                    return b.getAge().compareTo(a.getAge());
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         return farmFlockPreviousDetailsArrayList;
     }
@@ -3224,21 +3247,21 @@ public class FarmServiceImpl implements FarmService {
             StoredProcedureQuery storedProcedureQuery = entityManager.createStoredProcedureQuery("SUG_MAI_GPPS_MOB_PKG.getFeedAllocationBreakupDetails");
             storedProcedureQuery.registerStoredProcedureParameter(1, String.class, ParameterMode.IN);
             storedProcedureQuery.registerStoredProcedureParameter(2, String.class, ParameterMode.IN);
-            storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
-            storedProcedureQuery.registerStoredProcedureParameter(4, ArrayList.class, ParameterMode.REF_CURSOR);
+//            storedProcedureQuery.registerStoredProcedureParameter(3, String.class, ParameterMode.IN);
+            storedProcedureQuery.registerStoredProcedureParameter(3, ArrayList.class, ParameterMode.REF_CURSOR);
             storedProcedureQuery.setParameter(1, branchID);
             storedProcedureQuery.setParameter(2, flock);
-            storedProcedureQuery.setParameter(3, age);
+//            storedProcedureQuery.setParameter(3, age);
             storedProcedureQuery.execute();
-            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(4);
+            ResultSet resultSet = (ResultSet) storedProcedureQuery.getOutputParameterValue(3);
 
             while (resultSet.next()) {
                 BranchUser.FarmFlockPreviousBreakupDetails farmFlockPreviousBreakupDetails = ResultSetMapper.mapResultSetToObject(resultSet, BranchUser.FarmFlockPreviousBreakupDetails.class);
                 farmFlockPreviousBreakupDetailsArrayList.add(farmFlockPreviousBreakupDetails);
-
             }
-        } catch (Exception e) {
 
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         return farmFlockPreviousBreakupDetailsArrayList;
     }

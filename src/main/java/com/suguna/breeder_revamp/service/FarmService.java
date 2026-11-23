@@ -39,8 +39,6 @@ public interface FarmService {
 
     BranchUser.FeedAllocationDetails getFeedAllocationDetails(String branchID);
 
-    ArrayList<BranchUser.FarmFlockPreviousDetails> getFeedAllocationHistory(String branchID, String flockID);
-
     String saveFeedAllocationDetails(BranchRequest branchRequest) ;
 
     BranchUser.CullDetails getCullsDetails(String branchID);

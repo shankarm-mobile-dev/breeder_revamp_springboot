@@ -19,63 +19,88 @@ public class FeedInventoryService {
     private static final long CACHE_TTL_MS = 30_000L;
 
     private static final String FEED_STOCK_SQL =
-            "WITH pending_daily AS ( " +
-            "  SELECT g.branch_id, g.inventory_item_id, SUM(NVL(g.secondary_qty, 0)) AS qty " +
-            "    FROM sug_mai_breeder_daily_entry g " +
-            "    INNER JOIN gme_batch_header h ON h.batch_id = g.batch_id " +
-            "   WHERE h.batch_status = 2 " +
-            "     AND NVL(g.posted_flag, 'N') = 'N' " +
-            "     AND g.created_date > TRUNC(SYSDATE - 30) " +
-            "     AND g.branch_id = ?1 " +
-            "   GROUP BY g.branch_id, g.inventory_item_id " +
-            "), pending_transfer AS ( " +
-            "  SELECT h.from_farm_id AS branch_id, h.item_id AS inventory_item_id, SUM(NVL(h.qty, 0)) AS qty " +
-            "    FROM sug_mai_gpps_trans_dtl h " +
-            "   WHERE h.created_date > TRUNC(SYSDATE - 30) " +
-            "     AND NVL(h.posted_flag, 'N') = 'N' " +
-            "     AND h.from_farm_id = ?1 " +
-            "   GROUP BY h.from_farm_id, h.item_id " +
-            "), stock_raw AS ( " +
-            "  SELECT a.inventory_item_id, d.organization_id, " +
-            "         MAX(d.subinventory_code) AS subinventory_code, " +
-            "         MAX(c.segment1) AS item_group, MAX(c.segment2) AS item_category, " +
-            "         MAX(a.segment1) AS item_code, MAX(a.description) AS item_description, " +
-            "         MAX(a.primary_uom_code) AS primary_uom_code, " +
-            "         ROUND(SUM(d.primary_transaction_quantity), 3) AS primary_qty, " +
-            "         MAX(d.secondary_uom_code) AS secondary_uom_code, " +
-            "         ROUND(SUM(d.secondary_transaction_quantity), 3) AS on_hand_secondary, " +
-            "         MAX(TRUNC(SYSDATE) - TRUNC(d.date_received)) AS age " +
-            "    FROM mtl_system_items_b a " +
-            "    INNER JOIN mtl_item_categories b ON b.inventory_item_id = a.inventory_item_id " +
-            "      AND b.organization_id = a.organization_id AND b.category_set_id = 1 " +
-            "    INNER JOIN mtl_categories c ON c.category_id = b.category_id AND c.disable_date IS NULL " +
-            "    INNER JOIN mtl_onhand_quantities_detail d ON d.inventory_item_id = a.inventory_item_id " +
-            "      AND d.organization_id = a.organization_id " +
-            "    LEFT JOIN mtl_lot_numbers f ON f.organization_id = d.organization_id " +
-            "      AND f.inventory_item_id = d.inventory_item_id AND f.lot_number = d.lot_number " +
-            "   WHERE d.organization_id = ?1 " +
-            "     AND NVL(f.expiration_date, SYSDATE + 1) > SYSDATE " +
-            "     AND (c.segment1 IN (SELECT flv.lookup_code FROM fnd_lookup_values flv " +
-            "           WHERE flv.lookup_type = 'SUG_BREEDER_ITEM_CATEGORY' AND flv.description = 'F' " +
-            "             AND flv.enabled_flag = 'Y' AND TRUNC(SYSDATE) BETWEEN flv.start_date_active " +
-            "             AND NVL(flv.end_date_active, SYSDATE)) " +
-            "       OR a.segment1 IN (SELECT sa.lookup_code FROM fnd_lookup_values sa " +
-            "           WHERE sa.lookup_type = 'SUG_GPPS_MEDICIN_ADDL_ITEMS' AND sa.tag = 'FEED' " +
-            "             AND sa.enabled_flag = 'Y' AND TRUNC(SYSDATE) BETWEEN sa.start_date_active " +
-            "             AND NVL(sa.end_date_active, SYSDATE))) " +
-            "   GROUP BY a.inventory_item_id, d.organization_id " +
-            "   HAVING SUM(d.secondary_transaction_quantity) > 0.001 " +
-            ") " +
-            "SELECT 'FEED', s.organization_id, s.subinventory_code, s.inventory_item_id, " +
-            "       s.item_group, s.item_category, s.item_code, s.item_description, " +
-            "       s.primary_uom_code, s.primary_qty, s.secondary_uom_code, " +
-            "       ROUND(GREATEST(s.on_hand_secondary - NVL(pd.qty, 0) - NVL(pt.qty, 0), 0), 3), s.age " +
-            "  FROM stock_raw s " +
-            "  LEFT JOIN pending_daily pd ON pd.inventory_item_id = s.inventory_item_id " +
-            "    AND pd.branch_id = s.organization_id " +
-            "  LEFT JOIN pending_transfer pt ON pt.inventory_item_id = s.inventory_item_id " +
-            "    AND pt.branch_id = s.organization_id " +
-            " WHERE GREATEST(s.on_hand_secondary - NVL(pd.qty, 0) - NVL(pt.qty, 0), 0) > 0.001";
+            "WITH pending_daily AS \n" +
+                    "                     (SELECT g.branch_id, \n" +
+                    "                             g.inventory_item_id, \n" +
+                    "                             SUM(NVL(g.secondary_qty, 0)) AS qty \n" +
+                    "                        FROM sug_mai_breeder_daily_entry g, gme_batch_header h \n" +
+                    "                       WHERE h.batch_id = g.batch_id \n" +
+                    "                         AND h.batch_status = 2 \n" +
+                    "                         AND NVL(g.posted_flag, 'N') = 'N' \n" +
+                    "                         AND g.created_date > TRUNC(SYSDATE - 30) \n" +
+                    "                         AND g.branch_id = ?1 \n" +
+                    "                       GROUP BY g.branch_id, g.inventory_item_id), \n" +
+                    "                    pending_transfer AS \n" +
+                    "                     (SELECT h.from_farm_id AS branch_id, \n" +
+                    "                             h.item_id AS inventory_item_id, \n" +
+                    "                             SUM(NVL(h.qty, 0)) AS qty \n" +
+                    "                        FROM sug_mai_gpps_trans_dtl h \n" +
+                    "                       WHERE h.created_date > TRUNC(SYSDATE - 30) \n" +
+                    "                         AND NVL(h.posted_flag, 'N') = 'N' \n" +
+                    "                         AND h.from_farm_id = ?1 \n" +
+                    "                       GROUP BY h.from_farm_id, h.item_id), \n" +
+                    "                    stock_raw AS \n" +
+                    "                     (SELECT a.inventory_item_id, \n" +
+                    "                             d.organization_id, \n" +
+                    "                             MAX(d.subinventory_code) AS subinventory_code, \n" +
+                    "                             MAX(c.segment1) AS item_group, \n" +
+                    "                             MAX(c.segment2) AS item_category, \n" +
+                    "                             MAX(a.segment1) AS item_code, \n" +
+                    "                             MAX(a.description) AS item_description, \n" +
+                    "                             MAX(a.primary_uom_code) AS primary_uom_code, \n" +
+                    "                             ROUND(SUM(d.primary_transaction_quantity), 3) AS primary_qty, \n" +
+                    "                             MAX(d.secondary_uom_code) AS secondary_uom_code, \n" +
+                    "                             ROUND(SUM(d.secondary_transaction_quantity), 3) AS on_hand_secondary, \n" +
+                    "                             MAX(TRUNC(SYSDATE) - TRUNC(d.date_received)) AS age \n" +
+                    "                        FROM mtl_system_items_b a, \n" +
+                    "                             mtl_item_categories b, \n" +
+                    "                             mtl_categories c, \n" +
+                    "                             mtl_onhand_quantities_detail d, \n" +
+                    "                             mtl_lot_numbers f\n" +
+                    "                             WHERE b.inventory_item_id = a.inventory_item_id\n" +
+                    "                             AND b.organization_id = a.organization_id\n" +
+                    "                             AND b.category_set_id = 1\n" +
+                    "                             AND c.category_id = b.category_id\n" +
+                    "                             AND c.disable_date IS NULL\n" +
+                    "                             AND d.inventory_item_id = a.inventory_item_id\n" +
+                    "                             AND d.organization_id = a.organization_id\n" +
+                    "                             AND f.organization_id(+) = d.organization_id\n" +
+                    "                             AND f.inventory_item_id(+) = d.inventory_item_id\n" +
+                    "                         AND f.lot_number(+) = d.lot_number\n" +
+                    "                         AND d.organization_id = ?1 \n" +
+                    "                         AND NVL(f.expiration_date(+), SYSDATE + 1) > SYSDATE\n" +
+                    "                         and secondary_transaction_quantity > 0.001 \n" +
+                    "                         AND (c.segment1 IN \n" +
+                    "                             (SELECT flv.lookup_code \n" +
+                    "                                 FROM fnd_lookup_values flv \n" +
+                    "                                WHERE flv.lookup_type = 'SUG_BREEDER_ITEM_CATEGORY' \n" +
+                    "                                  AND flv.description = 'F' \n" +
+                    "                                  AND flv.enabled_flag = 'Y' \n" +
+                    "                                  AND TRUNC(SYSDATE) BETWEEN flv.start_date_active \n" +
+                    "                                  AND NVL(flv.end_date_active, SYSDATE) \n" +
+                    "                               UNION ALL \n" +
+                    "                               SELECT sa.lookup_code \n" +
+                    "                                 FROM fnd_lookup_values sa \n" +
+                    "                                WHERE sa.lookup_type = 'SUG_GPPS_MEDICIN_ADDL_ITEMS' \n" +
+                    "                                  AND sa.tag = 'FEED' \n" +
+                    "                                  AND sa.enabled_flag = 'Y' \n" +
+                    "                                  AND TRUNC(SYSDATE) BETWEEN sa.start_date_active \n" +
+                    "                                  AND NVL(sa.end_date_active, SYSDATE))) \n" +
+                    "                       GROUP BY a.inventory_item_id, d.organization_id \n" +
+                    "                      HAVING SUM(d.secondary_transaction_quantity) > 0.001) \n" +
+                    "                    SELECT\n" +
+                    "                     'FEED',s.organization_id,s.subinventory_code,\n" +
+                    "                    s.inventory_item_id,s.item_group,s.item_category,\n" +
+                    "                    s.item_code,s.item_description,s.primary_uom_code,\n" +
+                    "                    s.primary_qty,s.secondary_uom_code,\n" +
+                    "                    ROUND(GREATEST(s.on_hand_secondary - NVL(pd.qty, 0) - NVL(pt.qty, 0), 0), 3),\n" +
+                    "                    s.age FROM stock_raw s,\n" +
+                    "                    pending_daily pd,pending_transfer pt\n" +
+                    "                     WHERE pd.inventory_item_id(+) = s.inventory_item_id\n" +
+                    "                    AND pd.branch_id(+) = s.organization_id\n" +
+                    "                    AND pt.inventory_item_id(+) = s.inventory_item_id\n" +
+                    "                    AND pt.branch_id(+) = s.organization_id\n" +
+                    "                    AND GREATEST(s.on_hand_secondary - NVL(pd.qty, 0) - NVL(pt.qty, 0), 0) > 0.001";
 
     @Autowired
     private EntityManager entityManager;

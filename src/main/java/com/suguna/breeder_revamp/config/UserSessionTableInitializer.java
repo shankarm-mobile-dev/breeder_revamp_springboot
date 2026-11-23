@@ -21,7 +21,7 @@ public class UserSessionTableInitializer {
         try {
             jdbcTemplate.execute(
                     "BEGIN "
-                            + "EXECUTE IMMEDIATE 'CREATE TABLE SUG_MAI_BREEDER_USER_SESSION ("
+                            + "EXECUTE IMMEDIATE 'CREATE TABLE SUG.SUG_MAI_BREEDER_USER_SESSION ("
                             + "USER_CODE VARCHAR2(50) PRIMARY KEY, "
                             + "SESSION_TOKEN VARCHAR2(64) NOT NULL, "
                             + "DEVICE_ID VARCHAR2(100), "
